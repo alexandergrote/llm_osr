@@ -1,0 +1,10 @@
+defaults:
+  - io__import: '20News'
+  - io__export: 'mlflow'
+  - ml__classifier: 'naive'
+  - ml__preprocessing: 'identity'
+  - ml__evaluation: 'osr'
+  - ml__datasplit: 'osr'
+
+random_seed: 0
+name: 'DEV'
