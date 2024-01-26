@@ -26,6 +26,13 @@ class File:
     CONFIG = Directory.CONFIG / "config.yaml"
     MAIN = Directory.SRC / "main.py"
 
+class DatasetColumn:
+    TEXT = "text"
+    LABEL = "label"
+
+
+class DictConfigNames:
+    RANDOM_SEED = 'random_seed'
 
 class BaseEnum(Enum):
     @classmethod

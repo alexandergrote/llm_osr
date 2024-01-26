@@ -4,7 +4,7 @@ from omegaconf import DictConfig, OmegaConf
 
 # load package specific code
 from interface.execution_block import ExecutionBlock
-from util.constants import Directory, File
+from util.constants import Directory, File, DictConfigNames
 from util.logging import console
 
 warnings.filterwarnings(
@@ -36,10 +36,13 @@ def main(cfg: DictConfig) -> None:
     ]
 
     # output placeholder
-    output = {}
+    output = {
+        DictConfigNames.RANDOM_SEED: cfg[DictConfigNames.RANDOM_SEED],
+
+    }
 
     # init sequence
-    sequence = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence]
+    sequence = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:1]]
     
     # execute sequence
     for el in sequence:

@@ -3,6 +3,7 @@ from typing import Dict, Any, Union
 
 from interface.base import BaseExecutionBlock
 from util.logging import console
+from util.dynamic_import import DynamicImport
 
 
 class ExecutionBlock(BaseExecutionBlock, BaseModel):
@@ -12,8 +13,10 @@ class ExecutionBlock(BaseExecutionBlock, BaseModel):
 
     @validator('block')
     def _init_component(cls, value):
-        return {}
+        obj = DynamicImport.init_class_from_dict(dictionary=value)
+        return obj
     
-    def execute(self, *args, **kwargs) -> dict:
+    def execute(self, **kwargs) -> dict:
         console.log(f"Executing: {self.name}")
+        self.block.execute(**kwargs)
         return {}

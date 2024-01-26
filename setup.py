@@ -7,7 +7,10 @@ from setuptools import setup, find_packages
 install_requires = [
     "hydra-core",
     "rich",
-    "pydantic"
+    "pydantic",
+    "scikit-learn",
+    "pandas",
+    "numpy"
 ]
 
 setup(
