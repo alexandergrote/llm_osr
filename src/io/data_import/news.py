@@ -7,7 +7,7 @@ from typing import Literal
 
 # custom code
 from .base import BaseDataset, MixinDataset
-from util.constants import Directory, DatasetColumn
+from src.util.constants import Directory, DatasetColumn
 
 class NewsDataset(MixinDataset, BaseDataset, BaseModel):
 
@@ -19,7 +19,7 @@ class NewsDataset(MixinDataset, BaseDataset, BaseModel):
         value.mkdir(parents=True, exist_ok=True)
         return value
 
-    def _load(self, **kwargs) -> dict:
+    def _load(self, **kwargs) -> pd.DataFrame:
 
         # fetch data
         X, y = fetch_20newsgroups(
@@ -34,7 +34,4 @@ class NewsDataset(MixinDataset, BaseDataset, BaseModel):
             DatasetColumn.LABEL: y
         })
 
-        # update kwargs
-        kwargs['data'] = data
-
-        return kwargs
+        return data

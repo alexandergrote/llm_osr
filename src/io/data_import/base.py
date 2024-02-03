@@ -1,7 +1,7 @@
 from abc import abstractmethod
 import pandas as pd
 
-from interface.base import BaseExecutionBlock
+from src.interface.base import BaseExecutionBlock
 
 
 class BaseDataset(BaseExecutionBlock):
@@ -19,17 +19,18 @@ class MixinDataset:
         # not necessary here because not output has been created yet
         
         # execute main function
-        output = self._load(**kwargs)
+        data = self._load(**kwargs)
 
         # check validity of output
-        if not isinstance(output, dict):
-            raise TypeError("Output is not a dictionary.")
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("Output is not a pandas Dataframe.")
         
-        assert "data" in output.keys(), "Output does not contain data."
         
-        data = output["data"]
         assert isinstance(data, pd.DataFrame), "Data is not a dataframe."
         assert data.shape[0] > 0, "Output data is empty."
         assert len(set(data.columns) - set(["text", "label"])) == 0, "Output data does not contain the correct columns."
 
-        return output
+        # update kwargs
+        kwargs["data"] = data
+
+        return kwargs
