@@ -1,7 +1,9 @@
 import unittest
+
 import pandas as pd
 
 from src.io.data_import.news import NewsDataset
+
 
 class TestNewsDataset(unittest.TestCase):
 

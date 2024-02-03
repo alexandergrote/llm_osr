@@ -1,12 +1,12 @@
+from pathlib import Path
+from typing import Optional, List
+from unittest import TestCase, main
+
 import yaml
 from pydantic import BaseModel
-from unittest import TestCase, main
-from pathlib import Path
-from typing import List, Optional
 
-from src.util.constants import Directory
+from src.util.constants import Directory, YamlField
 from src.util.dynamic_import import DynamicImport
-from src.util.constants import YamlField
 
 
 class YamlTestCase(BaseModel):
@@ -23,7 +23,7 @@ class TestYamlConfig(TestCase):
 
     def _load_yaml_file(self, path: Path) -> dict:
 
-        with open(path, "r") as f:
+        with open(path) as f:
             yaml_file = yaml.load(f, Loader=yaml.SafeLoader)
 
         return yaml_file
@@ -33,7 +33,7 @@ class TestYamlConfig(TestCase):
         identifier: str,
         required_keys: set,
         dictionary: dict,
-        result: List,
+        result: list,
     ) -> List[YamlTestCase]:
 
         found_keys = set(dictionary.keys())

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+
 import pandas as pd
 
 from src.interface.base import BaseExecutionBlock
@@ -7,11 +8,8 @@ from src.interface.base import BaseExecutionBlock
 class BaseDataset(BaseExecutionBlock):
 
     @abstractmethod
-    def _load(self, *args, **kwargs) -> dict:
+    def _load(self, *args, **kwargs) -> pd.DataFrame:
         raise NotImplementedError()
-
-
-class MixinDataset:
     
     def execute(self, **kwargs) -> dict:
 

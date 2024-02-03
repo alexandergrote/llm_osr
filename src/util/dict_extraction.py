@@ -1,11 +1,11 @@
-import yaml
 import importlib
-
+import yaml
 from pydantic import BaseModel
 from pydantic.v1.utils import deep_update
-from typing import Tuple, List
+from typing import Iterable, Tuple, Union
 
 from src.util.constants import YamlField
+
 
 def convert(value, type_):
 
@@ -49,17 +49,17 @@ class DictExtraction(BaseModel):
         return class_obj, class_params
 
     @staticmethod
-    def get_class_obj_and_params_from_yaml(filename: str, overriding: List[str] = []):
+    def get_class_obj_and_params_from_yaml(filename: str, overriding: Iterable[str] = ()):
 
         """
         args:
             - filename: str 
-            - overriding: List[str], 
+            - overriding: Tuple[str], 
                 must contain a = "=" seperating the key value pair
                 can also be an empty list
         """
 
-        with open(filename, "r") as f:
+        with open(filename) as f:
             dictionary = yaml.safe_load(f)
 
         # number of keys before update
@@ -77,7 +77,7 @@ class DictExtraction(BaseModel):
             value = convert(value, dtype)
 
             # build hierachy and save value in dict
-            tree_dict = value
+            tree_dict: Union[str, dict] = value
             for key in reversed(hierarchy.split('.')):
                 tree_dict = {key: tree_dict}
 

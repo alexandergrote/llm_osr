@@ -1,10 +1,12 @@
-import hydra
 import warnings
-from omegaconf import DictConfig, OmegaConf
+import hydra
+
+from typing import List
 
 # load package specific code
 from interface.execution_block import ExecutionBlock
-from util.constants import Directory, File, DictConfigNames
+from omegaconf import DictConfig, OmegaConf
+from util.constants import DictConfigNames, Directory, File
 from util.logging import console
 
 warnings.filterwarnings(
@@ -42,10 +44,10 @@ def main(cfg: DictConfig) -> None:
     }
 
     # init sequence
-    sequence = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:1]]
+    event_blocks: List[ExecutionBlock] = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:1]]
     
     # execute sequence
-    for el in sequence:
+    for el in event_blocks:
         output[el.name] = el.execute(**output)
 
 

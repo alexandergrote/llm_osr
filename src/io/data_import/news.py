@@ -1,15 +1,17 @@
-import pandas as pd
-
-from sklearn.datasets import fetch_20newsgroups
-from pydantic import BaseModel, field_validator
 from pathlib import Path
 from typing import Literal
 
-# custom code
-from .base import BaseDataset, MixinDataset
-from src.util.constants import Directory, DatasetColumn
+import pandas as pd
+from pydantic import BaseModel, field_validator
+from sklearn.datasets import fetch_20newsgroups
 
-class NewsDataset(MixinDataset, BaseDataset, BaseModel):
+from src.util.constants import DatasetColumn, Directory
+
+# custom code
+from .base import BaseDataset
+
+
+class NewsDataset(BaseDataset, BaseModel):
 
     data_home: Path = Directory.INPUT_DIR / "news"
     subset: Literal['train', 'test', 'all'] = 'all'

@@ -1,9 +1,9 @@
-from pydantic import BaseModel, validator
-from typing import Dict, Any, Union
+from typing import Any, Union, Dict
 
 from interface.base import BaseExecutionBlock
-from util.logging import console
+from pydantic import BaseModel, validator
 from util.dynamic_import import DynamicImport
+from util.logging import console
 
 
 class ExecutionBlock(BaseExecutionBlock, BaseModel):
@@ -18,5 +18,9 @@ class ExecutionBlock(BaseExecutionBlock, BaseModel):
     
     def execute(self, **kwargs) -> dict:
         console.log(f"Executing: {self.name}")
+
+        if not hasattr(self.block, 'execute'):
+            raise AttributeError(f"Block {self.name} does not have an execute method.")
+
         self.block.execute(**kwargs)
         return {}
