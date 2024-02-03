@@ -2,7 +2,7 @@ import yaml
 import importlib
 
 from pydantic import BaseModel
-from pydantic.utils import deep_update
+from pydantic.v1.utils import deep_update
 from typing import Tuple, List
 
 from src.util.constants import YamlField
