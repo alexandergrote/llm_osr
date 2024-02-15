@@ -3,7 +3,8 @@ from abc import abstractmethod
 import pandas as pd
 
 from src.interface.base import BaseExecutionBlock
-
+from src.util.constants import DatasetColumn
+from src.util.validation import DataFrameValidator
 
 class BaseDataset(BaseExecutionBlock):
 
@@ -19,14 +20,12 @@ class BaseDataset(BaseExecutionBlock):
         # execute main function
         data = self._load(**kwargs)
 
-        # check validity of output
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("Output is not a pandas Dataframe.")
-        
-        
-        assert isinstance(data, pd.DataFrame), "Data is not a dataframe."
-        assert data.shape[0] > 0, "Output data is empty."
-        assert len(set(data.columns) - set(["text", "label"])) == 0, "Output data does not contain the correct columns."
+        DataFrameValidator.assert_non_zero_dataframe(
+            data=data, 
+            n_rows=None, 
+            columns=[DatasetColumn.TEXT, DatasetColumn.LABEL], 
+            strict_columns=True
+        )
 
         # update kwargs
         kwargs["data"] = data
