@@ -22,5 +22,6 @@ class ExecutionBlock(BaseExecutionBlock, BaseModel):
         if not hasattr(self.block, 'execute'):
             raise AttributeError(f"Block {self.name} does not have an execute method.")
 
-        self.block.execute(**kwargs)
-        return {}
+        result = self.block.execute(**kwargs)
+        
+        return result

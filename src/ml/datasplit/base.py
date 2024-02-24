@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Dict, Any
+from typing import Dict
 from pydantic import validate_call
 
 import pandas as pd
@@ -16,9 +16,6 @@ class BaseDatasplit(BaseExecutionBlock):
     
     @validate_call(config={"arbitrary_types_allowed": True})
     def execute(self, data: pd.DataFrame, **kwargs) -> Dict[str, pd.DataFrame]:
-
-        result: Dict[str, Any] = {}
-        result.update(kwargs)
 
         # check validity of arguments
         DataFrameValidator.assert_non_zero_dataframe(
@@ -47,8 +44,8 @@ class BaseDatasplit(BaseExecutionBlock):
             )
 
         # update kwargs
-        result["data_train"] = data_train
-        result["data_valid"] = data_valid
-        result["data_test"] = data_test
+        kwargs["data_train"] = data_train
+        kwargs["data_valid"] = data_valid
+        kwargs["data_test"] = data_test
 
-        return result
+        return kwargs
