@@ -43,12 +43,11 @@ def main(cfg: DictConfig) -> None:
     }
 
     # init sequence
-    event_blocks: List[ExecutionBlock] = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:2]]
+    event_blocks: List[ExecutionBlock] = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:3]]
     
     # execute sequence
     for el in event_blocks:
         output = el.execute(**output)
-        print(output)
 
 
 if __name__ == "__main__":
