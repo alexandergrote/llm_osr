@@ -16,6 +16,3 @@ class TestNewsDataset(unittest.TestCase):
         
         output = self.dataset._load(random_seed=42)
         self.assertIsInstance(output, pd.DataFrame)
-
-if __name__ == '__main__':
-    unittest.main()
