@@ -12,6 +12,7 @@ class DataFrameValidator:
         cls._check_columns(data, columns, strict_columns, identifier=identifier)
         cls._check_rows(data, n_rows, identifier=identifier)
 
+
     @classmethod
     def _check_rows(cls, data: pd.DataFrame, n_rows: Optional[int], identifier: str):
 
@@ -22,8 +23,7 @@ class DataFrameValidator:
             msg = f"{identifier}Output data does not contain the correct number of rows. Expected {n_rows}, got {data.shape[0]}."
             assert n_rows_df == n_rows, msg
 
-        assert n_rows_df > 0, f"{identifier}Output data is empty."
-        
+        assert n_rows_df > 0, f"{identifier}Output data is empty."       
 
         
     @classmethod

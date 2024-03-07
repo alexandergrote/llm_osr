@@ -1,12 +1,11 @@
 import pandas as pd
 import numpy as np
-from pandas import DataFrame
 from pydantic import BaseModel, validate_call
 from sklearn.model_selection import train_test_split
 
 from src.ml.datasplit.base import BaseDatasplit
 from src.util.constants import DatasetColumn
-from src.util.types import Percentage, DualDataFrameTuple, TripleDataFrameTuple
+from src.util.types import Percentage, DualDataFrameTuple, TripleDataFrameTuple, MLDataFrame
 
 
 class DataSplitter(BaseModel, BaseDatasplit):
@@ -87,6 +86,9 @@ class DataSplitter(BaseModel, BaseDatasplit):
         for el in [data_train, data_test]:
             el.reset_index(drop=True, inplace=True)
 
+        data_train = MLDataFrame.from_raw_pandas_dataframe(data_train)
+        data_test = MLDataFrame.from_raw_pandas_dataframe(data_test)
+
         return data_train, data_test
         
 
@@ -121,11 +123,14 @@ class DataSplitter(BaseModel, BaseDatasplit):
         for el in [data_fit, data_valid]:
             el.reset_index(drop=True, inplace=True)
 
+        data_fit = MLDataFrame.from_raw_pandas_dataframe(data_fit)
+        data_valid = MLDataFrame.from_raw_pandas_dataframe(data_valid)
+
         return data_fit, data_valid
 
     
-    def _split_data(self, data: DataFrame, **kwargs) -> TripleDataFrameTuple:
-
+    def _split_data(self, data: pd.DataFrame, **kwargs) -> TripleDataFrameTuple:
+        
         perc_known = 1 - self.percentage_unknown_classes
 
         data_train, data_test = self._split_into_train_test_data(
@@ -135,12 +140,12 @@ class DataSplitter(BaseModel, BaseDatasplit):
         )
 
         data_fit, data_valid = self._split_train_into_fitting_and_validation_data(
-            data=data_train,
+            data=data_train.data,
             perc_known=perc_known,
             train_size=self.percentage_instances_of_known_classes_in_fittingset
         )
 
         for el in [data_fit, data_valid, data_test]:
-            el.reset_index(drop=True, inplace=True)
+            el.data.reset_index(drop=True, inplace=True)
 
         return data_fit, data_valid, data_test

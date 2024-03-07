@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Literal
 
 import pandas as pd
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, model_validator
 from sklearn.datasets import fetch_20newsgroups
 
 from src.util.constants import DatasetColumn, Directory
@@ -16,10 +16,9 @@ class NewsDataset(BaseDataset, BaseModel):
     data_home: Path = Directory.INPUT_DIR / "news"
     subset: Literal['train', 'test', 'all'] = 'all'
 
-    @field_validator('data_home')
-    def _init_component(cls, value):
-        value.mkdir(parents=True, exist_ok=True)
-        return value
+    @model_validator(mode='after')
+    def init_data_dir(self):
+        self.data_home.mkdir(parents=True, exist_ok=True)
 
     def _load(self, **kwargs) -> pd.DataFrame:
 

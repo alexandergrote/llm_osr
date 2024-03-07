@@ -4,6 +4,7 @@ import numpy as np
 
 from src.ml.datasplit.osr import DataSplitter
 from src.util.constants import DatasetColumn
+from src.util.types import MLDataFrame
 
 
 class TestDataSplitter(unittest.TestCase):
@@ -38,7 +39,8 @@ class TestDataSplitter(unittest.TestCase):
     def test__train_test_split_by_known_classes(self):
         
         data = pd.DataFrame({
-            DatasetColumn.LABEL: [1, 1, 2, 2, 3, 3, 4, 4, 5]
+            DatasetColumn.LABEL: [1, 1, 2, 2, 3, 3, 4, 4, 5],
+            DatasetColumn.TEXT: ['text'] * 9
         })
         
         mask_known_classes = np.array([True, True, False, False, True, True, False, False, True])
@@ -68,7 +70,8 @@ class TestDataSplitter(unittest.TestCase):
         numbers = rng.choice(range(5), size=n)
 
         data = pd.DataFrame({
-            DatasetColumn.LABEL: numbers
+            DatasetColumn.LABEL: numbers,
+            DatasetColumn.TEXT: ['text'] * n
         })
 
         data_train, data_test = self.splitter._split_into_train_test_data(
@@ -76,11 +79,12 @@ class TestDataSplitter(unittest.TestCase):
             perc_known, 
             train_size
         )
-        self.assertIsInstance(data_train, pd.DataFrame)
-        self.assertIsInstance(data_test, pd.DataFrame)
-        self.assertEqual(len(data_train) + len(data_test), len(data))
-        self.assertEqual(len(data_train[DatasetColumn.LABEL].unique()), 3)
-        self.assertEqual(len(data_test[DatasetColumn.LABEL].unique()), 5)
+
+        self.assertIsInstance(data_train, MLDataFrame)
+        self.assertIsInstance(data_test, MLDataFrame)
+        self.assertEqual(len(data_train.data) + len(data_test.data), len(data))
+        self.assertEqual(len(data_train.data[DatasetColumn.LABEL].unique()), 3)
+        self.assertEqual(len(data_test.data[DatasetColumn.LABEL].unique()), 5)
 
     def test__split_train_into_fitting_and_validation_data(self):
         perc_known = 0.6
@@ -93,15 +97,16 @@ class TestDataSplitter(unittest.TestCase):
         numbers = rng.choice(range(11), size=n)
 
         data = pd.DataFrame({
-            DatasetColumn.LABEL: numbers
+            DatasetColumn.LABEL: numbers,
+            DatasetColumn.TEXT: ['text'] * n
         })
 
         data_fit, data_valid = self.splitter._split_train_into_fitting_and_validation_data(data, perc_known, train_size)
-        self.assertIsInstance(data_fit, pd.DataFrame)
-        self.assertIsInstance(data_valid, pd.DataFrame)
-        self.assertEqual(len(data_fit) + len(data_valid), n)
-        self.assertEqual(len(data_fit[DatasetColumn.LABEL].unique()), 8)
-        self.assertEqual(len(data_valid[DatasetColumn.LABEL].unique()), 11)
+        self.assertIsInstance(data_fit, MLDataFrame)
+        self.assertIsInstance(data_valid, MLDataFrame)
+        self.assertEqual(len(data_fit.data) + len(data_valid.data), n)
+        self.assertEqual(len(data_fit.data[DatasetColumn.LABEL].unique()), 8)
+        self.assertEqual(len(data_valid.data[DatasetColumn.LABEL].unique()), 11)
 
     def test__split_train_into_fitting_and_validation_data_zero_openness(self):
         
@@ -115,15 +120,16 @@ class TestDataSplitter(unittest.TestCase):
         numbers = rng.choice(range(11), size=n)
 
         data = pd.DataFrame({
-            DatasetColumn.LABEL: numbers
+            DatasetColumn.LABEL: numbers,
+            DatasetColumn.TEXT: ['text'] * n
         })
 
         data_fit, data_valid = self.splitter._split_train_into_fitting_and_validation_data(data, perc_known, train_size)
-        self.assertIsInstance(data_fit, pd.DataFrame)
-        self.assertIsInstance(data_valid, pd.DataFrame)
-        self.assertEqual(len(data_fit) + len(data_valid), n)
-        self.assertEqual(len(data_fit[DatasetColumn.LABEL].unique()), 11)
-        self.assertEqual(len(data_valid[DatasetColumn.LABEL].unique()), 11)
+        self.assertIsInstance(data_fit, MLDataFrame)
+        self.assertIsInstance(data_valid, MLDataFrame)
+        self.assertEqual(len(data_fit.data) + len(data_valid.data), n)
+        self.assertEqual(len(data_fit.data[DatasetColumn.LABEL].unique()), 11)
+        self.assertEqual(len(data_valid.data[DatasetColumn.LABEL].unique()), 11)
 
     def test__split_data(self):
 
@@ -134,17 +140,18 @@ class TestDataSplitter(unittest.TestCase):
         numbers = rng.choice(range(11), size=n)
 
         data = pd.DataFrame({
-            DatasetColumn.LABEL: numbers
+            DatasetColumn.LABEL: numbers,
+            DatasetColumn.TEXT: ['text'] * n
         })
 
         data_fit, data_valid, data_test = self.splitter._split_data(data)
         
-        self.assertIsInstance(data_test, pd.DataFrame)
-        self.assertIsInstance(data_fit, pd.DataFrame)
-        self.assertIsInstance(data_valid, pd.DataFrame)
+        self.assertIsInstance(data_test, MLDataFrame)
+        self.assertIsInstance(data_fit, MLDataFrame)
+        self.assertIsInstance(data_valid, MLDataFrame)
         
-        self.assertEqual(len(data_fit) + len(data_test) + len(data_valid), n)
+        self.assertEqual(len(data_fit.data) + len(data_test.data) + len(data_valid.data), n)
         
-        self.assertEqual(len(data_fit[DatasetColumn.LABEL].unique()), 6)
-        self.assertEqual(len(data_valid[DatasetColumn.LABEL].unique()), 9)
-        self.assertEqual(len(data_test[DatasetColumn.LABEL].unique()), 11)
+        self.assertEqual(len(data_fit.data[DatasetColumn.LABEL].unique()), 6)
+        self.assertEqual(len(data_valid.data[DatasetColumn.LABEL].unique()), 9)
+        self.assertEqual(len(data_test.data[DatasetColumn.LABEL].unique()), 11)
