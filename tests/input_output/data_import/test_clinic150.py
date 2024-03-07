@@ -6,9 +6,6 @@ from src.io.data_import.Clinic150 import Clinic150Dataset
 
 class TestClinic150Dataset(unittest.TestCase):
 
-    #def __init__(self, *args, **kwargs):
-     #   super().__init__(*args, **kwargs)
-
     def setUp(self) -> None:
         self.kind_info = {
             'imbalanced': 19225,

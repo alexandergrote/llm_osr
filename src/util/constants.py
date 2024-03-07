@@ -29,6 +29,7 @@ class File:
 class DatasetColumn:
     TEXT = "text"
     LABEL = "label"
+    FEATURES = "features"
 
 
 class DictConfigNames:

@@ -40,15 +40,14 @@ def main(cfg: DictConfig) -> None:
     # output placeholder
     output = {
         DictConfigNames.RANDOM_SEED: cfg[DictConfigNames.RANDOM_SEED],
-
     }
 
     # init sequence
-    event_blocks: List[ExecutionBlock] = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:1]]
+    event_blocks: List[ExecutionBlock] = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:3]]
     
     # execute sequence
     for el in event_blocks:
-        output[el.name] = el.execute(**output)
+        output = el.execute(**output)
 
 
 if __name__ == "__main__":
