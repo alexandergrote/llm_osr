@@ -2,14 +2,14 @@ import unittest
 
 import pandas as pd
 
-from src.io.data_import.news import NewsDataset
+from src.io.data_import.yahoo_answers import YahooAnswersDataset
 
-class TestNewsDataset(unittest.TestCase):
+class TestYahooDataset(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dataset = NewsDataset()
+        self.dataset = YahooAnswersDataset()
     
-    def test__load(self):
+    def test_load(self):
         n_samples = 100
         output = self.dataset._load(random_seed=42, n_samples=n_samples)
         self.assertIsInstance(output, pd.DataFrame)
@@ -22,7 +22,7 @@ class TestNewsDataset(unittest.TestCase):
 
     def test_rows(self):
         output = self.dataset._load(random_seed=42, n_samples=None)
-        self.assertEqual(len(output), 18846)
+        self.assertEqual(len(output), 1460000)
 
 if __name__ == '__main__':
     unittest.main()
