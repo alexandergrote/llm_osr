@@ -1,0 +1,48 @@
+from datasets import load_dataset
+from pathlib import Path
+from typing import Literal
+import pandas as pd
+
+from pydantic import BaseModel, model_validator
+
+from src.util.constants import DatasetColumn, Directory
+
+from .base import BaseDataset
+# https://huggingface.co/datasets/clinc_oos/tree/main
+
+
+class Clinc150Dataset(BaseDataset, BaseModel):
+
+    data_home: Path = Directory.INPUT_DIR / "Clinic150"
+    kind: Literal['imbalanced', 'small', 'plus'] = 'plus'
+    
+    @model_validator(mode='after')
+    def init_data_dir(self):
+        self.data_home.mkdir(parents=True, exist_ok=True)
+    
+    def _load(self, **kwargs) -> pd.DataFrame:
+        
+        # fetch data
+        
+        filename = self.data_home / f"clinc150_{self.kind}.parquet"
+
+        if filename.exists():
+            data = pd.read_parquet(filename)
+            return data
+        
+
+        dataset = load_dataset("clinc_oos", self.kind)
+        train_data = dataset["train"].to_pandas()
+        test_data = dataset["test"].to_pandas()
+        validation_data = dataset["validation"].to_pandas()
+        
+        data = pd.concat([train_data, test_data, validation_data], ignore_index=True)
+
+        data = pd.DataFrame({
+            DatasetColumn.TEXT: data['text']    , 
+            DatasetColumn.LABEL: data['intent']
+        })
+
+        data.to_parquet(filename)
+
+        return data

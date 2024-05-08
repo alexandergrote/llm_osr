@@ -1,10 +1,9 @@
 from abc import abstractmethod
-from pydantic import validate_call
+from pydantic.v1 import validate_arguments
 
 import pandas as pd
 from src.interface.base import BaseExecutionBlock
-from src.util.validation import DataFrameValidator
-from src.util.constants import DatasetColumn
+from src.util.types import MLDataFrame
 
 class BasePreprocessor(BaseExecutionBlock):
     
@@ -20,44 +19,17 @@ class BasePreprocessor(BaseExecutionBlock):
     def _fit_transform(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
         raise NotImplementedError()
     
-    @validate_call(config={"arbitrary_types_allowed": True})
-    def execute(self, data_train: pd.DataFrame, data_valid: pd.DataFrame, data_test: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    @validate_arguments(config={'arbitrary_types_allowed': True})
+    def execute(self, data_train: MLDataFrame, data_valid: MLDataFrame, data_test: MLDataFrame, **kwargs) -> dict:
 
-        # check validity of arguments
-
-        # check validity of output
-        options = [
-            (data_train, "data_train"), 
-            (data_valid, "data_valid"), 
-            (data_test, "data_test")
-        ]
-
-        for data, name in options:
-
-            DataFrameValidator.assert_non_zero_dataframe(
-                data=data, 
-                n_rows=None, 
-                columns=[DatasetColumn.TEXT, DatasetColumn.LABEL], 
-                strict_columns=True, 
-                identifier=name
-            )
-        
         # execute main function
-        data_train = self._fit_transform(data=data_train, **kwargs)
-        data_valid = self._transform(data=data_valid, **kwargs)
-        data_test = self._transform(data=data_test, **kwargs)
-
-        # check validity of output
-        DataFrameValidator.assert_non_zero_dataframe(
-            data=data, 
-            n_rows=None, 
-            columns=[DatasetColumn.TEXT, DatasetColumn.LABEL, DatasetColumn.FEATURES], 
-            strict_columns=True
-        )
+        data_train = self._fit_transform(data=data_train.data, **kwargs)
+        data_valid = self._transform(data=data_valid.data, **kwargs)
+        data_test = self._transform(data=data_test.data, **kwargs)
 
         # update kwargs
-        kwargs["data_train"] = data_train
-        kwargs["data_valid"] = data_valid
-        kwargs["data_test"] = data_test
+        kwargs["data_train"] = MLDataFrame.from_pandas_dataframe(data_train)
+        kwargs["data_valid"] = MLDataFrame.from_pandas_dataframe(data_valid)
+        kwargs["data_test"] = MLDataFrame.from_pandas_dataframe(data_test)
 
         return kwargs
