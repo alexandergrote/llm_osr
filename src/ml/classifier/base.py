@@ -50,7 +50,8 @@ class BaseClassifier(BaseExecutionBlock):
         # store results
         kwargs["prediction"] = MLPrediction(
             y_pred=pd.Series(y_pred),
-            y_test=pd.Series(y_test)
+            y_test=pd.Series(y_test),
+            classes_in_training=list(set(data_train.target().values))
         )
         
         return kwargs
