@@ -44,7 +44,7 @@ class MLDataFrame(BaseModel):
 
 
     def features(self) -> pd.DataFrame:
-        return self.data[self.feature_columns]
+        return self.data[self.feature_column]
     
     def target(self) -> pd.Series:
         return self.data[self.target_column]
@@ -58,8 +58,28 @@ class MLDataFrame(BaseModel):
         return cls(text_column=DatasetColumn.TEXT, feature_column=DatasetColumn.FEATURES, target_column=DatasetColumn.LABEL, data=data)
 
 
-MLDataFrameDtype = Annotated[MLDataFrame, Field()]
-    
+class MLPrediction(BaseModel):
+
+    y_pred: pd.Series
+    y_test: pd.Series
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @model_validator(mode='after')
+    def _check_init(self):
+        
+        # check lengths
+        assert len(self.y_pred) == len(self.y_test), "Length of prediction and test set do not match"
+
+        # check types
+        assert self.y_pred.dtype == int, "Prediction must be of type int"
+        assert self.y_test.dtype == int, "Test set must be of type int"
+
+        # check for NaN values
+        assert not self.y_pred.isnull().any(), "Prediction contains NaN values"
+        assert not self.y_test.isnull().any(), "Test set contains NaN values"
+        
 
 # dataframe types
 DualDataFrameTuple = Tuple[MLDataFrame, MLDataFrame]
