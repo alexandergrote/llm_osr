@@ -43,7 +43,7 @@ def main(cfg: DictConfig) -> None:
     }
 
     # init sequence
-    event_blocks: List[ExecutionBlock] = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:4]]
+    event_blocks: List[ExecutionBlock] = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence[:5]]
     
     # execute sequence
     for el in event_blocks:

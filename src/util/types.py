@@ -1,9 +1,10 @@
 import pandas as pd
+import numpy as np
 from typing import Tuple
 
 from typing_extensions import Annotated
-from pydantic import Field, BaseModel, model_validator
-from typing import Optional
+from pydantic import Field, BaseModel, model_validator, StrictInt
+from typing import Optional, Set
 
 from src.util.constants import DatasetColumn
 
@@ -63,8 +64,28 @@ class MLPrediction(BaseModel):
     y_pred: pd.Series
     y_test: pd.Series
 
+    classes_in_training: Set[StrictInt]  # set of classes in training, needed for evaluation
+
     class Config:
         arbitrary_types_allowed = True
+
+    
+    @model_validator(mode='before')
+    def _escape_numpy_dtype(data):
+
+        # convert numpy.int32 in set to int
+        key = 'classes_in_training'
+        classes = set()
+
+        for el in data[key]:
+            if isinstance(el, np.int32):
+                classes.add(int(el))
+            else:
+                classes.add(el)
+
+        data[key] = classes
+
+        return data
 
     @model_validator(mode='after')
     def _check_init(self):
@@ -79,6 +100,9 @@ class MLPrediction(BaseModel):
         # check for NaN values
         assert not self.y_pred.isnull().any(), "Prediction contains NaN values"
         assert not self.y_test.isnull().any(), "Test set contains NaN values"
+
+        # check for classes
+        assert len(self.classes_in_training) > 0, "Classes in training must be provided"
         
 
 # dataframe types

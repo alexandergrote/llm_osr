@@ -1,0 +1,90 @@
+import pandas as pd
+from pathlib import Path
+from typing import Optional, Any
+from pydantic import BaseModel
+from sentence_transformers import SentenceTransformer
+
+from src.ml.preprocessing.base import BasePreprocessor
+from src.util.constants import DatasetColumn as dfc
+from src.util.caching import PickleCacheHandler
+from src.util.logging import console
+
+
+class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
+
+    embedding_model_name: str = 'paraphrase-MiniLM-L6-v2'
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def _fit(self, data: pd.DataFrame, **kwargs):
+        """
+        No need to fit the model
+        """
+        pass
+
+    def _transform(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+
+        # work on copy
+        data_copy = data.copy()
+        data_copy[dfc.FEATURES] = None
+
+        # load sentence transformer model
+        model = SentenceTransformer(
+            model_name_or_path=self.embedding_model_name
+        )
+
+        # keep track of processed data in dict
+        filename = Path(self.__class__.__name__) / f"{self.embedding_model_name}.pkl"
+
+        cache_handler = PickleCacheHandler(
+            filepath=filename
+        )
+
+        # load dict from file if it exists
+        processed_data: Optional[Any] = cache_handler.read()
+
+        if processed_data is None:
+            processed_data = {}
+
+        assert isinstance(processed_data, dict), "processed data must be a dictionary"
+
+        # iterate over data
+        embeddings = []
+        for _, row in data_copy.iterrows():
+
+            text = row[dfc.TEXT]
+
+            # transform text
+            try:
+
+                # check if text is already processed
+                if text in processed_data:
+                    embedding = processed_data[text]
+                else:
+                
+                    embedding = model.encode(text)        
+
+            except Exception as e:
+
+                console.log(f"Error processing text: {text}")
+                
+                # save processed data to not lose progress
+                cache_handler.write(processed_data)
+                
+                raise e
+
+            # append data
+            embeddings.append(embedding)
+        
+        # update data
+        data_copy[dfc.FEATURES] = embeddings
+
+        # save processed data
+        cache_handler.write(processed_data)
+
+        return data_copy
+
+    def _fit_transform(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        return self._transform(data=data, **kwargs)
+            
