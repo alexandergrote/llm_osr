@@ -48,3 +48,15 @@ class BaseEnum(Enum):
 class YamlField(BaseEnum):
     CLASS_NAME = "class"
     PARAMS = "params"
+
+
+class EnvMode(BaseEnum):
+    DEV = 'dev'
+    PROD = 'prod'
+
+
+class LLMModels(BaseEnum):
+    OAI_GPT4 = 'gpt4'
+    OAI_GPT3 = 'gpt3'
+    OAI_GPT2 = 'gpt2'
+    LLAMA_3B = 'llama'

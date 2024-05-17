@@ -5,6 +5,6 @@ defaults:
   - ml__preprocessing: 'identity'
   - ml__evaluation: 'osr'
   - ml__datasplit: 'osr'
+  - env: 'dev'
 
 random_seed: 0
-name: 'DEV'

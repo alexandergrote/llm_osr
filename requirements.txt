@@ -5,3 +5,7 @@ scikit-learn
 pandas
 numpy
 datasets
+langchain
+python-dotenv
+langchain-openai
+accelerate
