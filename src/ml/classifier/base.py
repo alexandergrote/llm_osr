@@ -6,8 +6,6 @@ from pydantic.v1 import validate_arguments
 from src.util.types import MLDataFrame, MLPrediction
 
 
-
-# gleiche wie bei preprocessing base -> def execute
 class BaseClassifier(BaseExecutionBlock):
 
     @abstractmethod
