@@ -11,7 +11,6 @@ def convert(value, type_):
 
     # see https://stackoverflow.com/questions/7402573/use-type-information-to-cast-values-stored-as-strings
 
-    
     try:
         # Check if it's a builtin type
         module = importlib.import_module('builtins')
@@ -38,6 +37,14 @@ def count_keys(dictionary):
 class DictExtraction(BaseModel):
 
     @staticmethod
+    def load_yaml(filename: str) -> dict:
+
+        with open(filename) as f:
+            dictionary = yaml.safe_load(f)
+
+        return dictionary
+
+    @staticmethod
     def get_class_obj_and_params(dictionary: dict) -> Tuple[str, dict]:
 
         class_obj = dictionary[YamlField.CLASS_NAME.value]
@@ -59,8 +66,7 @@ class DictExtraction(BaseModel):
                 can also be an empty list
         """
 
-        with open(filename) as f:
-            dictionary = yaml.safe_load(f)
+        dictionary = DictExtraction.load_yaml(filename=filename)
 
         # number of keys before update
         n_keys_before = count_keys(dictionary=dictionary)

@@ -49,3 +49,8 @@ class BaseEnum(Enum):
 class YamlField(BaseEnum):
     CLASS_NAME = "class"
     PARAMS = "params"
+
+
+class EnvMode(BaseEnum):
+    DEV = 'dev'
+    PROD = 'prod'
