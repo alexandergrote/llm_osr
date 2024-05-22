@@ -10,6 +10,7 @@ class Directory:
     MODEL = ROOT / "model"
     INPUT_DIR = ROOT / 'data'
     OUTPUT_DIR = ROOT / "outputs"
+    CACHING_DIR = ROOT / "cache"
 
 
 paths = [
