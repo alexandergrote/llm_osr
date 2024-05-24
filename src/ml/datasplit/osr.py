@@ -1,3 +1,5 @@
+import warnings
+
 import pandas as pd
 import numpy as np
 from pydantic import BaseModel, validate_call
@@ -35,7 +37,7 @@ class DataSplitter(BaseModel, BaseDatasplit):
         return mask
 
     @validate_call(config={"arbitrary_types_allowed": True})
-    def _train_test_split_by_known_classes(self, data: pd.DataFrame, mask_known_classes: np.ndarray, train_size: Percentage):
+    def _train_test_split_by_known_classes(self, data: pd.DataFrame, mask_known_classes: np.ndarray, train_size: Percentage, random_seed: int):
         
         # apply mask to get subsets
         data_known_classes = data[mask_known_classes]
@@ -46,7 +48,7 @@ class DataSplitter(BaseModel, BaseDatasplit):
             data_train,
             data_test_known_classes,
         ) = train_test_split(
-            data_known_classes, train_size=train_size
+            data_known_classes, train_size=train_size, random_state=random_seed
         )
 
         # concatenate test set
@@ -63,6 +65,7 @@ class DataSplitter(BaseModel, BaseDatasplit):
         data: pd.DataFrame,
         perc_known: Percentage,
         train_size: Percentage,
+        random_seed: int
     ) -> DualDataFrameTuple:
         
         y = data[DatasetColumn.LABEL].values
@@ -80,7 +83,8 @@ class DataSplitter(BaseModel, BaseDatasplit):
         data_train, data_test = self._train_test_split_by_known_classes(
             data=data,
             mask_known_classes=mask_known_classes,
-            train_size=train_size
+            train_size=train_size,
+            random_seed=random_seed
         )
 
         for el in [data_train, data_test]:
@@ -94,7 +98,7 @@ class DataSplitter(BaseModel, BaseDatasplit):
 
     @validate_call(config={"arbitrary_types_allowed": True})
     def _split_train_into_fitting_and_validation_data(
-        self, data: pd.DataFrame, perc_known: Percentage, train_size: Percentage
+        self, data: pd.DataFrame, perc_known: Percentage, train_size: Percentage, random_seed: int
     ) -> DualDataFrameTuple:
         
         y = data[DatasetColumn.LABEL].values
@@ -117,7 +121,8 @@ class DataSplitter(BaseModel, BaseDatasplit):
         data_fit, data_valid = self._train_test_split_by_known_classes(
             data=data,
             mask_known_classes=mask_known_classes,
-            train_size=train_size
+            train_size=train_size,
+            random_seed=random_seed
         )
 
         for el in [data_fit, data_valid]:
@@ -129,21 +134,27 @@ class DataSplitter(BaseModel, BaseDatasplit):
         return data_fit, data_valid
 
     
-    def _split_data(self, data: pd.DataFrame, **kwargs) -> TripleDataFrameTuple:
+    def _split_data(self, data: pd.DataFrame, random_seed: int, **kwargs) -> TripleDataFrameTuple:
         
         perc_known = 1 - self.percentage_unknown_classes
 
-        data_train, data_test = self._split_into_train_test_data(
-            data=data,
-            perc_known=perc_known,
-            train_size=self.percentage_instances_of_known_classes_in_trainset
-        )
+        with warnings.catch_warnings():
 
-        data_fit, data_valid = self._split_train_into_fitting_and_validation_data(
-            data=data_train.data,
-            perc_known=perc_known,
-            train_size=self.percentage_instances_of_known_classes_in_fittingset
-        )
+            warnings.simplefilter("ignore", category=UserWarning)
+
+            data_train, data_test = self._split_into_train_test_data(
+                data=data,
+                perc_known=perc_known,
+                train_size=self.percentage_instances_of_known_classes_in_trainset,
+                random_seed=random_seed
+            )
+
+            data_fit, data_valid = self._split_train_into_fitting_and_validation_data(
+                data=data_train.data,
+                perc_known=perc_known,
+                train_size=self.percentage_instances_of_known_classes_in_fittingset,
+                random_seed=random_seed
+            )
 
         for el in [data_fit, data_valid, data_test]:
             el.data.reset_index(drop=True, inplace=True)

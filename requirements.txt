@@ -8,3 +8,4 @@ datasets
 sentence-transformers
 torch
 matplotlib
+python-dotenv

@@ -32,24 +32,24 @@ class BaseClassifier(BaseExecutionBlock):
         
         # execute main function
         self.fit(
-            x_train=data_train.features().values, 
-            y_train=data_train.target().values, 
-            x_valid=data_valid.features().values,
-            y_valid=data_valid.target().values,
+            x_train=data_train.features(), 
+            y_train=data_train.target(), 
+            x_valid=data_valid.features(),
+            y_valid=data_valid.target(),
             **kwargs
         )
         y_pred = self.predict(
-            x=data_test.features().values, 
+            x=data_test.features(), 
             **kwargs
         )
 
-        y_test = data_test.target().values
+        y_test = data_test.target()
 
         # store results
         kwargs["prediction"] = MLPrediction(
             y_pred=pd.Series(y_pred),
             y_test=pd.Series(y_test),
-            classes_in_training=list(set(data_train.target().values))
+            classes_in_training=list(set(data_train.target()))
         )
         
         return kwargs

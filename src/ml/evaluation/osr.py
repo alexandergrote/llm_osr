@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -9,6 +11,8 @@ from sklearn.metrics import (
     recall_score,
     accuracy_score,
 )
+
+from sklearn.metrics._classification import UndefinedMetricWarning
 
 from src.ml.evaluation.base import BaseEvaluator
 
@@ -152,30 +156,34 @@ class Evaluator(BaseModel, BaseEvaluator):
 
         classes = list(classes_in_training)
 
-        results = self._add_binary_known_results(
-            data=results,
-            y_true=y_true,
-            y_pred=y_pred,
-            name_tag="known",
-            classes_in_training=classes,
-        )
+        with warnings.catch_warnings():
+            
+            warnings.simplefilter(action='ignore', category=UndefinedMetricWarning)
 
-        results = self._add_binary_unknown_results(
-            data=results,
-            y_true=y_true,
-            y_pred=y_pred,
-            name_tag="unknown",
-            unknown_classes=np.setdiff1d(y_true, classes),
-        )
+            results = self._add_binary_known_results(
+                data=results,
+                y_true=y_true,
+                y_pred=y_pred,
+                name_tag="known",
+                classes_in_training=classes,
+            )
 
-        # add overall results to the results
-        results = self._add_overall_results(
-            data=results,
-            y_true=y_true,
-            y_pred=y_pred,
-            name_tag="overall",
-            classes_in_training=classes,
-        )
+            results = self._add_binary_unknown_results(
+                data=results,
+                y_true=y_true,
+                y_pred=y_pred,
+                name_tag="unknown",
+                unknown_classes=np.setdiff1d(y_true, classes),
+            )
+
+            # add overall results to the results
+            results = self._add_overall_results(
+                data=results,
+                y_true=y_true,
+                y_pred=y_pred,
+                name_tag="overall",
+                classes_in_training=classes,
+            )
 
         # summarize results in dataframe for easier data wrangling
         report = pd.DataFrame(results, index=[0])

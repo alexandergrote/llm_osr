@@ -1,4 +1,7 @@
+import warnings
+
 import pandas as pd
+from tqdm import tqdm
 from pathlib import Path
 from typing import Optional, Any
 from pydantic import BaseModel
@@ -30,9 +33,13 @@ class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
         data_copy[dfc.FEATURES] = None
 
         # load sentence transformer model
-        model = SentenceTransformer(
-            model_name_or_path=self.embedding_model_name
-        )
+        with warnings.catch_warnings():
+            
+            warnings.simplefilter(action='ignore', category=FutureWarning)
+            
+            model = SentenceTransformer(
+                model_name_or_path=self.embedding_model_name
+            )
 
         # keep track of processed data in dict
         filename = Path(self.__class__.__name__) / f"{self.embedding_model_name}.pkl"
@@ -51,7 +58,11 @@ class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
 
         # iterate over data
         embeddings = []
-        for _, row in data_copy.iterrows():
+
+        step = kwargs.pop("step", "")
+        msg = f"Embedding {step}\t"
+
+        for _, row in tqdm(data_copy.iterrows(), total=len(data_copy), desc=msg):
 
             text = row[dfc.TEXT]
 

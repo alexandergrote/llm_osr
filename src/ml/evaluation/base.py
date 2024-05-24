@@ -4,6 +4,7 @@ from pydantic.v1 import validate_arguments
 from typing import Set
 
 from src.util.types import MLPrediction
+from src.util.logging import console
 
 
 
@@ -28,4 +29,8 @@ class BaseEvaluator(ABC):
         unique_classes = prediction.classes_in_training
 
         # evaluate
-        return self.evaluate(y_pred=y_pred, y_true=y_true, classes_in_training=unique_classes, **kwargs)
+        result = self.evaluate(y_pred=y_pred, y_true=y_true, classes_in_training=unique_classes, **kwargs)
+
+        console.log(result['f1_avg'])
+
+        return result

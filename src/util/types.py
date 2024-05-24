@@ -7,6 +7,7 @@ from pydantic import Field, BaseModel, model_validator, StrictInt
 from typing import Optional, Set
 
 from src.util.constants import DatasetColumn
+from src.util.hashing import Hash
 
 # pydantic model fields
 Percentage = Annotated[float, Field(ge=0, le=1)]
@@ -41,14 +42,36 @@ class MLDataFrame(BaseModel):
             assert not self.data[self.feature_column].isnull().any().any(), "Feature column contain NaN values"
 
         # target column must be of type int
-        assert self.data[self.target_column].dtype == int, "Target column must be of type int"
+        assert pd.api.types.is_integer_dtype(self.data[self.target_column].dtype), "Target column must be of type int"
 
+    def hash(self) -> str:
 
-    def features(self) -> pd.DataFrame:
-        return self.data[self.feature_column]
+        hash_list = [str(Hash.hash(v)) for _, v in self.model_dump().items()]
+
+        return Hash.hash(' '.join(hash_list))
+
+    def features(self) -> np.ndarray:
+
+        if self.feature_column is None:
+            raise ValueError("No feature column provided")
+
+        array = np.vstack(self.data[self.feature_column].values)
+
+        assert array.shape[0] == len(self.data), "Feature column must be a 2D array"
+        assert array.shape[1] > 0, "Feature column must have at least one feature"
+        assert len(array.shape) == 2, "Feature column must be a 2D array"
+        
+        return array
     
-    def target(self) -> pd.Series:
-        return self.data[self.target_column]
+    def target(self) -> np.ndarray:
+
+        array = self.data[self.target_column].values
+
+        assert len(array) == len(self.data), "Target column must be a 1D array"
+        assert array.shape[0] > 0, "Target column must have at least one target"
+        assert len(array.shape) == 1, "Target column must be a 1D array"
+
+        return array
     
     @classmethod
     def from_raw_pandas_dataframe(cls, data: pd.DataFrame) -> "MLDataFrame":
@@ -94,8 +117,8 @@ class MLPrediction(BaseModel):
         assert len(self.y_pred) == len(self.y_test), "Length of prediction and test set do not match"
 
         # check types
-        assert self.y_pred.dtype == int, "Prediction must be of type int"
-        assert self.y_test.dtype == int, "Test set must be of type int"
+        assert pd.api.types.is_integer_dtype(self.y_pred.dtype), "Prediction must be of type int"
+        assert pd.api.types.is_integer_dtype(self.y_test.dtype), "Test set must be of type int"
 
         # check for NaN values
         assert not self.y_pred.isnull().any(), "Prediction contains NaN values"

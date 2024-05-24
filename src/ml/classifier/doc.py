@@ -266,7 +266,11 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
         y_train: np.ndarray,
         x_valid: np.ndarray,
         y_valid: np.ndarray,
+        **kwargs
     ):
+
+        assert len(x_train.shape) == 2, "Input data must be 2D"
+        assert len(y_train.shape) == 1, "Labels must be 1D"
 
         # record classes
         self.classes = torch.Tensor(np.unique(y_train)).to(self.device)
@@ -336,7 +340,7 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
         self._fit_gaussians(x_train, y_train)
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
-    def predict(self, x: np.ndarray):
+    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
 
         if self.model is None:
             raise ValueError("Model not fitted")
