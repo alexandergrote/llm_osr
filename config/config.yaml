@@ -8,3 +8,4 @@ defaults:
   - env: 'dev'
 
 random_seed: 0
+name: 'DEV'

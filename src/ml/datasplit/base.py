@@ -10,11 +10,11 @@ from src.util.types import TripleDataFrameTuple, MLDataFrame
 class BaseDatasplit(BaseExecutionBlock):
 
     @abstractmethod
-    def _split_data(self, data: pd.DataFrame, **kwargs) -> TripleDataFrameTuple:
+    def _split_data(self, data: pd.DataFrame, random_seed: int, **kwargs) -> TripleDataFrameTuple:
         raise NotImplementedError()
     
     @validate_call(config={"arbitrary_types_allowed": True})
-    def execute(self, data: pd.DataFrame, **kwargs) -> dict:
+    def execute(self, data: pd.DataFrame, random_seed: int, **kwargs) -> dict:
 
         # check validity of arguments
         DataFrameValidator.assert_non_zero_dataframe(
@@ -23,7 +23,7 @@ class BaseDatasplit(BaseExecutionBlock):
         )
 
         # execute main function
-        triple_mlframe = self._split_data(data=data, **kwargs)
+        triple_mlframe = self._split_data(data=data, random_seed=random_seed, **kwargs)
 
         for idx, el in enumerate(triple_mlframe):
             assert isinstance(el, MLDataFrame), f"Expected MLDataFrame, got {type(el)} for index {idx}"

@@ -4,6 +4,7 @@
 .*cache
 .env
 *.db
+.vscode
 
 *.egg-info
 *.ipynb
@@ -12,6 +13,7 @@
 *.parquet
 __pycache__
 
+cache
 data
 model
 mlruns

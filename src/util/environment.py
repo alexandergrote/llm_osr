@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from typing import Optional
 
 from src.util.constants import EnvMode
+from src.util.logging import console
 
 
 load_dotenv()
@@ -33,11 +34,17 @@ class PydanticEnvironment(BaseModel):
     def create_from_environment(cls):
         
         # create dictionary with all attributes of the class as keys and its environment variables as values
-        data = {key: os.environ[key] for key in cls.model_fields.keys()}
+        data = {key: os.environ.get(key) for key in cls.model_fields.keys()}
 
         # check if attribute is enum and convert it to enum
         for key, value in data.items():
             if cls.__annotations__[key] == EnvMode:
+
+                if value is None:
+                    console.log(f"Environment variable {key} is not set. Defaulting to DEV.")
+                    data[key] = EnvMode.DEV
+                    continue
+
                 data[key] = EnvMode(value)
 
         return cls(**data)

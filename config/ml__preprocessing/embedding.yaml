@@ -1,0 +1,3 @@
+class: src.EmbeddingPreprocessor
+params:
+  embedding_model_name: 'paraphrase-MiniLM-L6-v2'

@@ -3,8 +3,10 @@ from abc import abstractmethod
 import pandas as pd
 
 from src.interface.base import BaseExecutionBlock
-from src.util.constants import DatasetColumn
+from src.util.constants import DatasetColumn, EnvMode
 from src.util.validation import DataFrameValidator
+from src.util.environment import PydanticEnvironment
+
 
 class BaseDataset(BaseExecutionBlock):
 
@@ -19,6 +21,12 @@ class BaseDataset(BaseExecutionBlock):
         
         # execute main function
         data = self._load(**kwargs)
+
+        # get environment
+        env = PydanticEnvironment.create_from_environment()
+
+        if env.mode == EnvMode.DEV:
+            data = data.head(100)
 
         DataFrameValidator.assert_non_zero_dataframe(
             data=data, 

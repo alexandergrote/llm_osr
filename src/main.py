@@ -4,15 +4,14 @@ import hydra
 from typing import List
 
 # load package specific code
-from interface.execution_block import ExecutionBlock
+from src.interface.execution_block import ExecutionBlock
 from omegaconf import DictConfig, OmegaConf
-from util.constants import DictConfigNames, Directory, File
-from util.logging import console
+from src.util.constants import DictConfigNames, Directory, File
+from src.util.logging import console
 
 warnings.filterwarnings(
     "ignore"
 )
-
 
 @hydra.main(
     config_path=str(Directory.CONFIG),

@@ -50,7 +50,8 @@ class TestDataSplitter(unittest.TestCase):
         data_train, data_test = self.splitter._train_test_split_by_known_classes(
             data, 
             mask_known_classes, 
-            train_size
+            train_size,
+            random_seed=42
         )
 
         self.assertIsInstance(data_train, pd.DataFrame)
@@ -77,7 +78,8 @@ class TestDataSplitter(unittest.TestCase):
         data_train, data_test = self.splitter._split_into_train_test_data(
             data, 
             perc_known, 
-            train_size
+            train_size,
+            random_seed=42
         )
 
         self.assertIsInstance(data_train, MLDataFrame)
@@ -101,7 +103,7 @@ class TestDataSplitter(unittest.TestCase):
             DatasetColumn.TEXT: ['text'] * n
         })
 
-        data_fit, data_valid = self.splitter._split_train_into_fitting_and_validation_data(data, perc_known, train_size)
+        data_fit, data_valid = self.splitter._split_train_into_fitting_and_validation_data(data, perc_known, train_size, random_seed=42)
         self.assertIsInstance(data_fit, MLDataFrame)
         self.assertIsInstance(data_valid, MLDataFrame)
         self.assertEqual(len(data_fit.data) + len(data_valid.data), n)
@@ -124,7 +126,7 @@ class TestDataSplitter(unittest.TestCase):
             DatasetColumn.TEXT: ['text'] * n
         })
 
-        data_fit, data_valid = self.splitter._split_train_into_fitting_and_validation_data(data, perc_known, train_size)
+        data_fit, data_valid = self.splitter._split_train_into_fitting_and_validation_data(data, perc_known, train_size, random_seed=42)
         self.assertIsInstance(data_fit, MLDataFrame)
         self.assertIsInstance(data_valid, MLDataFrame)
         self.assertEqual(len(data_fit.data) + len(data_valid.data), n)
@@ -144,7 +146,7 @@ class TestDataSplitter(unittest.TestCase):
             DatasetColumn.TEXT: ['text'] * n
         })
 
-        data_fit, data_valid, data_test = self.splitter._split_data(data)
+        data_fit, data_valid, data_test = self.splitter._split_data(data, random_seed=42)
         
         self.assertIsInstance(data_test, MLDataFrame)
         self.assertIsInstance(data_fit, MLDataFrame)
