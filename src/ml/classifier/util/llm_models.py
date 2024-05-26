@@ -30,6 +30,28 @@ def get_hf_auto_model(model_id: str) -> Any:
     return model
 
 
+class OAIWrapper(LLM):
+
+    name: str
+
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> str:
+
+        model = OpenAI(name=self.name, temperature=0, **kwargs)
+
+        answer = model(prompt=prompt, stop=stop)
+
+        return answer
+    
+    @property
+    def _llm_type(self) -> str:
+        return self.name
+
 class LLamaWrapper(LLM):
 
     def _call(
@@ -107,7 +129,7 @@ class LLamaWrapper(LLM):
 
 LLM_Mapping: Dict[LLMModels, Type[LLM]] = {
     LLMModels.OAI_GPT4: OpenAI(name='gpt-3.5-turbo-0125'),
-    LLMModels.OAI_GPT3: OpenAI(name='gpt-3.5-turbo-0125'),
+    LLMModels.OAI_GPT3: OAIWrapper(name='gpt-3.5-turbo-0125'),
     LLMModels.OAI_GPT2: get_hf_auto_model('gpt2'),
     #LLMModels.LLAMA_3B: LLamaWrapper(),
 }
