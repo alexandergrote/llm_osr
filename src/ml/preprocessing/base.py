@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from pydantic.v1 import validate_arguments
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 from src.interface.base import BaseExecutionBlock
@@ -20,11 +21,10 @@ class BasePreprocessor(BaseExecutionBlock):
     @abstractmethod
     def _fit_transform(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
         raise NotImplementedError()
-    
-    @validate_arguments(config={'arbitrary_types_allowed': True})
-    def execute(self, data_train: MLDataFrame, data_valid: MLDataFrame, data_test: MLDataFrame, **kwargs) -> dict:
 
-        filename = ' '.join([str(el.hash()) for el in [data_train, data_valid, data_test]]) + '.pkl'
+    def _cache_result(self, data: MLDataFrame, step: str, function, **kwargs) -> MLDataFrame:
+
+        filename = data.hash() + '.pkl'
         filepath = Path(self.__class__.__name__) / filename
 
         cache_handler = PickleCacheHandler(
@@ -32,22 +32,35 @@ class BasePreprocessor(BaseExecutionBlock):
         )
 
         # load cache
-        cache = cache_handler.read()
+        cache: Optional[MLDataFrame] = cache_handler.read()
 
         if cache is not None:
             return cache
 
         # execute main function
-        data_train = self._fit_transform(data=data_train.data, step='train', **kwargs)
-        data_valid = self._transform(data=data_valid.data, step='valid', **kwargs)
-        data_test = self._transform(data=data_test.data, step='test', **kwargs)
-
-        # update kwargs
-        kwargs["data_train"] = MLDataFrame.from_pandas_dataframe(data_train)
-        kwargs["data_valid"] = MLDataFrame.from_pandas_dataframe(data_valid)
-        kwargs["data_test"] = MLDataFrame.from_pandas_dataframe(data_test)
-
+        result = function(data=data.data, step=step, **kwargs)
+        result = MLDataFrame.from_pandas_dataframe(result)
+        
         # store results
-        cache_handler.write(kwargs)
+        cache_handler.write(result)
 
+        return result
+    
+    @validate_arguments(config={'arbitrary_types_allowed': True})
+    def execute(self, data_train: MLDataFrame, data_valid: MLDataFrame, data_test: MLDataFrame, **kwargs) -> dict:
+        
+        steps = [
+            ('train', data_train, self._fit_transform),
+            ('valid', data_valid, self._transform),
+            ('test', data_test, self._transform)
+        ]
+
+        for step in steps:
+
+            step_name, data, processing_function = step
+
+            data = self._cache_result(data=data, step=step_name, function=processing_function, **kwargs)
+            kwargs[f"data_{step_name}"] = data
+
+        
         return kwargs

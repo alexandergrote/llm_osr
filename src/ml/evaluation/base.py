@@ -31,6 +31,6 @@ class BaseEvaluator(ABC):
         # evaluate
         result = self.evaluate(y_pred=y_pred, y_true=y_true, classes_in_training=unique_classes, **kwargs)
 
-        console.log(result['f1_avg'])
+        console.log(result['metrics']['f1_avg'])
 
         return result

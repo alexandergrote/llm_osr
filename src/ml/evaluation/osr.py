@@ -196,4 +196,8 @@ class Evaluator(BaseModel, BaseEvaluator):
 
         final_result = report.iloc[0, :].to_dict()
 
-        return final_result
+        kwargs['metrics'] = final_result
+        kwargs['y_pred'] = y_pred
+        kwargs['y_true'] = y_true
+
+        return kwargs

@@ -23,7 +23,7 @@ class TestEvaluator(unittest.TestCase):
             y_pred=self.y_pred,
             y_true=self.y_true,
             classes_in_training=self.classes_in_training,
-        )
+        )['metrics']
 
         test_options = [
             ('precision_known_class_0', 2/3),
