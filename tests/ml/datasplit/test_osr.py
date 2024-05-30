@@ -39,7 +39,7 @@ class TestDataSplitter(unittest.TestCase):
     def test__train_test_split_by_known_classes(self):
         
         data = pd.DataFrame({
-            DatasetColumn.LABEL: [1, 1, 2, 2, 3, 3, 4, 4, 5],
+            DatasetColumn.LABEL: ['1', '1', '2', '2', '3', '3', '4', '4', '5'],
             DatasetColumn.TEXT: ['text'] * 9
         })
         
@@ -68,7 +68,7 @@ class TestDataSplitter(unittest.TestCase):
 
         # Seed and retrieve the values
         rng = np.random.default_rng(seed=42)
-        numbers = rng.choice(range(5), size=n)
+        numbers = rng.choice([str(el) for el in range(5)], size=n)
 
         data = pd.DataFrame({
             DatasetColumn.LABEL: numbers,
@@ -96,7 +96,7 @@ class TestDataSplitter(unittest.TestCase):
 
         # Seed and retrieve the values
         rng = np.random.default_rng(seed=42)
-        numbers = rng.choice(range(11), size=n)
+        numbers = rng.choice([str(el) for el in range(11)], size=n)
 
         data = pd.DataFrame({
             DatasetColumn.LABEL: numbers,
@@ -119,7 +119,7 @@ class TestDataSplitter(unittest.TestCase):
 
         # Seed and retrieve the values
         rng = np.random.default_rng(seed=42)
-        numbers = rng.choice(range(11), size=n)
+        numbers = rng.choice([str(el) for el in range(11)], size=n)
 
         data = pd.DataFrame({
             DatasetColumn.LABEL: numbers,
@@ -139,7 +139,7 @@ class TestDataSplitter(unittest.TestCase):
 
         # Seed and retrieve the values
         rng = np.random.default_rng(seed=42)
-        numbers = rng.choice(range(11), size=n)
+        numbers = rng.choice([str(el) for el in range(11)], size=n)
 
         data = pd.DataFrame({
             DatasetColumn.LABEL: numbers,

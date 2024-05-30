@@ -61,3 +61,8 @@ class LLMModels(BaseEnum):
     OAI_GPT3 = 'gpt3'
     OAI_GPT2 = 'gpt2'
     LLAMA_3B = 'llama'
+
+
+class UnknownClassLabel(BaseEnum):
+    UNKNOWN_STR = 'unknown'
+    UNKNOWN_NUM = -1

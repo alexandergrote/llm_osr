@@ -23,7 +23,6 @@ class DataSplitter(BaseModel, BaseDatasplit):
         y = y.flatten()
         rng = np.random.default_rng(seed=42) 
         known_classes = rng.choice(y, n_known_classes, replace=False)
-        known_classes = known_classes.astype(np.uint)
 
         return known_classes
 

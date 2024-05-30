@@ -23,16 +23,20 @@ class NewsDataset(BaseDataset, BaseModel):
     def _load(self, **kwargs) -> pd.DataFrame:
 
         # fetch data
-        X, y = fetch_20newsgroups(
+        news_data = fetch_20newsgroups(
             data_home=self.data_home,
             subset=self.subset,
-            return_X_y=True,
-            random_state=kwargs['random_seed']
+            return_X_y=False,
+            random_state=kwargs['random_seed'],
+            remove=('headers', 'footers', 'quotes')
         )
+
+        X = news_data.data
+        y = [news_data.target_names[idx] for idx in news_data.target]
 
         data = pd.DataFrame({
             DatasetColumn.TEXT: X, 
-            DatasetColumn.LABEL: y
+            DatasetColumn.LABEL: y,
         })
 
         return data

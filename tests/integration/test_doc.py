@@ -1,9 +1,7 @@
-import os
 import unittest
-import warnings
 
-from hydra import compose, initialize
 
+from tests.integration.util import get_hydra_config
 from src.main import main
 from src.util.constants import Directory
 
@@ -12,19 +10,12 @@ class TestDoc(unittest.TestCase):
 
     def setUp(self):
         
-        # get hydra config
-        with warnings.catch_warnings():
-            
-            warnings.simplefilter(action='ignore', category=UserWarning)
-
-            config_path = os.path.join('..', '..', 'config')
-
-            with initialize(config_path=config_path):
-                overrides = [
-                    'ml__preprocessing=embedding',
-                    'ml__classifier=doc'
-                ]
-                self.cfg = compose(config_name="config", overrides=overrides)
+        self.cfg = get_hydra_config(
+            overrides=[
+                'ml__preprocessing=embedding',
+                'ml__classifier=doc'
+            ]
+        )
 
     def test_main(self):
         self.assertIsNone(main(self.cfg))

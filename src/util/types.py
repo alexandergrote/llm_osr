@@ -3,7 +3,7 @@ import numpy as np
 from typing import Tuple
 
 from typing_extensions import Annotated
-from pydantic import Field, BaseModel, model_validator, StrictInt
+from pydantic import Field, BaseModel, model_validator, StrictStr
 from typing import Optional, Set
 
 from src.util.constants import DatasetColumn
@@ -42,7 +42,7 @@ class MLDataFrame(BaseModel):
             assert not self.data[self.feature_column].isnull().any().any(), "Feature column contain NaN values"
 
         # target column must be of type int
-        assert pd.api.types.is_integer_dtype(self.data[self.target_column].dtype), "Target column must be of type int"
+        assert pd.api.types.is_object_dtype(self.data[self.target_column].dtype), "Target column must be of type obj"
 
     def hash(self) -> str:
 
@@ -87,7 +87,7 @@ class MLPrediction(BaseModel):
     y_pred: pd.Series
     y_test: pd.Series
 
-    classes_in_training: Set[StrictInt]  # set of classes in training, needed for evaluation
+    classes_in_training: Set[StrictStr]  # set of classes in training, needed for evaluation
 
     class Config:
         arbitrary_types_allowed = True
@@ -119,8 +119,8 @@ class MLPrediction(BaseModel):
         assert len(self.y_pred) == len(self.y_test), "Length of prediction and test set do not match"
 
         # check types
-        assert pd.api.types.is_integer_dtype(self.y_pred.dtype), "Prediction must be of type int"
-        assert pd.api.types.is_integer_dtype(self.y_test.dtype), "Test set must be of type int"
+        assert pd.api.types.is_object_dtype(self.y_pred.dtype), "Prediction must be of type int"
+        assert pd.api.types.is_object_dtype(self.y_test.dtype), "Test set must be of type int"
 
         # check for NaN values
         assert not self.y_pred.isnull().any(), "Prediction contains NaN values"

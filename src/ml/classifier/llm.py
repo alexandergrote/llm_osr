@@ -14,8 +14,10 @@ import pandas as pd
 
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.util.llm_models import LLM_Mapping, LLMModels
-from src.util.constants import DatasetColumn
+from src.util.constants import DatasetColumn, Directory, UnknownClassLabel
+from src.util.environment import PydanticEnvironment
 
+env = PydanticEnvironment()
 
 class Prediction(pydantic_v1.BaseModel):
     reasoning: str = pydantic_v1.Field(description="The reasoning behind the prediction")
@@ -75,7 +77,7 @@ class LLM(BaseModel, BaseClassifier):
        self.classes = np.unique(self.y_train)
 
        # Example usage
-       valid_labels = ["unknown"] + list(self.classes)
+       valid_labels = [UnknownClassLabel.UNKNOWN_STR.value] + list(self.classes)
        Prediction.valid_labels = valid_labels
        
        self.parser = PydanticOutputParser(pydantic_object=Prediction)
@@ -121,7 +123,10 @@ class LLM(BaseModel, BaseClassifier):
         
         if self.parser is None:
             raise ValueError("Not fitted")
-
+        
+        # interims solution until api is stable enough for mocking
+        if env.is_dev_mode():
+            return np.random.choice(self.classes, size=1)[0]
 
         query = f"{text} -> <your response>"
 
@@ -159,7 +164,10 @@ class LLM(BaseModel, BaseClassifier):
 
         try:
             
-            cache = SQLiteCache(database_path='.langchain.db')
+            cache_name = f'.langchain_{self.model_str}.db'
+            cache_path = Directory.CACHING_DIR / cache_name
+            cache = SQLiteCache(database_path=str(cache_path))
+
             look_up = cache.lookup(prompt=query, llm_string=self.model_str)
 
             if look_up is not None:
@@ -186,7 +194,7 @@ class LLM(BaseModel, BaseClassifier):
 
         result = []
 
-        for el in tqdm(x):
+        for el in tqdm(x, desc="LLM Prediction"):
             result.append(self._single_predict(text=el))
         
         return np.array(result)
