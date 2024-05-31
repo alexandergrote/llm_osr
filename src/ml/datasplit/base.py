@@ -19,7 +19,8 @@ class BaseDatasplit(BaseExecutionBlock):
         # check validity of arguments
         DataFrameValidator.assert_non_zero_dataframe(
             data=data,
-            columns=[DatasetColumn.TEXT, DatasetColumn.LABEL]
+            columns=[DatasetColumn.TEXT, DatasetColumn.LABEL],
+            strict_columns=False
         )
 
         # execute main function

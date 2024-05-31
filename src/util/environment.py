@@ -19,6 +19,9 @@ class PydanticEnvironment(BaseModel):
     class Config:
         extra = 'forbid'
 
+    def is_dev_mode(self) -> bool:
+        return self.mode == EnvMode.DEV
+
     @staticmethod
     def set_environment_variables(data: dict):
 

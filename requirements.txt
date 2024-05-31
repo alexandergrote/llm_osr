@@ -5,6 +5,10 @@ scikit-learn
 pandas
 numpy
 datasets
+langchain
+python-dotenv
+langchain-openai
+accelerate
 sentence-transformers
 torch
 matplotlib

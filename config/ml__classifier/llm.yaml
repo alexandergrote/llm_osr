@@ -1,0 +1,3 @@
+class: src.LLM
+params:
+  model_str: 'gpt3'

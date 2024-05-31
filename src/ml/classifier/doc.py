@@ -5,13 +5,14 @@ import numpy as np
 from pydantic import BaseModel, validator, validate_call
 from pydantic.v1 import validate_arguments
 from scipy.stats import norm
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.util.torch_util import TorchMixin
 from src.ml.classifier.util.torch_early_stopping import EarlyStopping
 from src.util.dynamic_import import DynamicImport 
 from src.util.dict_extraction import DictExtraction
+from src.util.constants import UnknownClassLabel
 
 # set random seed for reproducibility
 torch.manual_seed(0)
@@ -218,20 +219,29 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
         self.idx2label = {idx: label for label, idx in self.label2idx.items()}
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
-    def _map_labels(self, y: np.ndarray, mapping: dict) -> np.ndarray:
+    def _map_labels(self, y: np.ndarray, mapping: dict, target_dtype: str, unknown_value: Any) -> np.ndarray:
+        
+        dtype_mapping = {
+            'int': int,
+            'str': np.object_
+        }   
+
+        dtype_final = dtype_mapping[target_dtype]
 
         y_relabelled = np.copy(y)
+        y_relabelled = y_relabelled.astype(np.object_)
 
-        all_classes = np.unique(y)
+        mask_transformed = np.zeros_like(y)
 
-        uuc = [u for u in all_classes if u not in mapping.keys()]
+        for key, value in mapping.items():
+            mask_treatedformed_sub = y == key
+            y_relabelled[mask_treatedformed_sub] = value
+            mask_transformed[mask_treatedformed_sub] = 1
 
-        for u in uuc:
-            y_relabelled[y == u] = -1
+        y_relabelled[mask_transformed == 0] = unknown_value
 
-        for label, index in mapping.items():
-            y_relabelled[y == label] = index
-
+        y_relabelled = y_relabelled.astype(dtype_final)
+        
         return y_relabelled
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
@@ -272,6 +282,12 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
         assert len(x_train.shape) == 2, "Input data must be 2D"
         assert len(y_train.shape) == 1, "Labels must be 1D"
 
+        # prepare label mapping
+        self._create_label_mapping(y=y_train)
+
+        y_train = self._map_labels(y=y_train, mapping=self.label2idx, target_dtype='int', unknown_value=UnknownClassLabel.UNKNOWN_NUM.value)
+        y_valid = self._map_labels(y=y_valid, mapping=self.label2idx, target_dtype='int', unknown_value=UnknownClassLabel.UNKNOWN_NUM.value)
+
         # record classes
         self.classes = torch.Tensor(np.unique(y_train)).to(self.device)
 
@@ -284,12 +300,6 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
         self.optimizer = optim.Adam(
             self.model.parameters(), lr=self.learning_rate
         )
-
-        # prepare label mapping
-        self._create_label_mapping(y=y_train)
-
-        y_train = self._map_labels(y=y_train, mapping=self.label2idx)
-        y_valid = self._map_labels(y=y_valid, mapping=self.label2idx)
 
         # prepare early stopping
         early_stopping = EarlyStopping(
@@ -359,7 +369,7 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
             clf_output = self.sigmoid(clf_output).numpy()
 
         y_pred = self.gaussian_models.predict(y_pred_proba=clf_output)
-        y_pred = self._map_labels(y=y_pred, mapping=self.idx2label)
+        y_pred = self._map_labels(y=y_pred, mapping=self.idx2label, target_dtype='str', unknown_value=UnknownClassLabel.UNKNOWN_STR.value)
 
         return y_pred
 

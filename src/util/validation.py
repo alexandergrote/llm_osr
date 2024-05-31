@@ -32,5 +32,5 @@ class DataFrameValidator:
         if strict_columns:
             assert len(set(data.columns) - set(columns)) == 0, f"{identifier}Output data does not exclusively contain the specified columns."
 
-        for column in data.columns:
-            assert column in columns, f"{identifier}Dataframe does not contain column {column}."
+        for column in columns:
+            assert column in data.columns, f"{identifier}Dataframe does not contain column {column}."
