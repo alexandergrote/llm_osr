@@ -1,5 +1,6 @@
 from datasets import load_dataset
 from pathlib import Path
+from typing import Dict
 
 import pandas as pd
 from pydantic import BaseModel, model_validator
@@ -14,6 +15,7 @@ from .base import BaseDataset
 class BankingDataset(BaseDataset, BaseModel):
 
     data_home: Path = Directory.INPUT_DIR / "Banking77"
+    mapping: Dict[int, str]
     
     @model_validator(mode='after')
     def init_data_dir(self):
@@ -27,9 +29,9 @@ class BankingDataset(BaseDataset, BaseModel):
 
         filename = self.data_home / "banking77.parquet"
 
-        if filename.exists():
+        """if filename.exists():
             data = pd.read_parquet(filename)
-            return data
+            return data"""
 
         dataset = load_dataset("banking77")
         train_data = dataset["train"].to_pandas()
@@ -41,6 +43,9 @@ class BankingDataset(BaseDataset, BaseModel):
             DatasetColumn.TEXT: data['text'], 
             DatasetColumn.LABEL: data['label']
         })
+
+        # transform integer to str
+        data[DatasetColumn.LABEL] = data[DatasetColumn.LABEL].map(self.mapping)
 
         data.to_parquet(filename)
 

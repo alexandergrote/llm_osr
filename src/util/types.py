@@ -89,6 +89,7 @@ class MLPrediction(BaseModel):
 
     classes_in_training: Set[StrictStr]  # set of classes in training, needed for evaluation
 
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -101,12 +102,7 @@ class MLPrediction(BaseModel):
         classes = set()
 
         for el in data[key]:
-
-            if isinstance(el, np.integer):
-                classes.add(int(el))
-
-            else:
-                classes.add(el)
+            classes.add(el)
 
         data[key] = classes
 

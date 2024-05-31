@@ -7,7 +7,14 @@ from src.io.data_import.Banking77 import BankingDataset
 class Banking77Dataset(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dataset = BankingDataset()
+
+        mapping: dict = {
+            0: 'a'
+        }
+
+        self.dataset = BankingDataset(
+            mapping=mapping
+        )
     
     def test_load(self):
         n_samples = 100

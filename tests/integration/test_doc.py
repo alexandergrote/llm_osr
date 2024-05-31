@@ -1,6 +1,5 @@
 import unittest
 
-
 from tests.integration.util import get_hydra_config
 from src.main import main
 from src.util.constants import Directory
