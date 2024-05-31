@@ -11,6 +11,7 @@ class TestFewShotLLM(unittest.TestCase):
         
         self.cfg = get_hydra_config(
             overrides=[
+                'io__import=banking',
                 'ml__preprocessing=identity',
                 'ml__classifier=llm',
             ]

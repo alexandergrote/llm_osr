@@ -1,6 +1,6 @@
 from datasets import load_dataset
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Dict, List
 import pandas as pd
 
 from pydantic import BaseModel, model_validator
@@ -13,9 +13,12 @@ from .base import BaseDataset
 
 class Clinc150Dataset(BaseDataset, BaseModel):
 
+    integer_mapping: Dict[int, str]
+    domain_mapping: Dict[str, List[str]]
+    
     data_home: Path = Directory.INPUT_DIR / "Clinic150"
     kind: Literal['imbalanced', 'small', 'plus'] = 'plus'
-    
+        
     @model_validator(mode='after')
     def init_data_dir(self):
         self.data_home.mkdir(parents=True, exist_ok=True)
@@ -42,6 +45,17 @@ class Clinc150Dataset(BaseDataset, BaseModel):
             DatasetColumn.TEXT: data['text']    , 
             DatasetColumn.LABEL: data['intent']
         })
+
+        # rename labels
+        reversed_domain_mapping = {
+            item: key for key, values in self.domain_mapping.items() for item in values
+        }
+
+        new_integer_mapping = {key: f"domain_{reversed_domain_mapping.get(value, 'unknown')}__subcategory_{value}" for key, value in self.integer_mapping.items()}
+
+        data[DatasetColumn.LABEL] = data[DatasetColumn.LABEL].map(new_integer_mapping)
+
+        assert len(data[DatasetColumn.LABEL].unique()) == 151
 
         data.to_parquet(filename)
 

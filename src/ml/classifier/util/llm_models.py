@@ -130,7 +130,7 @@ class LLamaWrapper(LLM):
 LLM_Mapping: Dict[LLMModels, Type[LLM]] = {
     LLMModels.OAI_GPT4: OpenAI(name='gpt-3.5-turbo-0125'),
     LLMModels.OAI_GPT3: OAIWrapper(name='gpt-3.5-turbo-0125'),
-    LLMModels.OAI_GPT2: get_hf_auto_model('gpt2'),
+    #LLMModels.OAI_GPT2: get_hf_auto_model('gpt2'),
     #LLMModels.LLAMA_3B: LLamaWrapper(),
 }
 

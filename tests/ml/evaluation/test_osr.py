@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 
-
 from src.ml.evaluation.osr import Evaluator
 
 class TestEvaluator(unittest.TestCase):

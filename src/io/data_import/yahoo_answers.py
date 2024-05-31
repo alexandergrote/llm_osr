@@ -33,6 +33,15 @@ class YahooAnswersDataset(BaseDataset, BaseModel):
         train_data = dataset["train"].to_pandas()
         test_data = dataset["test"].to_pandas()
 
+        # map integer labels to string labels
+        # train data
+        mapping = {idx: value for idx, value in enumerate(dataset['train'].features['topic'].names)}
+        train_data['topic'] = train_data['topic'].map(mapping)
+
+        # test data
+        mapping = {idx: value for idx, value in enumerate(dataset['test'].features['topic'].names)}
+        test_data['topic'] = test_data['topic'].map(mapping)
+
         data = pd.concat([train_data, test_data], ignore_index=True)
 
         # dataframe columns should be named text and label
@@ -40,6 +49,8 @@ class YahooAnswersDataset(BaseDataset, BaseModel):
             DatasetColumn.TEXT: data['question_title'] + ' ' + data['question_content'], 
             DatasetColumn.LABEL: data['topic']
         })
+
+        assert len(data[DatasetColumn.LABEL].unique()) == 10
 
         data.to_parquet(filename)
   
