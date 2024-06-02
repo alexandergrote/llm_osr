@@ -1,6 +1,6 @@
 from datasets import load_dataset
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional, List
 
 import pandas as pd
 from pydantic import BaseModel, model_validator
@@ -14,8 +14,9 @@ from .base import BaseDataset
 
 class BankingDataset(BaseDataset, BaseModel):
 
-    data_home: Path = Directory.INPUT_DIR / "Banking77"
     mapping: Dict[int, str]
+    data_home: Path = Directory.INPUT_DIR / "Banking77"
+    filter: Optional[List[str]] = None
     
     @model_validator(mode='after')
     def init_data_dir(self):
@@ -47,6 +48,16 @@ class BankingDataset(BaseDataset, BaseModel):
         # transform integer to str
         data[DatasetColumn.LABEL] = data[DatasetColumn.LABEL].map(self.mapping)
 
+        if self.filter is not None:
+
+            mask = data[DatasetColumn.LABEL].isin(self.filter)
+
+            data = data[mask]
+
+        # shuffle data
+        data = data.sample(frac=1).reset_index(drop=True)    
+        
+        # filter to only desired categories
         data.to_parquet(filename)
 
         return data

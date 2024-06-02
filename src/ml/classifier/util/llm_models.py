@@ -1,5 +1,6 @@
 import torch
 import transformers
+from requests import ConnectionError  # type: ignore
 
 from typing import Dict, Type, Any, List, Optional
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
@@ -10,13 +11,17 @@ from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 from langchain_core.language_models.llms import LLM
 
 from src.util.constants import LLMModels
+from src.util.logging import console
 from src.util.environment import PydanticEnvironment
 
 env = PydanticEnvironment()
 
-login(
-    token=env.hf_token
-)
+try:
+    login(
+        token=env.hf_token
+    )
+except ConnectionError:
+    console.log("Could not connect to HF due to missing Internet connection")
 
 def get_hf_auto_model(model_id: str) -> Any:
 
