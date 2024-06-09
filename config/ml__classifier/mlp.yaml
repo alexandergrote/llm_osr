@@ -1,0 +1,6 @@
+class: src.MLP
+params:
+  batch_size: 16
+  epochs: 100
+  learning_rate: 0.01
+  patience: 10
