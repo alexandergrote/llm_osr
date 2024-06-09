@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from tests.integration.util import get_hydra_config
 from src.main import main
@@ -16,7 +17,10 @@ class TestDoc(unittest.TestCase):
             ]
         )
 
-    def test_main(self):
+
+    @patch("src.io.data_export.mlflow.Exporter.export", return_value=None)
+    @patch("src.io.data_import.base.BaseDataset.get_n_rows", return_value=1000)
+    def test_main(self, mock_export, mock_n_rows):
         self.assertIsNone(main(self.cfg))
 
     def tearDown(self):

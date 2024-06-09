@@ -11,14 +11,20 @@ from src.ml.preprocessing.base import BasePreprocessor
 from src.util.constants import DatasetColumn as dfc
 from src.util.caching import PickleCacheHandler
 from src.util.logging import console
+from src.util.hashing import Hash
 
 
 class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
 
     embedding_model_name: str = 'paraphrase-MiniLM-L6-v2'
+    embedding_model_params: Optional[dict] = None
 
     class Config:
         arbitrary_types_allowed = True
+
+    def hash(self, *args, **kwargs) -> str:
+        return Hash.hash_recursive(self.embedding_model_name, self.embedding_model_params)
+
 
     def _fit(self, data: pd.DataFrame, **kwargs):
         """
@@ -36,9 +42,12 @@ class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
         with warnings.catch_warnings():
             
             warnings.simplefilter(action='ignore', category=FutureWarning)
+
+            embedding_params: dict = self.embedding_model_params or {}
             
             model = SentenceTransformer(
-                model_name_or_path=self.embedding_model_name
+                model_name_or_path=self.embedding_model_name,
+                **embedding_params
             )
 
         # keep track of processed data in dict

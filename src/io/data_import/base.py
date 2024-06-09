@@ -1,11 +1,11 @@
 from abc import abstractmethod
+from typing import Optional
 
 import pandas as pd
 
 from src.interface.base import BaseExecutionBlock
 from src.util.constants import DatasetColumn
 from src.util.validation import DataFrameValidator
-from src.util.environment import PydanticEnvironment
 
 
 class BaseDataset(BaseExecutionBlock):
@@ -13,6 +13,9 @@ class BaseDataset(BaseExecutionBlock):
     @abstractmethod
     def _load(self, *args, **kwargs) -> pd.DataFrame:
         raise NotImplementedError()
+    
+    def get_n_rows(self) -> Optional[int]:
+        return None
     
     def execute(self, **kwargs) -> dict:
 
@@ -22,11 +25,10 @@ class BaseDataset(BaseExecutionBlock):
         # execute main function
         data = self._load(**kwargs)
 
-        # get environment
-        env = PydanticEnvironment.create_from_environment()
+        n_rows = self.get_n_rows()
 
-        if env.is_dev_mode():
-            data = data.head(100)
+        if n_rows is not None:
+            data = data.head(n_rows)
 
         DataFrameValidator.assert_non_zero_dataframe(
             data=data, 

@@ -1,3 +1,5 @@
 class: src.EmbeddingPreprocessor
 params:
-  embedding_model_name: 'paraphrase-MiniLM-L6-v2'
+  embedding_model_name: mixedbread-ai/mxbai-embed-large-v1
+  embedding_model_params:
+    truncate_dim: 512

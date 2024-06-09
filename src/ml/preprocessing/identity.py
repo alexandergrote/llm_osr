@@ -3,9 +3,13 @@ from pydantic import BaseModel, validate_call
 
 from src.ml.preprocessing.base import BasePreprocessor
 from src.util.constants import DatasetColumn
+from src.util.hashing import Hash
 
 
 class IdentityPreprocessor(BaseModel, BasePreprocessor):
+
+    def hash(self, *args, **kwargs) -> str:
+        return Hash.hash_recursive(self.__class__.__name__)
 
     @validate_call(config={"arbitrary_types_allowed": True})
     def _fit(self, data: pd.DataFrame, **kwargs):

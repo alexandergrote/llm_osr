@@ -44,3 +44,36 @@ class Hash(BaseModel):
             obj_str = ''
 
         raise ValueError(f"Object {obj_str} cannot be hashed")
+    
+    @staticmethod
+    def hash_dict(dictionary: dict) -> str:  
+
+        items = {k: v for k, v in dictionary.items()}
+
+        return Hash.hash_recursive(**items)
+    
+    @staticmethod
+    def hash_recursive(*args, **kwargs) -> str:
+        
+        hash_list = []
+        
+        for obj in args:
+
+            if isinstance(obj, dict):
+                hash_list.append(Hash.hash_dict(obj))
+                continue
+
+            hash_list.append(Hash.hash(obj))
+        
+        for key, value in kwargs.items():
+
+            if isinstance(value, dict):
+                hash_list.append(Hash.hash_dict(value))
+                continue
+
+            hash_list.append(Hash.hash(key))
+            hash_list.append(Hash.hash(value))
+
+        hash_str = ''.join(hash_list)
+        
+        return Hash.hash(hash_str)

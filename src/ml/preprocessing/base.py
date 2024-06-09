@@ -7,6 +7,7 @@ import pandas as pd
 from src.interface.base import BaseExecutionBlock
 from src.util.types import MLDataFrame
 from src.util.caching import PickleCacheHandler
+from src.util.hashing import Hash
 
 class BasePreprocessor(BaseExecutionBlock):
     
@@ -22,9 +23,15 @@ class BasePreprocessor(BaseExecutionBlock):
     def _fit_transform(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
         raise NotImplementedError()
 
+    @abstractmethod
+    def hash(self, *args, **kwargs) -> str:
+        raise NotImplementedError()
+
     def _cache_result(self, data: MLDataFrame, step: str, function, **kwargs) -> MLDataFrame:
 
-        filename = data.hash() + '.pkl'
+        """Cache results of processing function. Dirty hack to avoid re-execution of the same function."""
+
+        filename = Hash.hash_recursive(self.hash(), data.hash()) + '.pkl'
         filepath = Path(self.__class__.__name__) / filename
 
         cache_handler = PickleCacheHandler(

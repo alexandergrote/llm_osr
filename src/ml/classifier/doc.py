@@ -89,11 +89,21 @@ class GaussianModels(BaseModel):
 
 class NN(nn.Module):
 
-    def __init__(self, input_dim: int, output_dim: int = 128):
+    def __init__(self, input_dim: int, output_dim: int, hidden_dim: Optional[int] = 128, dropout_prob: Optional[float] = None):
+        
         super(NN, self).__init__()
 
+        hidden_dim = (input_dim + output_dim) // 2 if hidden_dim is None else hidden_dim
+        dropout_prob = 0.2 if dropout_prob is None else dropout_prob
+
         self.model = nn.Sequential(
-            nn.Linear(input_dim, output_dim),
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout_prob),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout_prob),
+            nn.Linear(hidden_dim, output_dim)
         )
 
     def forward(self, x):
@@ -292,7 +302,7 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
         self.classes = torch.Tensor(np.unique(y_train)).to(self.device)
 
         # create model
-        self.model = NN(input_dim=x_train.shape[1])
+        self.model = NN(input_dim=x_train.shape[1], output_dim=len(self.classes))
 
         # add new layer to network
         self._adding_layer_to_model(n_classes=len(self.classes))

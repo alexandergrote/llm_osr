@@ -28,7 +28,8 @@ class TestFewShotLLM(unittest.TestCase):
         )
 
     @patch("src.io.data_export.mlflow.Exporter.export", return_value=None)
-    def test_main(self, mock_export):
+    @patch("src.io.data_import.base.BaseDataset.get_n_rows", return_value=100)
+    def test_main(self, mock_export, mock_n_rows):
         self.assertIsNone(main(self.cfg))
 
 
