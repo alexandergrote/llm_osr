@@ -4,6 +4,8 @@ from langchain_openai import OpenAI
 from src.ml.classifier.util.llm_api.base import BaseRemoteLLM
 
 class OpenAIWrapper(BaseRemoteLLM, BaseModel):
+
+    name: str
     
     def __call__(self, *, prompt: str, **kwargs):
 

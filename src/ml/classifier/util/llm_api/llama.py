@@ -71,11 +71,22 @@ class Llama(BaseRemoteLLM, BaseModel):
 
         answer = outputs[0]["generated_text"][len(prompt):]
 
+        try:
+
+            # extract json_str from the answer
+            # Extract the JSON part from the text
+            start_index = answer.find('{')
+            end_index = answer.rfind('}') + 1
+            answer = answer[start_index:end_index]
+
+        except Exception as e:
+            print(e)
+
         self.cache[prompt] = answer
 
         return answer
 
-    def __call__batch(self, prompts: List[str], **kwargs: Any) -> List[str]:
+    def batch(self, prompts: List[str], **kwargs: Any) -> List[str]:
         
         if self.pipeline is None:
             self.setup()

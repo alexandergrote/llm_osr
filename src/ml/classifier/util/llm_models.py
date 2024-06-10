@@ -1,4 +1,5 @@
-from requests import ConnectionError  # type: ignore
+import requests  # type: ignore
+import json
 
 from typing import Dict, Type, Any, List, Optional
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
@@ -10,7 +11,7 @@ from langchain_core.language_models.llms import LLM
 from src.util.constants import LLMModels
 from src.util.logging import console
 from src.util.environment import PydanticEnvironment
-from src.ml.classifier.util.llm_api import Llama, OpenAIWrapper
+from src.ml.classifier.util.llm_api import OpenAIWrapper
 
 
 try:
@@ -53,14 +54,40 @@ class LangchainWrapper(LLM):
 
     @property
     def _llm_type(self) -> str:
-        return self.custom_model.name
+        return self.name
+
+class LangchainWrapperRemote(LLM):
+
+    name: str
+    url: str
+
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> str:
+       
+       data = {
+            "prompt": prompt
+       }
+       
+       response = requests.post(self.url, data=json.dumps(data))
+
+       return response.json()["response"]
+
+
+    @property
+    def _llm_type(self) -> str:
+        return self.name
 
 
 LLM_Mapping: Dict[LLMModels, Type[LLM]] = {
-    LLMModels.OAI_GPT4: LangchainWrapper(name='gpt-3.5-turbo-0125', custom_model=OpenAIWrapper()),
-    LLMModels.OAI_GPT3: LangchainWrapper(name='gpt-3.5-turbo-0125', custom_model=OpenAIWrapper()),
-    LLMModels.OAI_GPT2: LangchainWrapper(name='gpt2', custom_model=get_hf_auto_model('gpt2')),
-    LLMModels.LLAMA_3B: LangchainWrapper(name='llama-3b', custom_model=Llama()),
+    LLMModels.OAI_GPT4: LangchainWrapper(name='gpt-3.5', custom_model=OpenAIWrapper(name='gpt-3.5-turbo-0125')),
+    LLMModels.OAI_GPT3: LangchainWrapper(name='gpt-3.5', custom_model=OpenAIWrapper(name='gpt-3.5-turbo-0125')),
+    LLMModels.OAI_GPT2: LangchainWrapper(name='gpt-2', custom_model=get_hf_auto_model('gpt2')),
+    LLMModels.LLAMA_3B: LangchainWrapperRemote(name='llama-3b', url="http://localhost:1234/chat"),
 }
 
 

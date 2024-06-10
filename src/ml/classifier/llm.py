@@ -123,10 +123,6 @@ class LLM(BaseModel, BaseClassifier):
         
         if self.parser is None:
             raise ValueError("Not fitted")
-        
-        # interims solution until api is stable enough for mocking
-        if env.is_dev_mode():
-            return np.random.choice(self.classes, size=1)[0]
 
         query = f"{text} -> <your response>"
 
@@ -210,7 +206,7 @@ if __name__ == '__main__':
     })
 
     llm = LLM(
-        model_str=LLMModels.OAI_GPT3.value
+        model_str=LLMModels.LLAMA_3B.value
     )
 
     llm.fit(
@@ -222,7 +218,7 @@ if __name__ == '__main__':
     )
 
     data_inf = pd.DataFrame({
-        DatasetColumn.FEATURES: ['Eine Katze läuft über die Straße']
+        DatasetColumn.FEATURES: ['Hello']
     })
 
     result = llm.predict(data_inf[DatasetColumn.FEATURES].values)
