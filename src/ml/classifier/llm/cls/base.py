@@ -94,7 +94,7 @@ class BaseLLM(BaseModel, BaseClassifier):
 
             try:
 
-                result = self._single_predict(text=el)
+                result = self._single_predict(text=el_str)
 
             except Exception as e:
 

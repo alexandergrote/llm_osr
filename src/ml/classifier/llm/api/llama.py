@@ -39,7 +39,7 @@ class Llama(BaseRemoteLLM, BaseModel):
         ]
 
     
-    def __call__(self, *, prompt: str, **kwargs):
+    def __call__(self, *, prompt: str, **kwargs) -> str:
 
         if self.pipeline is None:
             self.setup()
