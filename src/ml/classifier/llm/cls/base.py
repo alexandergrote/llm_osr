@@ -6,7 +6,8 @@ from pathlib import Path
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, model_validator
 from numpy import ndarray
-from typing import Any, Optional
+from typing import Any, Optional, List
+import concurrent.futures
 
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.llm.cls.util.prediction import Prediction
@@ -66,6 +67,29 @@ class BaseLLM(BaseModel, BaseClassifier):
     @abstractmethod
     def _single_predict(self, text: str) -> str:
         raise NotImplementedError("Method must be implemented in subclass")
+    
+    def _batch_single_predict(self, texts: List[str], n_jobs: int = 10) -> List[str]:
+
+        results = []
+        
+        # Use ThreadPoolExecutor to send requests in parallel
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            # Create a list of futures
+            futures = {executor.submit(self._single_predict, prompt): prompt for prompt in texts}
+
+            # Process the results as they complete
+            for future in concurrent.futures.as_completed(futures):
+                prompt = futures[future]
+                try:
+                    response = future.result()
+                    results.append((prompt, response))
+                except Exception as exc:
+                    print(f'{prompt} generated an exception: {exc}')
+
+        results_formatted = [el[1] for el in results]
+
+        return results_formatted
+
 
     def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
 

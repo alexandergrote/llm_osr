@@ -57,7 +57,7 @@ if __name__ == '__main__':
     })
 
     llm = SingleShotLLM(
-        model_str=LLMModels.LLAMA_3B.value
+        model_str=LLMModels.LLAMA_3B_Remote.value
     )
 
     llm.fit(
