@@ -108,3 +108,17 @@ class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
     def _fit_transform(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
         return self._transform(data=data, **kwargs)
             
+
+if __name__ == '__main__':
+
+    data = pd.DataFrame({
+        dfc.TEXT: [
+            "This is a test",
+            "This is another test"
+        ]
+    })
+
+    preprocessor = EmbeddingPreprocessor()
+    processed_data = preprocessor._fit_transform(data)
+
+    print(processed_data)

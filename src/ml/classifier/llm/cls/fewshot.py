@@ -1,42 +1,26 @@
 import numpy as np
+import pandas as pd
 
 from tqdm import tqdm
-from langchain_core import pydantic_v1
+from pathlib import Path
 from langchain_core.runnables import RunnableLambda, RunnableParallel
 from langchain_core.prompts.few_shot import FewShotPromptTemplate, PromptTemplate
 from langchain.output_parsers import PydanticOutputParser, RetryOutputParser
-from langchain_community.cache import SQLiteCache
 from pydantic import BaseModel, model_validator
 from numpy import ndarray
 from typing import Any, Optional, Dict, List
 
-import pandas as pd
-
 from src.ml.classifier.base import BaseClassifier
-from src.ml.classifier.util.llm_models import LLM_Mapping, LLMModels
-from src.util.constants import DatasetColumn, Directory, UnknownClassLabel
+from src.ml.classifier.llm.cls.util.prediction import Prediction
+from src.ml.classifier.llm.util.mapping import LLM_Mapping
+from src.util.constants import DatasetColumn, UnknownClassLabel, LLMModels
 from src.util.environment import PydanticEnvironment
+from src.util.caching import PickleCacheHandler
+from src.util.logging import console
 
 env = PydanticEnvironment()
 
-class Prediction(pydantic_v1.BaseModel):
-    reasoning: str = pydantic_v1.Field(description="The reasoning behind the prediction")
-    label: str = pydantic_v1.Field(description="The predicted label")
-
-    @pydantic_v1.validator("label", allow_reuse=True)
-    def label_must_be_valid(cls, label: str):
-
-        if not hasattr(cls, 'valid_labels'):
-            raise Exception("No class labels supplied")
-        
-        valid_labels = cls.valid_labels
-
-        if label.lower() not in [valid_label.lower() for valid_label in valid_labels]:
-            raise ValueError(f"Label must be one of {valid_labels}")
-        return label
-
-
-class LLM(BaseModel, BaseClassifier):
+class FewShotLLM(BaseModel, BaseClassifier):
 
     model: Any
     model_str: str
@@ -159,24 +143,9 @@ class LLM(BaseModel, BaseClassifier):
         ) | RunnableLambda(lambda x: retry_parser.parse_with_prompt(**x))
 
         try:
-            
-            cache_name = f'.langchain_{self.model_str}.db'
-            cache_path = Directory.CACHING_DIR / cache_name
-            cache = SQLiteCache(database_path=str(cache_path))
 
-            look_up = cache.lookup(prompt=query, llm_string=self.model_str)
-
-            if look_up is not None:
-                return look_up[0]
-            
             answer: Prediction = main_chain.invoke({"query": query})
             answer_final: str = answer.label
-
-            cache.update(
-                prompt=query,
-                llm_string=self.model_str,
-                return_val=[answer.label]
-            )
 
         except Exception as e:
 
@@ -188,12 +157,51 @@ class LLM(BaseModel, BaseClassifier):
 
     def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
 
-        result = []
+        result_list = []
+
+        cache_handler = PickleCacheHandler(
+            filepath= Path(self.__class__.__name__) / f"{self.model_str}.pkl"
+        )
+
+        cache = cache_handler.read()
+
+        if cache is None:
+            cache = {}   
+
+        assert isinstance(cache, dict), "cache must be a dictionary"     
 
         for el in tqdm(x, desc="LLM Prediction"):
-            result.append(self._single_predict(text=el))
+
+            el_str = el[0]
+            
+            result = cache.get(el_str)
+
+            if result is not None:
+                result_list.append(result)
+                continue
+
+            try:
+
+                result = self._single_predict(text=el)
+
+            except Exception as e:
+
+                console.log(f"Error processing text: {el_str}")
+
+                # in case of an error write cache to not lose progress
+                cache_handler.write(cache)
+
+                raise e
+
         
-        return np.array(result)
+            cache[el_str] = result
+
+            result_list.append(result)
+
+        cache_handler.write(cache)
+
+        
+        return np.array(result_list)
     
     def predict_proba(self, x: ndarray, **kwargs) -> ndarray:
         pass
@@ -205,8 +213,8 @@ if __name__ == '__main__':
         DatasetColumn.LABEL: ['Greeting', 'Goodbye']
     })
 
-    llm = LLM(
-        model_str=LLMModels.LLAMA_3B.value
+    llm = FewShotLLM(
+        model_str=LLMModels.OAI_GPT2.value
     )
 
     llm.fit(

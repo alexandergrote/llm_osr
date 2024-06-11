@@ -1,4 +1,5 @@
 import pickle
+import os
 import inspect
 from pydantic import BaseModel, field_validator
 from pathlib import Path
@@ -11,8 +12,9 @@ def get_executing_script_filepath():
     frame = inspect.stack()[3]
     module = inspect.getmodule(frame[0])
     filename = module.__file__
+    filename_abs_path = os.path.abspath(filename)
 
-    return filename
+    return filename_abs_path
 
 
 class PickleCacheHandler(BaseModel):

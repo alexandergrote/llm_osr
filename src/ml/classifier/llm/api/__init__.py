@@ -1,9 +1,9 @@
-from .base import BaseRemoteLLM
 from .llama import Llama
 from .oai import OpenAIWrapper
+from .hf import HFWrapper
 
 __all__ = [
-    "BaseRemoteLLM",
     "Llama",
     "OpenAIWrapper",
+    "HFWrapper",
 ]

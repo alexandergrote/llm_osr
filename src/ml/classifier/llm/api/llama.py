@@ -3,7 +3,12 @@ from pydantic import BaseModel
 from typing import List, Optional, Any, Union
 from transformers import pipeline, Pipeline
 
-from src.ml.classifier.util.llm_api.base import BaseRemoteLLM
+from src.ml.classifier.llm.util.hf_login import login_to_hf
+from src.ml.classifier.llm.api.base import BaseRemoteLLM
+
+
+login_to_hf()
+
 
 class Llama(BaseRemoteLLM, BaseModel):
 

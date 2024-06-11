@@ -11,7 +11,7 @@ from langchain_core.language_models.llms import LLM
 from src.util.constants import LLMModels
 from src.util.logging import console
 from src.util.environment import PydanticEnvironment
-from src.ml.classifier.util.llm_api import OpenAIWrapper
+from src.ml.classifier.llm.api import OpenAIWrapper
 
 
 try:
