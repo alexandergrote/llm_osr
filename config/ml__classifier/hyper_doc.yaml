@@ -1,0 +1,17 @@
+class: src.HyperTuner
+params:
+  n_trials: 1
+  model:
+    class: src.DOC
+    params: 
+      batch_size: 16
+      epochs: 100
+      learning_rate: 0.01
+      patience: 10
+  hyperparams: 
+    class: src.DOCHyperParams
+    params:
+  evaluator: 
+    class: src.Evaluator
+    params:
+

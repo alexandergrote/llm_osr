@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Tuple
 from sklearn.datasets import fetch_20newsgroups_vectorized
 
-from src.ml.classifier.doc import DOC, GaussianModels
+from src.ml.classifier.nn.cls.doc import DOC, GaussianModels
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
 from src.util.caching import PickleCacheHandler
