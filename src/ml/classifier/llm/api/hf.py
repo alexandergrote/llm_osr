@@ -20,10 +20,10 @@ class HFWrapper(BaseRemoteLLM, BaseModel):
         return data
 
     @staticmethod
-    def _get_hf_auto_model(model_id: str) -> Any:
+    def _get_hf_auto_model(model_id: str, auth: bool = False) -> Any:
 
-        
-        login_to_hf()
+        if auth:
+            login_to_hf()
 
         tokenizer = AutoTokenizer.from_pretrained(model_id)
         model = AutoModelForCausalLM.from_pretrained(model_id)

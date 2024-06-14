@@ -7,9 +7,6 @@ from src.ml.classifier.llm.util.hf_login import login_to_hf
 from src.ml.classifier.llm.api.base import BaseRemoteLLM
 
 
-login_to_hf()
-
-
 class Llama(BaseRemoteLLM, BaseModel):
 
     _name: str = "meta-llama/Meta-Llama-3-8B-Instruct"
@@ -25,6 +22,8 @@ class Llama(BaseRemoteLLM, BaseModel):
         arbitrary_types_allowed=True
 
     def setup(self):
+
+        login_to_hf()
 
         self.pipeline = pipeline(
             "text-generation",

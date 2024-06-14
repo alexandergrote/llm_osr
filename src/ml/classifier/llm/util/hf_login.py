@@ -11,7 +11,7 @@ def login_to_hf() -> None:
         env = PydanticEnvironment()
 
         login(
-            token=env.hf_token
+            token=env.hf_token,
         )
 
     except ConnectionError:
