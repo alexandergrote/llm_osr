@@ -1,3 +1,4 @@
+import hydra
 from enum import Enum
 from pathlib import Path
 
@@ -21,6 +22,11 @@ paths = [
 
 for path in paths:
     path.mkdir(parents=True, exist_ok=True)
+
+
+def get_hydra_output_dir() -> Path:
+    config = hydra.core.hydra_config.HydraConfig
+    return Path(config.get().runtime.output_dir)
 
 
 class File:

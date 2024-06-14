@@ -1,12 +1,12 @@
 import warnings
 import hydra
 
+from omegaconf import DictConfig, OmegaConf
 from typing import List
 
 # load package specific code
 from src.interface.execution_block import ExecutionBlock
-from omegaconf import DictConfig, OmegaConf
-from src.util.constants import DictConfigNames, Directory, File
+from src.util.constants import DictConfigNames, Directory, File, get_hydra_output_dir
 from src.util.logging import console
 
 warnings.filterwarnings(
@@ -39,7 +39,8 @@ def main(cfg: DictConfig) -> None:
     # output placeholder
     output = {
         DictConfigNames.RANDOM_SEED: cfg[DictConfigNames.RANDOM_SEED],
-        'config': cfg
+        'config': cfg,
+        'output_dir': get_hydra_output_dir()
     }
 
     # init sequence

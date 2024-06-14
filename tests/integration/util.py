@@ -16,7 +16,6 @@ def get_hydra_config(overrides: List[str]) -> DictConfig:
         config_path = os.path.join('..', '..', 'config')
 
         with initialize(config_path=config_path):
-            overrides = overrides
             cfg = compose(config_name="config", overrides=overrides)
 
     return cfg
