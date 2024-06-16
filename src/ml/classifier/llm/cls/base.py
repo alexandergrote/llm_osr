@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 from abc import abstractmethod
 from tqdm import tqdm
@@ -68,12 +69,12 @@ class BaseLLM(BaseModel, BaseClassifier):
     def _single_predict(self, text: str) -> str:
         raise NotImplementedError("Method must be implemented in subclass")
     
-    def _batch_single_predict(self, texts: List[str], n_jobs: int = 10) -> List[str]:
+    def _batch_single_predict(self, texts: List[str], n_jobs: int) -> List[str]:
 
         results = []
         
         # Use ThreadPoolExecutor to send requests in parallel
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
             # Create a list of futures
             futures = {executor.submit(self._single_predict, prompt): prompt for prompt in texts}
 
@@ -89,6 +90,26 @@ class BaseLLM(BaseModel, BaseClassifier):
         results_formatted = [el[1] for el in results]
 
         return results_formatted
+    
+
+    def predict_batch(self, x: List[str], **kwargs) -> np.ndarray:
+
+        # divide this list into k chunks
+        cpu_count = os.cpu_count()
+
+        if cpu_count is None:
+            k = 1
+        else:
+            k = 2 * cpu_count + 1
+
+        x_batch = [x[i:i + k] for i in range(0, len(x), k)]
+
+        results = []
+
+        for el in x_batch:
+            results += self._batch_single_predict(texts=el, n_jobs=k)
+
+        return np.array(results)
 
 
     def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:

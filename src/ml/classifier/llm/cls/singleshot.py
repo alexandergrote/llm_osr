@@ -72,3 +72,6 @@ if __name__ == '__main__':
 
     print(result)
 
+    result = llm.predict_batch(["Hello", "Goodbye"])
+    print(result)
+
