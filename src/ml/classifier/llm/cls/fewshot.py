@@ -3,7 +3,7 @@ import pandas as pd
 
 from langchain_core.runnables import RunnableLambda, RunnableParallel
 from langchain.output_parsers import RetryOutputParser
-from typing import Dict, List
+from typing import Dict, List, Union, Tuple
 
 from src.ml.classifier.llm.cls.base import BaseLLM
 from src.ml.classifier.llm.cls.util.prediction import Prediction
@@ -43,7 +43,7 @@ class FewShotLLM(BaseLLM):
 
         return examples
 
-    def _single_predict(self, text: str) -> str:
+    def _single_predict(self, text: str, output_reasoning: bool = False) -> Union[str, Tuple[str, str]]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -79,17 +79,24 @@ class FewShotLLM(BaseLLM):
 
             answer: Prediction = main_chain.invoke({"query": text})
             answer_final: str = answer.label
+            reasoning_final: str = answer.reasoning
 
         except Exception as e:
 
             print(e)
 
             answer_final = 'ERROR'
+            reasoning_final = 'ERROR'
+
+        if output_reasoning is True:
+            return answer_final, reasoning_final
 
         return answer_final
 
 
 if __name__ == '__main__':
+
+    import time
 
     data = pd.DataFrame({
         DatasetColumn.FEATURES: ["Hi, ich heiße Alex", "Auf Wiedersehen!"],
@@ -108,11 +115,29 @@ if __name__ == '__main__':
         
     )
 
-    text_list = ["Buenos dias", "Eine Katze läuft über die Straße", "Go away", "Tschüss"]
+    text_list = ["Buenos dias", "Eine Katze läuft über die Straße", "Go away", "Tschüss"] * 2
 
 
-    for text in text_list:
-        result = llm._single_predict(text)
+    # benchmark with batch predict
 
-        print(result, text)
+    start = time.time()
+
+    result = llm.predict_batch(text_list)
+
+    print("Time taken: ", time.time() - start)
+
+    print(result)
+
+    start = time.time()
+
+    result = [llm._single_predict(text, output_reasoning=True) for text in text_list]
+    print("Time taken: ", time.time() - start)
+
+    for text, el in zip(text_list, result):
+        print(el[0], text, el[1])
+
+    
+
+    
+    
 

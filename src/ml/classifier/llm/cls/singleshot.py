@@ -3,6 +3,8 @@ import pandas as pd
 from langchain_core.runnables import RunnableLambda, RunnableParallel
 from langchain.output_parsers import RetryOutputParser
 
+from typing import Union, Tuple
+
 from src.ml.classifier.llm.cls.base import BaseLLM
 from src.ml.classifier.llm.cls.util.prediction import Prediction
 from src.ml.classifier.llm.cls.util.prompt import PromptCreator
@@ -11,7 +13,7 @@ from src.util.constants import DatasetColumn, LLMModels
 
 class SingleShotLLM(BaseLLM):
 
-    def _single_predict(self, text: str) -> str:
+    def _single_predict(self, text: str, output_reasoning: bool = False) -> Union[str, Tuple[str, str]]:
         
         if self.classes is None:
             raise ValueError("Not fitted")
@@ -39,12 +41,17 @@ class SingleShotLLM(BaseLLM):
             chain_input: str = PromptCreator.get_chain_input_field_name()
             answer: Prediction = main_chain.invoke({chain_input: text})
             answer_final: str = answer.label
+            reasoning_final: str = answer.reasoning
 
         except Exception as e:
 
             print(e)
 
             answer_final = 'ERROR'
+            reasoning_final = 'ERROR'
+
+        if output_reasoning is True:
+            return answer_final, reasoning_final
 
         return answer_final
 

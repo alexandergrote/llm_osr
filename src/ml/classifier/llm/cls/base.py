@@ -7,7 +7,7 @@ from pathlib import Path
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, model_validator
 from numpy import ndarray
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Union, Tuple
 import concurrent.futures
 
 from src.ml.classifier.base import BaseClassifier
@@ -66,7 +66,7 @@ class BaseLLM(BaseModel, BaseClassifier):
        self.parser = PydanticOutputParser(pydantic_object=Prediction)
 
     @abstractmethod
-    def _single_predict(self, text: str) -> str:
+    def _single_predict(self, text: str, output_reasoning: bool = False) -> Union[str, Tuple[str, str]]:
         raise NotImplementedError("Method must be implemented in subclass")
     
     def _batch_single_predict(self, texts: List[str], n_jobs: int) -> List[str]:
@@ -83,6 +83,10 @@ class BaseLLM(BaseModel, BaseClassifier):
                 prompt = futures[future]
                 try:
                     response = future.result()
+
+                    if isinstance(response, tuple):
+                        response = response[0]
+
                     results.append((prompt, response))
                 except Exception as exc:
                     print(f'{prompt} generated an exception: {exc}')
@@ -91,7 +95,6 @@ class BaseLLM(BaseModel, BaseClassifier):
 
         return results_formatted
     
-
     def predict_batch(self, x: List[str], **kwargs) -> np.ndarray:
 
         # divide this list into k chunks
