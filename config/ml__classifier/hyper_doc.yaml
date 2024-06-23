@@ -1,6 +1,6 @@
 class: src.HyperTuner
 params:
-  n_trials: 1
+  n_trials: 100
   model:
     class: src.DOC
     params: 
