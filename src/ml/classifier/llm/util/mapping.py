@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 
 from src.ml.classifier.llm.api import OpenAIWrapper, HFWrapper, Llama
 from src.ml.classifier.llm.api.base import LangchainWrapper, LangchainWrapperRemote, RequestInput, RequestOutput, LLamaRequestOutput
@@ -9,6 +10,23 @@ from src.util.environment import PydanticEnvironment
 env = PydanticEnvironment()
 
 
+class RequestFactory(BaseModel):
+
+    @classmethod
+    def create_hf_request_input(cls, url):
+
+        return RequestInput(
+            url=url,
+            prompt_key='inputs',
+            output_key='generated_text',
+            data={'parameters': {
+                "temperature": 0.01, 
+                "max_new_tokens": None,
+                "stop": ["}"]
+                }},
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {env.hf_token}"}
+        )
+
 Localhost_Remote_Input = RequestInput(
     url='http://localhost:1234/chat',
     prompt_key='prompt',
@@ -17,19 +35,10 @@ Localhost_Remote_Input = RequestInput(
 
 Localhost_Remote_Output = RequestOutput(output_key='response')
 
-Llama3_8B_Remote_HF_Input = RequestInput(
-    url='https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8b-Instruct',
-    prompt_key='inputs',
-    output_key='generated_text',
-    data={'parameters': {
-        "temperature": 0.01, 
-        "max_new_tokens": None,
-        "stop": ["}"]
-        }},
-    headers={"Content-Type": "application/json", "Authorization": f"Bearer {env.hf_token}"}
-)
+Llama3_8B_Remote_HF_Input = RequestFactory.create_hf_request_input(url='https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8b-Instruct')
+Llama3_70B_Remote_HF_Input = RequestFactory.create_hf_request_input(url='https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-70b-Instruct')
 
-Llama3_8B_Remote_HF_Output = LLamaRequestOutput(output_key='generated_text')
+Llama3_Remote_HF_Output = LLamaRequestOutput(output_key='generated_text')
 
 
 LLM_Mapping = LazyDict({
@@ -37,14 +46,15 @@ LLM_Mapping = LazyDict({
     LLMModels.OAI_GPT3: (LangchainWrapper, {'name':'gpt-3.5', 'custom_model': OpenAIWrapper(name='gpt-3.5-turbo-0125')}),
     LLMModels.OAI_GPT2: (LangchainWrapper, {'name':'gpt-2', 'custom_model': HFWrapper(name='gpt2')}),
     LLMModels.LLAMA_3B_Local: (LangchainWrapper, {'name':'llama-3b', 'custom_model': Llama(name='llama')}),
-    LLMModels.LLAMA_3B_Remote: (LangchainWrapperRemote, {'name':'llama-3b', 'request_input': Localhost_Remote_Input, 'request_output': Localhost_Remote_Output}),
-    LLMModels.LLAMA_3B_Remote_HF: (LangchainWrapperRemote, {'name':'llama-3b', 'request_input': Llama3_8B_Remote_HF_Input, 'request_output': Llama3_8B_Remote_HF_Output})
+    LLMModels.LLAMA_3_8B_Remote: (LangchainWrapperRemote, {'name':'llama-3b', 'request_input': Localhost_Remote_Input, 'request_output': Localhost_Remote_Output}),
+    LLMModels.LLAMA_3_8B_Remote_HF: (LangchainWrapperRemote, {'name':'llama-3b', 'request_input': Llama3_8B_Remote_HF_Input, 'request_output': Llama3_Remote_HF_Output}),
+    LLMModels.LLAMA_3_70B_Remote_HF: (LangchainWrapperRemote, {'name':'llama-3b', 'request_input': Llama3_70B_Remote_HF_Input, 'request_output': Llama3_Remote_HF_Output})
 })
 
 
 if __name__ == '__main__':
 
-    model = LLM_Mapping[LLMModels.LLAMA_3B_Remote_HF]
+    model = LLM_Mapping[LLMModels.LLAMA_3_70B_Remote_HF]
 
     prompt = """
 

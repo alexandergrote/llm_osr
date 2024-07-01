@@ -67,8 +67,9 @@ class LLMModels(BaseEnum):
     OAI_GPT3 = 'gpt3'
     OAI_GPT2 = 'gpt2'
     LLAMA_3B_Local = 'llama'
-    LLAMA_3B_Remote = 'llama_remote'
-    LLAMA_3B_Remote_HF = 'llama_remote_hf'
+    LLAMA_3_8B_Remote = 'llama_remote'
+    LLAMA_3_8B_Remote_HF = 'llama_remote_hf'
+    LLAMA_3_70B_Remote_HF = 'llama_remote_hf_70b'
 
 
 class UnknownClassLabel(BaseEnum):

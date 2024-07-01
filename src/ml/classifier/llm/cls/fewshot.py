@@ -104,7 +104,7 @@ if __name__ == '__main__':
     })
 
     llm = FewShotLLM(
-        model_str=LLMModels.LLAMA_3B_Remote_HF.value
+        model_str=LLMModels.LLAMA_3_8B_Remote_HF.value
     )
 
     llm.fit(
