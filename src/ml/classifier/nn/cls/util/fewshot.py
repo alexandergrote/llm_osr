@@ -1,5 +1,9 @@
 import torch
 
+from typing import Optional
+
+from src.util.constants import UnknownClassLabel
+
 def compute_prototypes(support_features: torch.Tensor, support_labels: torch.Tensor) -> torch.Tensor:
     
     """
@@ -38,3 +42,28 @@ def compute_outlier_scores(y_pred_proba: torch.Tensor) -> torch.Tensor:
     """
     
     return -torch.max(y_pred_proba, dim=1).values
+
+
+def compute_predictions_from_logits(logits: torch.Tensor, unknown_threshold: float, outlier_scores: Optional[torch.Tensor]) -> torch.Tensor:
+    
+    """
+    Compute predictions from logits
+
+    Args:
+        logits: the logits for each class
+        unknown_threshold: the threshold above which a sample is considered an outlier
+    Returns:
+        the predicted class
+    """
+    
+
+
+    y_pred_proba = logits.softmax(-1)
+    y_pred = torch.argmax(y_pred_proba, dim=-1)
+
+    if outlier_scores is None:
+        outlier_scores = compute_outlier_scores(y_pred_proba)
+
+    y_pred[outlier_scores > unknown_threshold] = UnknownClassLabel.UNKNOWN_NUM.value
+
+    return y_pred

@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any
 
 from src.ml.classifier.nn.cls.base import BaseBenchmark
 from src.ml.classifier.nn.cls.util.labelling import LabellingUtilities
-from src.ml.classifier.nn.cls.util.fewshot import compute_prototypes, compute_outlier_scores
+from src.ml.classifier.nn.cls.util.fewshot import compute_prototypes, compute_predictions_from_logits
 from src.util.constants import UnknownClassLabel
 
 # set random seed for reproducibility
@@ -84,14 +84,8 @@ class SimpleShot(BaseModel, BaseBenchmark):
         x_tensor = torch.Tensor(x)
 
         logits = self.get_logits_from_cosine_distances_to_prototypes(samples=x_tensor)
-        y_pred_proba = logits.softmax(-1)
+        y_pred = compute_predictions_from_logits(logits, self.unknown_threshold, outlier_scores=None).numpy()
 
-        y_pred = torch.argmax(y_pred_proba, dim=-1)
-
-        outlier_scores = compute_outlier_scores(y_pred_proba)
-        y_pred[outlier_scores > self.unknown_threshold] = UnknownClassLabel.UNKNOWN_NUM.value
-
-        y_pred = y_pred.numpy()        
         y_pred = LabellingUtilities.map_labels(y=y_pred, mapping=self.idx2label, target_dtype='str', unknown_value=UnknownClassLabel.UNKNOWN_STR.value)
 
         return y_pred

@@ -3,20 +3,20 @@ import numpy as np
 
 from .util import Data
 
-from src.ml.classifier.nn.cls.simpleshot import SimpleShot
+from src.ml.classifier.nn.cls import Oslo
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
 
 
-class TestSimpleShot(unittest.TestCase):
+class TestOslo(unittest.TestCase):
 
     def setUp(self):
         
         # load yaml config
         config_classifier_dir = Directory.CONFIG / 'ml__classifier'
 
-        self.clf: SimpleShot = DynamicImport.init_class_from_yaml(
-            filename=config_classifier_dir / 'simpleshot.yaml'
+        self.clf: Oslo = DynamicImport.init_class_from_yaml(
+            filename=config_classifier_dir / 'oslo.yaml'
         )
 
         self.x, self.y = Data.get_data()
