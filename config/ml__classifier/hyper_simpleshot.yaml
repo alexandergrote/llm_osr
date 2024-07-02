@@ -1,0 +1,10 @@
+class: src.HyperTuner
+params:
+  n_trials: 1
+  model:
+    class: src.SimpleShot
+    params: 
+      unknown_threshold: -0.05
+  evaluator: 
+    class: src.Evaluator
+    params:

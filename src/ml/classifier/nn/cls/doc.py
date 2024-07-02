@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 
 from src.ml.classifier.nn.cls.base import BaseBenchmark
 from src.ml.classifier.nn.cls.util.torch_util import TorchMixin
+from src.ml.classifier.nn.cls.util.labelling import LabellingUtilities
 from src.ml.classifier.nn.cls.util.torch_early_stopping import EarlyStopping
 from src.util.dynamic_import import DynamicImport 
 from src.util.dict_extraction import DictExtraction
@@ -226,37 +227,6 @@ class DOC(BaseModel, TorchMixin, BaseBenchmark):
 
         return np.mean(np.array(train_loss)), np.mean(np.array(valid_loss))
 
-    @validate_arguments(config={"arbitrary_types_allowed": True})
-    def _create_label_mapping(self, y: np.ndarray):
-
-        self.label2idx = {label: idx for idx, label in enumerate(np.unique(y))}
-        self.idx2label = {idx: label for label, idx in self.label2idx.items()}
-
-    @validate_arguments(config={"arbitrary_types_allowed": True})
-    def _map_labels(self, y: np.ndarray, mapping: dict, target_dtype: str, unknown_value: Any) -> np.ndarray:
-        
-        dtype_mapping = {
-            'int': int,
-            'str': np.object_
-        }   
-
-        dtype_final = dtype_mapping[target_dtype]
-
-        y_relabelled = np.copy(y)
-        y_relabelled = y_relabelled.astype(np.object_)
-
-        mask_transformed = np.zeros_like(y)
-
-        for key, value in mapping.items():
-            mask_treatedformed_sub = y == key
-            y_relabelled[mask_treatedformed_sub] = value
-            mask_transformed[mask_treatedformed_sub] = 1
-
-        y_relabelled[mask_transformed == 0] = unknown_value
-
-        y_relabelled = y_relabelled.astype(dtype_final)
-        
-        return y_relabelled
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
     def _fit_gaussians(self, x_train: np.ndarray, y_train: np.ndarray):
@@ -308,10 +278,10 @@ class DOC(BaseModel, TorchMixin, BaseBenchmark):
         assert len(y_train.shape) == 1, "Labels must be 1D"
 
         # prepare label mapping
-        self._create_label_mapping(y=y_train)
+        self.label2idx, self.idx2label = LabellingUtilities.create_label_mapping(y=y_train)
 
-        y_train = self._map_labels(y=y_train, mapping=self.label2idx, target_dtype='int', unknown_value=UnknownClassLabel.UNKNOWN_NUM.value)
-        y_valid = self._map_labels(y=y_valid, mapping=self.label2idx, target_dtype='int', unknown_value=UnknownClassLabel.UNKNOWN_NUM.value)
+        y_train = LabellingUtilities.map_labels(y=y_train, mapping=self.label2idx, target_dtype='int', unknown_value=UnknownClassLabel.UNKNOWN_NUM.value)
+        y_valid = LabellingUtilities.map_labels(y=y_valid, mapping=self.label2idx, target_dtype='int', unknown_value=UnknownClassLabel.UNKNOWN_NUM.value)
 
         # record classes
         self.classes = torch.Tensor(np.unique(y_train)).to(self.device)
@@ -394,7 +364,7 @@ class DOC(BaseModel, TorchMixin, BaseBenchmark):
             clf_output = self.sigmoid(clf_output).numpy()
 
         y_pred = self.gaussian_models.predict(y_pred_proba=clf_output)
-        y_pred = self._map_labels(y=y_pred, mapping=self.idx2label, target_dtype='str', unknown_value=UnknownClassLabel.UNKNOWN_STR.value)
+        y_pred = LabellingUtilities.map_labels(y=y_pred, mapping=self.idx2label, target_dtype='str', unknown_value=UnknownClassLabel.UNKNOWN_STR.value)
 
         return y_pred
 

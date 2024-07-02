@@ -71,3 +71,4 @@ class TorchMixin:
         plt.legend(loc="upper right")
         plt.xticks(epochs)
         plt.savefig(filename)
+
