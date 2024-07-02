@@ -1,6 +1,5 @@
-from .hyperopt import HyperTuner, DOCHyperParams
+from .hyperopt import HyperTuner
 
 __all__ = [
     'HyperTuner',
-    'DOCHyperParams'
 ]

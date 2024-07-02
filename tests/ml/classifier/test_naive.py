@@ -4,6 +4,7 @@ from src.ml.classifier.naive import NaiveClf
 
 
 class TestNaiveClf(unittest.TestCase):
+    
     def setUp(self):
         self.clf = NaiveClf()
         self.x_train = np.array([[1, 2], [3, 4], [5, 6]])

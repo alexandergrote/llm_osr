@@ -1,4 +1,5 @@
 import torch
+import optuna
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
@@ -7,7 +8,7 @@ from pydantic.v1 import validate_arguments
 from scipy.stats import norm
 from typing import Optional, Dict, Any
 
-from src.ml.classifier.base import BaseClassifier
+from src.ml.classifier.nn.cls.base import BaseBenchmark
 from src.ml.classifier.nn.cls.util.torch_util import TorchMixin
 from src.ml.classifier.nn.cls.util.torch_early_stopping import EarlyStopping
 from src.util.dynamic_import import DynamicImport 
@@ -110,7 +111,7 @@ class NN(nn.Module):
         return self.model(x)
 
 
-class DOC(BaseModel, TorchMixin, BaseClassifier):
+class DOC(BaseModel, TorchMixin, BaseBenchmark):
 
     # training related parameters
     batch_size: int
@@ -138,6 +139,9 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
     # filenames for plots and checkpoints
     filename_loss: str = "loss.png"
     filename_checkpoint: str = "checkpoint_doc_model.pth"
+
+    # hyperparameter tunining
+    perform_hyperopt: bool = False
 
     class Config:
         arbitrary_types_allowed = True
@@ -278,6 +282,17 @@ class DOC(BaseModel, TorchMixin, BaseClassifier):
         )
 
         return self.gaussian_models
+
+    @staticmethod
+    def get_hyperparameters(trial: optuna.Trial) -> Dict[Any, Any]:
+
+        params = {
+            'params': {
+                'batch_size': trial.suggest_categorical('batch_size', [16, 32, 64, 128, 256]),
+                'learning_rate': trial.suggest_float('learning_rate', 0.0, 1.0),
+        }}
+
+        return params
 
     @validate_call(config={"arbitrary_types_allowed": True})
     def fit(

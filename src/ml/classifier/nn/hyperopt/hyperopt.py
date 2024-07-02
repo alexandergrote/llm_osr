@@ -4,39 +4,16 @@ import optuna
 import yaml
 import os
 
-from abc import ABC, abstractmethod
-
 from typing import Union, Type, Any, Dict
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.v1.utils import deep_update
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.base import BaseClassifier
+from src.ml.classifier.nn.cls.base import BaseBenchmark
 from src.ml.evaluation.osr import Evaluator
 from src.util.constants import Directory
 from src.util.types import MLPrediction
-
-
-class BaseHyperParams(ABC):
-
-    @staticmethod
-    @abstractmethod
-    def get_params_for_study(trial: optuna.Trial) -> Dict[Any, Any]:
-        raise NotImplementedError()
-
-
-class DOCHyperParams(BaseHyperParams):
-
-    @staticmethod
-    def get_params_for_study(trial: optuna.Trial) -> Dict[Any, Any]:
-
-        params = {
-            'params': {
-                'batch_size': trial.suggest_categorical('batch_size', [16, 32, 64, 128, 256]),
-                'learning_rate': trial.suggest_float('learning_rate', 0.0, 1.0),
-        }}
-
-        return params
     
 
 class HyperTuner(BaseModel, BaseClassifier):
@@ -44,8 +21,7 @@ class HyperTuner(BaseModel, BaseClassifier):
     n_trials: int 
     timeout: int = 600
 
-    model: Union[dict, Type[BaseClassifier]]
-    hyperparams: Union[dict, Type[BaseHyperParams]]
+    model: Union[dict, Type[BaseBenchmark]]
     evaluator: Union[dict, Type[Evaluator]]
 
     @model_validator(mode="before")
@@ -68,44 +44,50 @@ class HyperTuner(BaseModel, BaseClassifier):
         return data
 
 
-    @field_validator('evaluator', 'hyperparams')
+    @field_validator('evaluator')
     def _set_model(cls, v):
         return DynamicImport.init_class_from_dict(dictionary=v)
     
-
-    def _objective(self, trial: optuna.Trial, model: Union[Dict[Any, Any], Type[BaseClassifier]], x_train: pd.DataFrame, x_valid: pd.DataFrame, y_train: pd.Series, y_valid: pd.Series, **kwargs):
-
-        if not isinstance(self.hyperparams, BaseHyperParams):
-            raise ValueError("Hyperparams is not an instance of BaseHyperParams")
-        
-        if isinstance(model, BaseClassifier):
-            raise ValueError("Model needs to be a dictionary")
-
-        params = self.hyperparams.get_params_for_study(trial)
+    @staticmethod
+    def init_model_from_params(model: dict, params: dict) -> Type[BaseBenchmark]:
 
         # update model with new params
         model = deep_update(model, params)
 
         # create model
-        model = DynamicImport.init_class_from_dict(dictionary=model) 
+        return DynamicImport.init_class_from_dict(dictionary=model) 
+    
 
-        if not isinstance(model, BaseClassifier):
-            raise ValueError("Model is not an instance of BaseClassifier")
+    def _objective(self, trial: optuna.Trial, model: Dict[Any, Any], x_train: pd.DataFrame, x_valid: pd.DataFrame, y_train: pd.Series, y_valid: pd.Series, **kwargs):
+        
+        if not isinstance(self.evaluator, Evaluator):
+            raise ValueError("Evaluator is not an instance of Evaluator")
 
-        model.fit(
+        model_cls = self.init_model_from_params(model, model)
+
+        params = model_cls.get_hyperparameters(trial)
+
+        model_cls = self.init_model_from_params(model, params)
+        
+        if not isinstance(model_cls, BaseBenchmark):
+            raise ValueError("Model is not an instance of BaseBenchmark")
+
+        model_cls.fit(
             x_train=x_train,
             y_train=y_train,
             x_valid=x_valid,
-            y_valid=y_valid
+            y_valid=y_valid,
+            **kwargs
         )
 
-        y_pred = model.predict(x_valid)
+        y_pred = model_cls.predict(x=x_valid)
 
         prediction = MLPrediction(
             y_pred=pd.Series(y_pred), 
             y_test=pd.Series(y_valid),
             classes_in_training=set(list(np.unique(y_train)))
         )
+
 
         result = self.evaluator.execute(
             prediction=prediction,
@@ -116,6 +98,7 @@ class HyperTuner(BaseModel, BaseClassifier):
 
     def _run_hyperparameter_search(
         self,
+        model: Dict[Any, Any],
         x_train: np.ndarray,
         y_train: np.ndarray,
         x_valid: np.ndarray,
@@ -132,7 +115,7 @@ class HyperTuner(BaseModel, BaseClassifier):
         study.optimize(
             lambda trial: self._objective(
                 trial, 
-                self.model,
+                model,
                 x_train,
                 x_valid,
                 y_train,
@@ -156,13 +139,11 @@ class HyperTuner(BaseModel, BaseClassifier):
         **kwargs
     ):
         
-        if not isinstance(self.hyperparams, BaseHyperParams):
-            raise ValueError("Hyperparams is not an instance of BaseHyperParams")
-        
         if not isinstance(self.model, dict):
             raise ValueError("Model needs to be a dictionary")
 
         study = self._run_hyperparameter_search(
+            model=self.model,
             x_train=x_train,
             y_train=y_train,
             x_valid=x_valid,
@@ -170,17 +151,16 @@ class HyperTuner(BaseModel, BaseClassifier):
             **kwargs
         )
 
-        # get best params
-        params = self.hyperparams.get_params_for_study(study.best_trial)
+        model_cls = self.init_model_from_params(self.model, self.model)
 
-        # update model with new params
-        model = deep_update(self.model, params)
+        # get best params
+        params = model_cls.get_hyperparameters(study.best_trial)
 
         # refit model
-        self.model = DynamicImport.init_class_from_dict(dictionary=model)
+        self.model = self.init_model_from_params(self.model, params)
 
-        if not isinstance(self.model, BaseClassifier):
-            raise ValueError("Model is not an instance of BaseClassifier")
+        if not isinstance(self.model, BaseBenchmark):
+            raise ValueError("Model is not an instance of BaseBenchmark")
 
         self.model.fit(
             x_train=x_train,
@@ -196,14 +176,14 @@ class HyperTuner(BaseModel, BaseClassifier):
 
     def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
 
-        if not isinstance(self.model, BaseClassifier):
-            raise ValueError("Model is not an instance of BaseClassifier")
+        if not isinstance(self.model, BaseBenchmark):
+            raise ValueError("Model is not an instance of BaseBenchmark")
 
         return self.model.predict(x, **kwargs)
     
     def predict_proba(self, x: np.ndarray, **kwargs) -> np.ndarray:
 
-        if not isinstance(self.model, BaseClassifier):
-            raise ValueError("Model is not an instance of BaseClassifier")
+        if not isinstance(self.model, BaseBenchmark):
+            raise ValueError("Model is not an instance of BaseBenchmark")
 
         return self.model.predict_proba(x, **kwargs)

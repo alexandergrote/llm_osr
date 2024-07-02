@@ -1,5 +1,5 @@
 from .naive import NaiveClf
-from .nn import DOC, MLP, HyperTuner, DOCHyperParams
+from .nn import DOC, MLP, HyperTuner
 from .llm import LLM
 
 __all__ = [
@@ -8,5 +8,4 @@ __all__ = [
     "LLM",
     "MLP",
     "HyperTuner",
-    "DOCHyperParams"
 ]

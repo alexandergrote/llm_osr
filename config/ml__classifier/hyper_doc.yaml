@@ -8,9 +8,6 @@ params:
       epochs: 100
       learning_rate: 0.01
       patience: 10
-  hyperparams: 
-    class: src.DOCHyperParams
-    params:
   evaluator: 
     class: src.Evaluator
     params:

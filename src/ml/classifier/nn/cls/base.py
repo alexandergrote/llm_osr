@@ -1,7 +1,15 @@
-from pydantic import BaseModel
+import optuna
+
+from abc import abstractmethod
+from typing import Dict, Any
 
 from src.ml.classifier.base import BaseClassifier
 
-class BaseNN(BaseModel, BaseClassifier):
+class BaseBenchmark(BaseClassifier):
     """Base class for Neural Network models. To be implemented"""
-    pass
+    
+    @staticmethod
+    @abstractmethod
+    def get_hyperparameters(trial: optuna.Trial) -> Dict[Any, Any]:
+        raise NotImplementedError()
+        

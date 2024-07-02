@@ -20,6 +20,7 @@ class TestHyperDoc(unittest.TestCase):
                 'ml__preprocessing=embedding',
                 'ml__classifier=hyper_doc',
                 'ml__classifier.params.model.params.epochs=1',
+                'ml__classifier.params.n_trials=1',
             ]
         )
 
