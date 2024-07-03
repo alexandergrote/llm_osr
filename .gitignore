@@ -21,3 +21,4 @@ multirun
 outputs
 venv
 notebooks
+checkpoints

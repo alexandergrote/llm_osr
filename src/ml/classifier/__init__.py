@@ -1,5 +1,5 @@
 from .naive import NaiveClf
-from .nn import DOC, MLP, HyperTuner, SimpleShot, Oslo
+from .nn import DOC, MLP, HyperTuner, SimpleShot, Oslo, SetFit
 from .llm import LLM
 
 __all__ = [
@@ -10,4 +10,5 @@ __all__ = [
     "HyperTuner",
     "SimpleShot",
     "Oslo",
+    "SetFit"
 ]

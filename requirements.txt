@@ -18,3 +18,4 @@ optuna
 langchain_community
 fastapi
 uvicorn
+setfit
