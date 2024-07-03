@@ -17,7 +17,7 @@ repos:
   hooks:
   - id: unittest
     name: unittest
-    entry: python -m unittest -f tests.unit
+    entry: pytest -s -v --cov-report term --cov=src --durations=0 tests/unit
     language: system
     types: [python]
     pass_filenames: false
@@ -25,7 +25,7 @@ repos:
     always_run: false
   - id: integration
     name: integration
-    entry: pytest -v -s tests/integration
+    entry: pytest -v -s --durations=0 tests/integration
     language: system
     types: [python]
     pass_filenames: false

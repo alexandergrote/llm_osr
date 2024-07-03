@@ -5,6 +5,7 @@
 .env
 *.db
 .vscode
+.coverage
 
 *.egg-info
 *.ipynb
