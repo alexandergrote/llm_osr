@@ -23,3 +23,11 @@ repos:
     pass_filenames: false
     verbose: true
     always_run: false
+  - id: integration
+    name: integration
+    entry: pytest -v -s tests/integration
+    language: system
+    types: [python]
+    pass_filenames: false
+    verbose: true
+    always_run: false

@@ -24,7 +24,7 @@ class TestMLP(unittest.TestCase):
 
 
     @patch("src.io.data_export.mlflow.Exporter.export", return_value=None)
-    @patch("src.io.data_import.base.BaseDataset.get_n_rows", return_value=1000)
+    @patch("src.io.data_import.base.BaseDataset.get_n_rows", return_value=100)
     @patch("src.main.get_hydra_output_dir", return_value=Path(temp_dir.name))
     def test_main(self, mock_export, mock_n_rows, mock_output_dir):
         self.assertIsNone(main(self.cfg))

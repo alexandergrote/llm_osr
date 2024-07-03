@@ -39,7 +39,7 @@ class TestFewShotLLM(unittest.TestCase):
         )
 
     @patch("src.io.data_export.mlflow.Exporter.export", return_value=None)
-    @patch("src.ml.classifier.llm.api.base.LangchainWrapper._call", return_value=mock_prediction)
+    @patch("src.ml.classifier.llm.util.langchain_wrappers.LangchainWrapper._call", return_value=mock_prediction)
     @patch("src.io.data_import.base.BaseDataset.get_n_rows", return_value=100)
     @patch("src.main.get_hydra_output_dir", return_value=Path(temp_dir.name))
     def test_main(self, mock_export, mock_llm, mock_n_rows, mock_output_dir):
