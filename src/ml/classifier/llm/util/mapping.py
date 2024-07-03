@@ -1,31 +1,10 @@
-from pydantic import BaseModel
 
 from src.ml.classifier.llm.api import OpenAIWrapper, HFWrapper, Llama
-from src.ml.classifier.llm.api.base import LangchainWrapper, LangchainWrapperRemote, RequestInput, RequestOutput, LLamaRequestOutput
+from src.ml.classifier.llm.util.langchain_wrappers import LangchainWrapper, LangchainWrapperRemote
+from src.ml.classifier.llm.util.request_utils import RequestInput, RequestOutput, LLamaRequestOutput, RequestFactory
 from src.util.lazy_dict import LazyDict
 from src.util.constants import LLMModels
-from src.util.environment import PydanticEnvironment
 
-
-env = PydanticEnvironment()
-
-
-class RequestFactory(BaseModel):
-
-    @classmethod
-    def create_hf_request_input(cls, url):
-
-        return RequestInput(
-            url=url,
-            prompt_key='inputs',
-            output_key='generated_text',
-            data={'parameters': {
-                "temperature": 0.01, 
-                "max_new_tokens": None,
-                "stop": ["}"]
-                }},
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {env.hf_token}"}
-        )
 
 Localhost_Remote_Input = RequestInput(
     url='http://localhost:1234/chat',
@@ -54,7 +33,7 @@ LLM_Mapping = LazyDict({
 
 if __name__ == '__main__':
 
-    model = LLM_Mapping[LLMModels.LLAMA_3_70B_Remote_HF]
+    model = LLM_Mapping[LLMModels.LLAMA_3_8B_Remote_HF]
 
     prompt = """
 

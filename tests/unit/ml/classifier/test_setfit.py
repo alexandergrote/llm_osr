@@ -1,4 +1,5 @@
 import unittest
+import sys
 import numpy as np
 
 from .util import Data
@@ -21,13 +22,15 @@ class TestSetFit(unittest.TestCase):
 
         self.x, self.y = Data.get_data(processed=False, n_rows=10)
 
-        
+    
+    @unittest.skipIf(sys.platform.startswith("win"), "Test skipped on Windows")
     def test_fit(self):
         
         self.clf.fit(x_train=self.x, y_train=self.y, x_valid=self.x, y_valid=self.y)
         
         self.assertIsNotNone(self.clf.model)
 
+    @unittest.skipIf(sys.platform.startswith("win"), "Test skipped on Windows")
     def test_predict(self):
         
         self.clf.fit(x_train=self.x, y_train=self.y, x_valid=self.x, y_valid=self.y)

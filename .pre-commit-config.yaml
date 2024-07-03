@@ -17,7 +17,7 @@ repos:
   hooks:
   - id: unittest
     name: unittest
-    entry: pytest
+    entry: python -m unittest -f tests.unit
     language: system
     types: [python]
     pass_filenames: false
