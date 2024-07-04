@@ -15,6 +15,7 @@ from src.ml.classifier.nn.cls.util.torch_early_stopping import EarlyStopping
 from src.util.dynamic_import import DynamicImport 
 from src.util.dict_extraction import DictExtraction
 from src.util.constants import UnknownClassLabel
+from src.ml.classifier.nn.cls.util.fewshot import compute_outlier_scores
 
 # set random seed for reproducibility
 torch.manual_seed(0)
@@ -365,6 +366,10 @@ class DOC(BaseModel, TorchMixin, BaseBenchmark):
 
         y_pred = self.gaussian_models.predict(y_pred_proba=clf_output)
         y_pred = LabellingUtilities.map_labels(y=y_pred, mapping=self.idx2label, target_dtype='str', unknown_value=UnknownClassLabel.UNKNOWN_STR.value)
+
+        if include_outlierscore:
+            outlier_score = compute_outlier_scores(y_pred_proba=clf_output)
+            return y_pred, outlier_score
 
         return y_pred
 

@@ -180,6 +180,12 @@ class Oslo(BaseModel, BaseBenchmark):
         y_pred = compute_predictions_from_logits(logits, self.unknown_threshold, outlier_scores.view(-1,)).numpy()
         y_pred = LabellingUtilities.map_labels(y=y_pred, mapping=self.idx2label, target_dtype='str', unknown_value=UnknownClassLabel.UNKNOWN_STR.value)
 
+        if include_outlierscore:
+
+            outlier_scores = outlier_scores.view(-1,).numpy()
+
+            return y_pred, outlier_scores
+
         return y_pred
 
     def predict_proba(self, x: np.ndarray, **kwargs) -> np.ndarray:

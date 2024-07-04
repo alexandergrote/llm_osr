@@ -10,6 +10,7 @@ from datasets import Dataset
 
 from src.ml.classifier.nn.cls.base import BaseBenchmark
 from src.util.constants import DatasetColumn
+from src.ml.classifier.nn.cls.util.fewshot import compute_outlier_scores
 
 # set random seed for reproducibility
 torch.manual_seed(0)
@@ -117,9 +118,12 @@ class SetFit(BaseModel, BaseBenchmark):
         assert len(x.shape) == 1, "Input data must be 1D"
 
         x_list = list(x)
-
-
         y_pred = self.model.predict(x_list)
+        y_pred_proba = self.model.predict_proba(x_list)
+
+        if include_outlierscore:
+            outlier_score = compute_outlier_scores(y_pred_proba=y_pred_proba)
+            return y_pred, outlier_score
 
         return y_pred
 

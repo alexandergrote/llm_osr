@@ -10,6 +10,7 @@ from src.ml.classifier.nn.cls.base import BaseBenchmark
 from src.ml.classifier.nn.cls.util.labelling import LabellingUtilities
 from src.ml.classifier.nn.cls.util.fewshot import compute_prototypes, compute_predictions_from_logits
 from src.util.constants import UnknownClassLabel
+from src.ml.classifier.nn.cls.util.fewshot import compute_outlier_scores
 
 # set random seed for reproducibility
 torch.manual_seed(0)
@@ -90,6 +91,11 @@ class SimpleShot(BaseModel, BaseBenchmark):
         y_pred = compute_predictions_from_logits(logits, self.unknown_threshold, outlier_scores=None).numpy()
 
         y_pred = LabellingUtilities.map_labels(y=y_pred, mapping=self.idx2label, target_dtype='str', unknown_value=UnknownClassLabel.UNKNOWN_STR.value)
+
+        if include_outlierscore:
+            y_pred_proba = logits.softmax(-1).numpy()
+            outlier_score = compute_outlier_scores(y_pred_proba=y_pred_proba)
+            return y_pred, outlier_score
 
         return y_pred
 
