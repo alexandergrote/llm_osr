@@ -1,6 +1,6 @@
 import numpy as np
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union, Tuple
 
 from src.ml.classifier.base import BaseClassifier
 
@@ -26,10 +26,13 @@ class NaiveClf(BaseClassifier, BaseModel):
 
         return None
 
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
         if any([self.y_train is None, self.y_valid is None]):
             raise ValueError("Model has not been trained yet")
+        
+        if include_outlierscore:
+            raise ValueError("Outlier score not implemented yet")
 
         labels = np.concatenate([self.y_train, self.y_valid])
 

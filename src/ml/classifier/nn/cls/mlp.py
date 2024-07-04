@@ -4,7 +4,7 @@ import torch.optim as optim
 import numpy as np
 from pydantic import BaseModel, validator, validate_call
 from pydantic.v1 import validate_arguments
-from typing import Optional, Any
+from typing import Optional, Any, Union, Tuple
 
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.nn.cls.util.torch_util import TorchMixin
@@ -245,7 +245,7 @@ class MLP(BaseModel, TorchMixin, BaseClassifier):
 
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
         if self.model is None:
             raise ValueError("Model not fitted")

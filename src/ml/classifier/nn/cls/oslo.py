@@ -4,7 +4,7 @@ import numpy as np
 from torch.nn import functional as F
 from pydantic import BaseModel, validate_call, confloat
 from pydantic.v1 import validate_arguments
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, Tuple
 from sklearn.neighbors import LocalOutlierFactor
 
 from src.ml.classifier.nn.cls.base import BaseBenchmark
@@ -101,7 +101,7 @@ class Oslo(BaseModel, BaseBenchmark):
 
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
         if self.prototypes is None:
             raise ValueError("Model not fitted")
@@ -114,6 +114,9 @@ class Oslo(BaseModel, BaseBenchmark):
         
         if self.outlier_model is None:
             raise ValueError("Outlier model not provided")
+        
+        if include_outlierscore:
+            raise ValueError("Outlier score not implemented yet")
         
         x_tensor = torch.Tensor(x)
 

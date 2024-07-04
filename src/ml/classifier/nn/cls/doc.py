@@ -6,7 +6,7 @@ import numpy as np
 from pydantic import BaseModel, validator, validate_call
 from pydantic.v1 import validate_arguments
 from scipy.stats import norm
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, Tuple
 
 from src.ml.classifier.nn.cls.base import BaseBenchmark
 from src.ml.classifier.nn.cls.util.torch_util import TorchMixin
@@ -345,7 +345,7 @@ class DOC(BaseModel, TorchMixin, BaseBenchmark):
         self._fit_gaussians(x_train, y_train)
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
         if self.model is None:
             raise ValueError("Model not fitted")

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, validate_call
 from pydantic.v1 import validate_arguments
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, Tuple
 from setfit import SetFitModel, Trainer, TrainingArguments
 from datasets import Dataset
 
@@ -106,10 +106,13 @@ class SetFit(BaseModel, BaseBenchmark):
         self.model = trainer.model
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
         if self.model is None:
             raise ValueError("Model not fitted")
+        
+        if include_outlierscore:
+            raise ValueError("Outlier score not implemented yet")
         
         assert len(x.shape) == 1, "Input data must be 1D"
 

@@ -4,7 +4,7 @@ import optuna
 import yaml
 import os
 
-from typing import Union, Type, Any, Dict
+from typing import Union, Type, Any, Dict, Tuple
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.v1.utils import deep_update
 
@@ -174,12 +174,15 @@ class HyperTuner(BaseModel, BaseClassifier):
 
         return kwargs
 
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
         if not isinstance(self.model, BaseBenchmark):
             raise ValueError("Model is not an instance of BaseBenchmark")
+        
+        if include_outlierscore:
+            raise ValueError("Outlier score not implemented yet")
 
-        return self.model.predict(x, **kwargs)
+        return self.model.predict(x, include_outlierscore=include_outlierscore, **kwargs)
     
     def predict_proba(self, x: np.ndarray, **kwargs) -> np.ndarray:
 

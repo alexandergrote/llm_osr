@@ -4,7 +4,7 @@ import numpy as np
 from torch.functional import F
 from pydantic import BaseModel, validate_call
 from pydantic.v1 import validate_arguments
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, Tuple
 
 from src.ml.classifier.nn.cls.base import BaseBenchmark
 from src.ml.classifier.nn.cls.util.labelling import LabellingUtilities
@@ -76,10 +76,13 @@ class SimpleShot(BaseModel, BaseBenchmark):
         self.prototypes = compute_prototypes(support_features=torch.Tensor(x_train), support_labels=torch.Tensor(y_train))
 
     @validate_arguments(config={"arbitrary_types_allowed": True})
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
         if self.prototypes is None:
             raise ValueError("Model not fitted")
+        
+        if include_outlierscore:
+            raise ValueError("Outlier score not implemented yet")
         
         x_tensor = torch.Tensor(x)
 

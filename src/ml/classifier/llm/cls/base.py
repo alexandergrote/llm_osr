@@ -115,7 +115,10 @@ class BaseLLM(BaseModel, BaseClassifier):
         return np.array(results)
 
 
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+
+        if include_outlierscore:
+            raise ValueError("Outlier score not implemented yet")
 
         result_list = []
 

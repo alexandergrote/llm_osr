@@ -1,8 +1,11 @@
 import numpy as np
 import pandas as pd
+
+from typing import Union, Tuple
 from abc import abstractmethod
-from src.interface.base import BaseExecutionBlock
 from pydantic.v1 import validate_arguments
+
+from src.interface.base import BaseExecutionBlock
 from src.util.types import MLDataFrame, MLPrediction
 
 
@@ -20,7 +23,7 @@ class BaseClassifier(BaseExecutionBlock):
         pass
 
     @abstractmethod
-    def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         pass
 
     @abstractmethod
@@ -39,7 +42,7 @@ class BaseClassifier(BaseExecutionBlock):
             **kwargs
         )
         y_pred = self.predict(
-            x=data_test.features(), 
+            x=data_test.features(),
             **kwargs
         )
 
