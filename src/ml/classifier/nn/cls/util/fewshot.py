@@ -34,6 +34,8 @@ def compute_outlier_scores(y_pred_proba: Union[torch.Tensor, np.ndarray]) -> Uni
     We define the outlier score as the negative maximum probability of the predicted classes.
     The higher the outlier score, the more likely the sample is an outlier.
 
+    Taken from https://arxiv.org/pdf/2301.08390 (page 4)
+
     Args:
         y_pred_proba: the predicted probabilities for each class, which can be either a torch.Tensor or a numpy.ndarray
     Returns:

@@ -29,6 +29,8 @@ class BaseLLM(BaseModel, BaseClassifier):
     y_train: Optional[np.ndarray] = None
     classes: Optional[np.ndarray] = None
     parser: Optional[Any] = None
+
+    logprobs: Optional[dict] = None
     
     class Config:
         arbitrary_types_allowed = True

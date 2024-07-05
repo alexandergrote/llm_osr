@@ -30,7 +30,7 @@ class SingleShotLLM(BaseLLM):
         prompt = prompt_creator.create_single_shot_prompt()
 
         retry_parser = RetryOutputParser.from_llm(parser=self.parser, llm=self.model, max_retries=3)
-
+        
         completion_chain = prompt | self.model
 
         main_chain = RunnableParallel(
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     })
 
     llm = SingleShotLLM(
-        model_str=LLMModels.LLAMA_3B_Remote.value
+        model_str=LLMModels.LLAMA_3_8B_Remote_HF.value
     )
 
     llm.fit(
