@@ -17,8 +17,12 @@ class TestMLP(unittest.TestCase):
         
         self.cfg = get_hydra_config(
             overrides=[
+                'ml__datasplit=fewshot_osr',
+                'ml__datasplit.params.n=5',
+                'ml__datasplit.params.replace=True',
                 'ml__preprocessing=embedding',
-                'ml__classifier=mlp'
+                'ml__classifier=mlp',
+                'ml__classifier.params.epochs=1',
             ]
         )
 
