@@ -3,6 +3,7 @@ import numpy as np
 from typing import Tuple
 
 from typing_extensions import Annotated
+from langchain_core import pydantic_v1
 from pydantic import Field, BaseModel, model_validator, StrictStr
 from typing import Optional, Set
 
@@ -11,6 +12,12 @@ from src.util.hashing import Hash
 
 # pydantic model fields
 Percentage = Annotated[float, Field(ge=0, le=1)]
+
+
+class LogProb(pydantic_v1.BaseModel):
+    text: str
+    logprob: float
+
 
 # custom dataframe
 class MLDataFrame(BaseModel):

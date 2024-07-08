@@ -30,6 +30,7 @@ class BaseLLM(BaseModel, BaseClassifier):
     classes: Optional[np.ndarray] = None
     parser: Optional[Any] = None
 
+    last_prompt: Optional[str] = None
     logprobs: Optional[dict] = None
     
     class Config:

@@ -1,8 +1,6 @@
 from pydantic import BaseModel
-from langchain_openai import ChatOpenAI
 from openai import OpenAI
 import numpy as np
-import json
 
 from typing import List, Dict
 
@@ -60,8 +58,6 @@ class OpenAIWrapper(BaseRemoteLLM, BackoffMixin, BaseModel):
         )
 
         answer = completion.choices[0].message.content
-
-        from IPython import embed; embed()
 
         logprob_dict = {el.token.strip().replace("'", "").replace('"', ''): el.logprob for el in completion.choices[0].logprobs.content}
 

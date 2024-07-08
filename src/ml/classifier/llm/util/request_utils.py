@@ -1,79 +1,76 @@
-from pydantic import BaseModel
-from typing import Any
+from typing import List
+from langchain_core import pydantic_v1
 
+from src.util.types import LogProb
 from src.util.environment import PydanticEnvironment
 
 
 env = PydanticEnvironment()
 
 
-class RequestInput(BaseModel):
 
-    url: str
+class RequestInputData(pydantic_v1.BaseModel):
+
+    url: str  # url to send the request to
     headers: dict = dict()
     data: dict = dict()
-    prompt_key: str
+    prompt_key: str  # to add the prompt to the data dynamically
 
 
-class RequestOutput(BaseModel):
+class RequestOutput(pydantic_v1.BaseModel):
     
-    output_key: str
-
-    @staticmethod
-    def get_response_from_single_obj(x: Any, output_key: str, **kwargs) -> str:
-
-        assert isinstance(x, dict), "Response should be a list of dictionaries"
-        assert output_key in x, f"{output_key} is required for this function"
-
-        result = x[output_key]
-
-        assert isinstance(result, str), "Response should be a string"
-
-        return result
+    text: str
+    logprobas: List[LogProb]
     
-    @staticmethod
-    def get_response_from_list_of_obj(x: Any, output_key: str, **kwargs) -> str:
+
+    @classmethod
+    def from_llama_hf_request(cls, x: List[dict], **kwargs) -> "RequestOutput":
 
         assert isinstance(x, list), "Response should be a list"
         assert len(x) == 1, "Response should be a list of length 1"
         
         el = x[-1]
 
-        text = RequestOutput.get_response_from_single_obj(x=el, output_key=output_key) 
+        assert 'generated_text' in el, "Response should contain 'generated_text' key"
+        assert 'details' in el, "Response should contain 'details' key"
 
-        return text
+        generated_text = el['generated_text']
+        details = el['details']
 
-    def format_response(self, x: Any, **kwargs) -> str:
-
-        if isinstance(x, list):
-            return self.get_response_from_list_of_obj(x=x, output_key=self.output_key, **kwargs)
-
-        if isinstance(x, dict):
-            return self.get_response_from_single_obj(x=x, output_key=self.output_key, **kwargs)
+        # extract logproba_output from the answer
+        assert 'tokens' in details, "Details should contain 'tokens' key"
         
-        raise ValueError("Response should be a list or a dictionary")
-    
+        tokens = details['tokens']
 
-class LLamaRequestOutput(RequestOutput):
+        assert isinstance(tokens, list), "Tokens should be a list"
+        assert len(tokens) > 0, "Tokens should not be empty"
 
-    def format_response(self, x: Any, **kwargs) -> str:
-        
-        raw_result = super().format_response(x, **kwargs)
+        for token in tokens:
+            assert 'text' in token, "Token should contain 'text' key"
+            assert 'logprob' in token, "Token should contain 'logprob' key"
 
         # extract json_str from the answer
         # Extract the JSON part from the text
-        start_index = raw_result.rfind('{')
-        end_index = raw_result.rfind('}') + 1
+        start_index = generated_text.rfind('{')
+        end_index = generated_text.rfind('}') + 1
+        text_response = generated_text[start_index:end_index]
 
-        return raw_result[start_index:end_index]
+        # extract logproba_output from the answer
+        logprobas = [LogProb(text=el['text'], logprob=el['logprob']) for el in tokens]
 
 
-class RequestFactory(BaseModel):
+        return cls(
+            text=text_response,
+            logprobas=logprobas
+        )
+
+
+class RequestFactory(pydantic_v1.BaseModel):
 
     @classmethod
-    def create_hf_request_input(cls, url):
+    def create_hf_llama_request_input(cls, url):
 
-        return RequestInput(
+        return RequestInputData(
             url=url,
             prompt_key='inputs',
             output_key='generated_text',

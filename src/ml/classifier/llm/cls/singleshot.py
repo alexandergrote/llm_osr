@@ -29,9 +29,12 @@ class SingleShotLLM(BaseLLM):
 
         prompt = prompt_creator.create_single_shot_prompt()
 
+        prompt_fmt = prompt.format_prompt(query=text)
+
         retry_parser = RetryOutputParser.from_llm(parser=self.parser, llm=self.model, max_retries=3)
         
         completion_chain = prompt | self.model
+
 
         main_chain = RunnableParallel(
             completion=completion_chain, prompt_value=prompt

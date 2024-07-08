@@ -1,26 +1,35 @@
-import hashlib
 import numpy as np
-import json
 
 from langchain_core import pydantic_v1
-from typing import List, Dict
+from typing import List, Dict, Union
 
-from src.ml.classifier.llm.cls.util.prediction import Prediction
+from src.ml.classifier.llm.cls.util.prediction import Prediction   
 
-class LLMLogProbResult(pydantic_v1.BaseModel):
+
+class OAILogProbResult(pydantic_v1.BaseModel):
 
     model: str
     query: str
     answer: Prediction
-    logprobs: Dict[str, float]
+    logprobs: Union[Dict[str, float], List[Dict[str, float]]]
 
     class Config:
         arbitrary_types_allowed = True
 
-    @property
-    def filename(self) -> str:
-        id_str = self.model + '_' + self.query
-        return hashlib.md5(id_str.encode()).hexdigest() + '.json'
+    @staticmethod
+    def calculate_linear_prob(log_prob):
+        return np.exp(log_prob)
+    
+    def _get_probs_from_dict(self, logprobs: Dict[str, float]) -> Dict[str, float]:
+        p_linear_dict = {}
+
+        for key, value in logprobs.items():
+            p_linear_dict[key] = self.calculate_linear_prob(value)
+
+        return p_linear_dict
+    
+    def _get_probs_from_list(self, logprobs: List[Dict[str, float]]) -> List[Dict[str, float]]:
+        return [self._get_probs_from_dict(d) for d in logprobs]
 
     @property
     def probs(self) -> Dict[str, float]:
@@ -28,7 +37,7 @@ class LLMLogProbResult(pydantic_v1.BaseModel):
         p_linear_dict = {}
 
         for key, value in self.logprobs.items():
-            p_linear_dict[key] = np.exp(value)
+            p_linear_dict[key] = self.calculate_linear_prob(value)
 
         return p_linear_dict
     
@@ -40,22 +49,7 @@ class LLMLogProbResult(pydantic_v1.BaseModel):
     @property
     def entropy(self) -> float:
         probs = np.array(list(self.probs.values())) 
-        return -np.sum(probs * np.log(probs))
-    
-    @staticmethod
-    def calculate_linear_prob(log_prob):
-        return np.exp(log_prob)
-    
-    def write_to_json(self):
-
-        with open(self.filename, 'w') as f:
-            json.dump(self.json(), f)
-
-    @classmethod
-    def from_json(cls, filename: str):
-
-        with open(filename, 'r') as f:
-            data = json.load(f)         
+        return -np.sum(probs * np.log(probs))    
     
     
 if __name__ == '__main__':
@@ -67,7 +61,7 @@ if __name__ == '__main__':
         reasoning='Because it is the capital of France'
     )
 
-    log_prob_result = LLMLogProbResult(
+    log_prob_result = OAILogProbResult(
         model='gpt-3',
         query='What is the capital of France?',
         answer=prediction,
@@ -78,11 +72,7 @@ if __name__ == '__main__':
         }
     )
     
-    print(log_prob_result.filename)
-    print(log_prob_result.json())
     print(log_prob_result.probs)
     print(log_prob_result.answer_probability)
     print(log_prob_result.entropy)
-
-    log_prob_result.write_to_json()
     
