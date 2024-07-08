@@ -1,12 +1,9 @@
 import pandas as pd
 
-from langchain_core.runnables import RunnableLambda, RunnableParallel
 from langchain.output_parsers import RetryOutputParser
-
 from typing import Union, Tuple
 
 from src.ml.classifier.llm.cls.base import BaseLLM
-from src.ml.classifier.llm.cls.util.prediction import Prediction
 from src.ml.classifier.llm.cls.util.prompt import PromptCreator
 from src.util.constants import DatasetColumn, LLMModels
 
@@ -27,22 +24,18 @@ class SingleShotLLM(BaseLLM):
             parser=self.parser
         )
 
-        prompt = prompt_creator.create_single_shot_prompt()
-
-        prompt_fmt = prompt.format_prompt(query=text)
+        prompt = prompt_creator.create_zero_shot_prompt()
+        prompt_key = PromptCreator.get_chain_input_field_name()
+        prompt_str = prompt.format(**{prompt_key: text})
 
         retry_parser = RetryOutputParser.from_llm(parser=self.parser, llm=self.model, max_retries=3)
         
-        completion_chain = prompt | self.model
-
-
-        main_chain = RunnableParallel(
-            completion=completion_chain, prompt_value=prompt
-        ) | RunnableLambda(lambda x: retry_parser.parse_with_prompt(**x))
-
         try:
-            chain_input: str = PromptCreator.get_chain_input_field_name()
-            answer: Prediction = main_chain.invoke({chain_input: text})
+            answer = self._retry(model=self.model, parser=retry_parser, prompt=prompt_str, retries=3)
+
+            if answer is None:
+                raise ValueError("No answer found")
+            
             answer_final: str = answer.label
             reasoning_final: str = answer.reasoning
 

@@ -1,13 +1,16 @@
 import numpy as np
 import os
 
+from copy import copy
 from abc import abstractmethod
 from tqdm import tqdm
 from pathlib import Path
-from langchain.output_parsers import PydanticOutputParser
+from langchain.output_parsers import PydanticOutputParser, RetryOutputParser
+from langchain_core.exceptions import OutputParserException
 from pydantic import BaseModel, model_validator
 from numpy import ndarray
 from typing import Any, Optional, List, Union, Tuple
+from langchain_core.prompts import PromptTemplate
 import concurrent.futures
 
 from src.ml.classifier.base import BaseClassifier
@@ -16,6 +19,19 @@ from src.ml.classifier.llm.util.mapping import LLM_Mapping
 from src.util.constants import UnknownClassLabel, LLMModels
 from src.util.caching import PickleCacheHandler
 from src.util.logging import console
+
+
+
+# prompts taken from retry output parser from langchain
+NAIVE_COMPLETION_RETRY = """Prompt:
+{prompt}
+Completion:
+{completion}
+
+Above, the Completion did not satisfy the constraints given in the Prompt.
+Please try again:"""
+
+NAIVE_RETRY_PROMPT = PromptTemplate.from_template(NAIVE_COMPLETION_RETRY)
 
 
 
@@ -42,6 +58,28 @@ class BaseLLM(BaseModel, BaseClassifier):
         data['model'] = LLM_Mapping[LLMModels(data['model_str'])]
 
         return data
+    
+    def _retry(self, model: Any, parser: RetryOutputParser, prompt: str, retries: int = 3) -> Optional[Prediction]:
+
+        # work on copy
+        prompt_copy = copy(prompt)
+
+        for _ in range(retries):
+
+            parsed_data = None
+
+            try:
+                completion = model._call(prompt=prompt_copy)
+                parsed_data = parser.parser.parse(completion)
+
+            except OutputParserException:
+
+                prompt_copy = NAIVE_RETRY_PROMPT.format(prompt=prompt_copy, completion=completion)
+
+            if parsed_data:
+                return parsed_data
+            
+        return None
 
     def fit(
         self,

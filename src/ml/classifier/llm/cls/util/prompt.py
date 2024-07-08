@@ -42,7 +42,7 @@ class PromptCreator(BaseModel):
     def get_chain_input_field_name() -> str:
         return "query"
     
-    def create_single_shot_prompt(self) -> PromptTemplate:
+    def create_zero_shot_prompt(self) -> PromptTemplate:
 
         template_msg = f"{self.prefix_prompt}\n{self.suffix_prompt}"
 
