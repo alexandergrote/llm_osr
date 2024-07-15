@@ -31,6 +31,7 @@ class SingleShotLLM(BaseLLM):
         retry_parser = RetryOutputParser.from_llm(parser=self.parser, llm=self.model, max_retries=3)
         
         try:
+            
             answer = self._retry(model=self.model, parser=retry_parser, prompt=prompt_str, retries=3)
 
             if answer is None:

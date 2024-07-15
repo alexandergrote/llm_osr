@@ -2,9 +2,10 @@ from pydantic import BaseModel
 from openai import OpenAI
 import numpy as np
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
-from src.ml.classifier.llm.api.base import BaseRemoteLLM
+from src.util.types import LogProb
+from src.ml.classifier.llm.api.base import AbstractLLM
 from src.ml.classifier.llm.util.backoff import BackoffMixin
 from src.util.environment import PydanticEnvironment
 
@@ -45,36 +46,29 @@ def get_completion(
     return completion
 
 
-class OpenAIWrapper(BaseRemoteLLM, BackoffMixin, BaseModel):
+class OpenAIWrapper(AbstractLLM, BackoffMixin, BaseModel):
 
     name: str
     
-    def __call__(self, *, prompt: str, **kwargs) -> str:
+    def __call__(self, *, prompt: str, **kwargs) -> Tuple[str, List[LogProb]]:
         
-        completion = get_completion(
+
+        completion = self.completion_with_backoff(
+            get_completion,
             messages=[{"role": "user", "content": prompt}],
             model=self.name,
             **kwargs
         )
 
-        answer = completion.choices[0].message.content
+        assert hasattr(completion, 'choices'), 'Completion does not have choices'
+        assert len(completion.choices) == 1, 'Completion does not have one choice'
+        assert hasattr(completion.choices[0], 'message'), 'Completion choice does not have message'
+        assert hasattr(completion.choices[0].message, 'content'), 'Completion choice message does not have content'
 
-        logprob_dict = {el.token.strip().replace("'", "").replace('"', ''): el.logprob for el in completion.choices[0].logprobs.content}
-
-        p_linear_dict = {}
-
-        for k, v in logprob_dict.items():
-            p_linear = np.round(np.exp(v)*100,2)
-            p_linear_dict[k] = p_linear
-
-        print(p_linear_dict)
-
-        #py_obj = json.loads(answer)
+        text = completion.choices[0].message.content
+        logprob_list = [LogProb(token=k, logprob=v) for k, v in completion.choices[0].logprobs.content]
         
-        #print(py_obj)
-        #print(p_linear_dict[py_obj['class'].strip().replace("'", "").replace('"', '')])
-
-        return answer
+        return text, logprob_list
     
 
 if __name__ == '__main__':

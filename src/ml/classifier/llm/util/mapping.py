@@ -1,16 +1,8 @@
 
 from src.ml.classifier.llm.api import OpenAIWrapper
-from src.ml.classifier.llm.util.langchain_wrappers import LangchainWrapper, LangchainWrapperRemote
-from src.ml.classifier.llm.util.request_utils import RequestInputData, RequestOutput, RequestFactory
+from src.ml.classifier.llm.util.request_utils import RequestOutput, RequestFactory
 from src.util.lazy_dict import LazyDict
 from src.util.constants import LLMModels
-
-
-Localhost_Remote_Input = RequestInputData(
-    url='http://localhost:1234/chat',
-    prompt_key='prompt',
-    output_key='response',
-)
 
 Llama3_8B_Remote_HF_Input = RequestFactory.create_hf_llama_request_input(url='https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8b-Instruct')
 Llama3_70B_Remote_HF_Input = RequestFactory.create_hf_llama_request_input(url='https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-70b-Instruct')
