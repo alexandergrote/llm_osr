@@ -1,16 +1,13 @@
-import warnings
 
 import pandas as pd
 from tqdm import tqdm
-from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
 
+
+from src.ml.util.cached_sentence_encoder import CachedSentenceEncoder
 from src.ml.preprocessing.base import BasePreprocessor
 from src.util.constants import DatasetColumn as dfc
-from src.util.caching import PickleCacheHandler
-from src.util.logging import console
 from src.util.hashing import Hash
 
 
@@ -38,32 +35,10 @@ class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
         data_copy = data.copy()
         data_copy[dfc.FEATURES] = None
 
-        # load sentence transformer model
-        with warnings.catch_warnings():
-            
-            warnings.simplefilter(action='ignore', category=FutureWarning)
-
-            embedding_params: dict = self.embedding_model_params or {}
-            
-            model = SentenceTransformer(
-                model_name_or_path=self.embedding_model_name,
-                **embedding_params
-            )
-
-        # keep track of processed data in dict
-        filename = Path(self.__class__.__name__) / f"{self.embedding_model_name}.pkl"
-
-        cache_handler = PickleCacheHandler(
-            filepath=filename
+        model = CachedSentenceEncoder(
+            embedding_model_name=self.embedding_model_name,
+            embedding_model_params=self.embedding_model_params
         )
-
-        # load dict from file if it exists
-        processed_data: Optional[Any] = cache_handler.read()
-
-        if processed_data is None:
-            processed_data = {}
-
-        assert isinstance(processed_data, dict), "processed data must be a dictionary"
 
         # iterate over data
         embeddings = []
@@ -75,33 +50,13 @@ class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
 
             text = row[dfc.TEXT]
 
-            # transform text
-            try:
-
-                # check if text is already processed
-                if text in processed_data:
-                    embedding = processed_data[text]
-                else:
-                
-                    embedding = model.encode(text)        
-
-            except Exception as e:
-
-                console.log(f"Error processing text: {text}")
-                
-                # save processed data to not lose progress
-                cache_handler.write(processed_data)
-                
-                raise e
+            embedding = model.encode(text)        
 
             # append data
             embeddings.append(embedding)
         
         # update data
         data_copy[dfc.FEATURES] = embeddings
-
-        # save processed data
-        cache_handler.write(processed_data)
 
         return data_copy
 
