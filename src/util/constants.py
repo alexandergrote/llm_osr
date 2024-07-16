@@ -75,3 +75,15 @@ class LLMModels(BaseEnum):
 class UnknownClassLabel(BaseEnum):
     UNKNOWN_STR = 'unknown'
     UNKNOWN_NUM = -1
+
+class ErrorValues(BaseEnum):
+    PARSING_STR = 'parse_error'
+    PARSING_NUM = -2
+    
+
+RESTAPI_URLS = {
+    LLMModels.LLAMA_3_8B_Remote_HF: 'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8b-Instruct',
+    LLMModels.LLAMA_3_70B_Remote_HF: 'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-70b-Instruct',
+    LLMModels.OAI_GPT3: 'https://api.openai.com/v1/chat/completions',
+    LLMModels.OAI_GPT4: 'https://api.openai.com/v1/chat/completions',
+}

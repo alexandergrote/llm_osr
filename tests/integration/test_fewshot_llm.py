@@ -5,14 +5,15 @@ from pathlib import Path
 
 from tests.integration.util import get_hydra_config
 from src.main import main
-from src.util.constants import UnknownClassLabel
+from src.util.types import LogProb
+from src.ml.classifier.llm.util.request import RequestOutput
 
-mock_prediction = f"""
-{{
-    "reasoning": "The model predicts that the card is about to expire",
-    "label": "{UnknownClassLabel.UNKNOWN_STR.value}"
-}}
-"""
+
+mock_request_output = RequestOutput(
+    text="The model predicts that the card is about to expire",
+    logprobas=[LogProb(text='hi', logprob=-0.1)]
+)
+    
 
 temp_dir = TemporaryDirectory()
 
@@ -39,7 +40,7 @@ class TestFewShotLLM(unittest.TestCase):
         )
 
     @patch("src.io.data_export.mlflow.Exporter.export", return_value=None)
-    @patch("src.ml.classifier.llm.util.langchain_wrappers.LangchainWrapper._call", return_value=mock_prediction)
+    @patch("src.ml.classifier.llm.util.rest.LLM.__call__", return_value=mock_request_output)
     @patch("src.io.data_import.base.BaseDataset.get_n_rows", return_value=100)
     @patch("src.main.get_hydra_output_dir", return_value=Path(temp_dir.name))
     def test_main(self, mock_export, mock_llm, mock_n_rows, mock_output_dir):

@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Optional, Dict
 from pydantic import BaseModel
 
-from src.util.constants import UnknownClassLabel
+from src.util.constants import UnknownClassLabel, ErrorValues
 
 
 class ClassMapper(BaseModel):
@@ -16,7 +16,8 @@ class ClassMapper(BaseModel):
         unique_values.sort()
 
         mapping = {
-            UnknownClassLabel.UNKNOWN_STR.value: UnknownClassLabel.UNKNOWN_NUM.value
+            UnknownClassLabel.UNKNOWN_STR.value: UnknownClassLabel.UNKNOWN_NUM.value,
+            ErrorValues.PARSING_STR.value: ErrorValues.PARSING_NUM.value
         }
 
         for idx, value in enumerate(unique_values):

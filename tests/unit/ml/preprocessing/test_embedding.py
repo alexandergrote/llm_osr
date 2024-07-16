@@ -25,9 +25,6 @@ class TestEmbeddingPreprocessor(unittest.TestCase):
         # Apply transform
         transformed_data = self.preprocessor._transform(self.data)
 
-        print(self.data)
-        print(transformed_data)
-
         # Check if the transformed data is equal to the original data
         self.assertTrue(transformed_data[[DatasetColumn.TEXT]].equals(self.data))
         self.assertIn(DatasetColumn.FEATURES, transformed_data.columns.to_list())

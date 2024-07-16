@@ -1,17 +1,17 @@
 import numpy as np
 import pandas as pd
 
-from langchain.output_parsers import RetryOutputParser
-from typing import Dict, List, Union, Tuple
+from typing import Dict, List, Optional
 
-from src.ml.classifier.llm.cls.base import BaseLLM
-from src.ml.classifier.llm.cls.util.prompt import PromptCreator
+from src.ml.classifier.llm.util.logprob import LogProbScore
+from src.ml.classifier.llm.base import AbstractClassifierLLM
+from src.ml.classifier.llm.util.prompt import PromptCreator
 from src.util.constants import DatasetColumn, LLMModels
 from src.util.environment import PydanticEnvironment
 
 env = PydanticEnvironment()
 
-class FewShotLLM(BaseLLM):
+class FewShotLLM(AbstractClassifierLLM):
 
     def _get_examples(self, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:
 
@@ -41,7 +41,8 @@ class FewShotLLM(BaseLLM):
 
         return examples
 
-    def _single_predict(self, text: str, output_reasoning: bool = False) -> Union[str, Tuple[str, str]]:
+
+    def _single_predict(self, text: str) -> Optional[LogProbScore]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -66,39 +67,22 @@ class FewShotLLM(BaseLLM):
         )
         prompt_key = PromptCreator.get_chain_input_field_name()
         prompt_str = prompt.format(**{prompt_key: text})
-
-        retry_parser = RetryOutputParser.from_llm(parser=self.parser, llm=self.model, max_retries=3)
-
-        try:
-
-            answer = self._retry(model=self.model, parser=retry_parser, prompt=prompt_str, retries=3)
-
-            if answer is None:
-                raise ValueError("No answer found")
             
-            answer_final: str = answer.label
-            reasoning_final: str = answer.reasoning
+        logprob_score = self._get_parsed_output(model=self.model, parser=self.parser, prompt=prompt_str, retries=3)
 
-        except Exception as e:
-
-            print(e)
-
-            answer_final = 'ERROR'
-            reasoning_final = 'ERROR'
-
-        if output_reasoning is True:
-            return answer_final, reasoning_final
-
-        return answer_final
+        if logprob_score is None:
+            return None
+        
+        return logprob_score
 
 
 if __name__ == '__main__':
 
-    import time
+    import numpy as np
 
     data = pd.DataFrame({
-        DatasetColumn.FEATURES: ["Hi, ich heiße Alex", "Auf Wiedersehen!"],
-        DatasetColumn.LABEL: ['Greeting', 'Goodbye']
+        DatasetColumn.FEATURES: ["Ich heiße Alex", "Auf Wiedersehen!", "Hallo"],
+        DatasetColumn.LABEL: ['Greeting', 'Goodbye', "Greeting"]
     })
 
     llm = FewShotLLM(
@@ -113,26 +97,16 @@ if __name__ == '__main__':
         
     )
 
-    text_list = ["Buenos dias", "Eine Katze läuft über die Straße", "Go away", "Tschüss"] * 2
-
-
-    # benchmark with batch predict
-
-    start = time.time()
-
-    result = llm.predict_batch(text_list)
-
-    print("Time taken: ", time.time() - start)
+    result = llm._single_predict(text="Hello")
 
     print(result)
 
-    start = time.time()
+    result2 = llm.predict(
+        x=np.array([["Hello"]], dtype=np.object_),
+        include_outlierscore=True
+    )
 
-    result = [llm._single_predict(text, output_reasoning=True) for text in text_list]
-    print("Time taken: ", time.time() - start)
-
-    for text, el in zip(text_list, result):
-        print(el[0], text, el[1])
+    print(result2)
 
     
 
