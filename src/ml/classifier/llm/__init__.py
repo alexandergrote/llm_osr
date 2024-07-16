@@ -1,4 +1,4 @@
-from .cls.fewshot import FewShotLLM as LLM
+from .fewshot import FewShotLLM as LLM
 
 __all__ = [
     "LLM"

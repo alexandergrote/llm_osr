@@ -1,33 +1,18 @@
 
-from src.ml.classifier.llm.api import OpenAIWrapper, HFWrapper, Llama
-from src.ml.classifier.llm.util.langchain_wrappers import LangchainWrapper, LangchainWrapperRemote
-from src.ml.classifier.llm.util.request_utils import RequestInput, RequestOutput, LLamaRequestOutput, RequestFactory
+from src.ml.classifier.llm.util.request import RequestOutput, RequestInputData
+from src.ml.classifier.llm.util.rest import LLM as RestLLM
 from src.util.lazy_dict import LazyDict
-from src.util.constants import LLMModels
+from src.util.constants import LLMModels, RESTAPI_URLS
 
+Llama3_8B_Remote_HF_Input = RequestInputData.create_hf_llama_request_input(url=RESTAPI_URLS[LLMModels.LLAMA_3_8B_Remote_HF])
+Llama3_70B_Remote_HF_Input = RequestInputData.create_hf_llama_request_input(url=RESTAPI_URLS[LLMModels.LLAMA_3_70B_Remote_HF])
 
-Localhost_Remote_Input = RequestInput(
-    url='http://localhost:1234/chat',
-    prompt_key='prompt',
-    output_key='response',
-)
-
-Localhost_Remote_Output = RequestOutput(output_key='response')
-
-Llama3_8B_Remote_HF_Input = RequestFactory.create_hf_request_input(url='https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8b-Instruct')
-Llama3_70B_Remote_HF_Input = RequestFactory.create_hf_request_input(url='https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-70b-Instruct')
-
-Llama3_Remote_HF_Output = LLamaRequestOutput(output_key='generated_text')
-
+GPT3_5_Turbo_Input = RequestInputData.create_openai_request_input(name='gpt-3.5-turbo-0125')
 
 LLM_Mapping = LazyDict({
-    LLMModels.OAI_GPT4: (LangchainWrapper, {'name': 'gpt-3.5', 'custom_model': OpenAIWrapper(name='gpt-3.5-turbo-0125')}),
-    LLMModels.OAI_GPT3: (LangchainWrapper, {'name':'gpt-3.5', 'custom_model': OpenAIWrapper(name='gpt-3.5-turbo-0125')}),
-    LLMModels.OAI_GPT2: (LangchainWrapper, {'name':'gpt-2', 'custom_model': HFWrapper(name='gpt2')}),
-    LLMModels.LLAMA_3B_Local: (LangchainWrapper, {'name':'llama-3b', 'custom_model': Llama(name='llama')}),
-    LLMModels.LLAMA_3_8B_Remote: (LangchainWrapperRemote, {'name':'llama-3b', 'request_input': Localhost_Remote_Input, 'request_output': Localhost_Remote_Output}),
-    LLMModels.LLAMA_3_8B_Remote_HF: (LangchainWrapperRemote, {'name':'llama-3b', 'request_input': Llama3_8B_Remote_HF_Input, 'request_output': Llama3_Remote_HF_Output}),
-    LLMModels.LLAMA_3_70B_Remote_HF: (LangchainWrapperRemote, {'name':'llama-3b', 'request_input': Llama3_70B_Remote_HF_Input, 'request_output': Llama3_Remote_HF_Output})
+    LLMModels.OAI_GPT3: (RestLLM, {'name': 'gpt-3.5-turbo', 'request_input': GPT3_5_Turbo_Input, 'request_output_formatter': RequestOutput.from_openai_request}),
+    LLMModels.LLAMA_3_8B_Remote_HF: (RestLLM, {'name':'llama-8b', 'request_input': Llama3_8B_Remote_HF_Input, 'request_output_formatter': RequestOutput.from_llama_hf_request}),
+    LLMModels.LLAMA_3_70B_Remote_HF: (RestLLM, {'name':'llama-70b', 'request_input': Llama3_70B_Remote_HF_Input, 'request_output_formatter': RequestOutput.from_llama_hf_request})
 })
 
 
@@ -39,7 +24,7 @@ if __name__ == '__main__':
 
     "Is this a greeting? 'hello'"
 
-    You must say either 'yes' or 'no'.
+    You must say either köljafdjklöas if 'yes' or abc if 'no'.
     You must provide reasoning for your answer.
 
     Responde with the following schema at the end of your response:
@@ -51,6 +36,6 @@ if __name__ == '__main__':
 
 """
 
-    result = model._call(prompt=prompt)
+    result = model(prompt=prompt)
 
     print(result)

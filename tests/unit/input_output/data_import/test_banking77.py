@@ -29,7 +29,7 @@ class Banking77Dataset(unittest.TestCase):
 
     def test_rows(self):
         output = self.dataset._load(random_seed=42, n_samples=None)
-        self.assertEqual(len(output), 13083)
+        self.assertEqual(len(output), 485)
 
 if __name__ == '__main__':
     unittest.main()

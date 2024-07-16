@@ -1,16 +1,16 @@
 import pandas as pd
 
-from langchain.output_parsers import RetryOutputParser
-from typing import Union, Tuple
+from typing import Optional
 
-from src.ml.classifier.llm.cls.base import BaseLLM
-from src.ml.classifier.llm.cls.util.prompt import PromptCreator
+from src.ml.classifier.llm.base import AbstractClassifierLLM
+from src.ml.classifier.llm.util.prompt import PromptCreator
+from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.util.constants import DatasetColumn, LLMModels
 
 
-class SingleShotLLM(BaseLLM):
+class ZeroShotLLM(AbstractClassifierLLM):
 
-    def _single_predict(self, text: str, output_reasoning: bool = False) -> Union[str, Tuple[str, str]]:
+    def _single_predict(self, text: str) -> Optional[LogProbScore]:
         
         if self.classes is None:
             raise ValueError("Not fitted")
@@ -27,39 +27,25 @@ class SingleShotLLM(BaseLLM):
         prompt = prompt_creator.create_zero_shot_prompt()
         prompt_key = PromptCreator.get_chain_input_field_name()
         prompt_str = prompt.format(**{prompt_key: text})
-
-        retry_parser = RetryOutputParser.from_llm(parser=self.parser, llm=self.model, max_retries=3)
-
-        try:
-            answer = self._retry(model=self.model, parser=retry_parser, prompt=prompt_str, retries=3)
-
-            if answer is None:
-                raise ValueError("No answer found")
             
-            answer_final: str = answer.label
-            reasoning_final: str = answer.reasoning
+        logprob_score = self._get_parsed_output(model=self.model, parser=self.parser, prompt=prompt_str, retries=3)
 
-        except Exception as e:
-
-            print(e)
-
-            answer_final = 'ERROR'
-            reasoning_final = 'ERROR'
-
-        if output_reasoning is True:
-            return answer_final, reasoning_final
-
-        return answer_final
+        if logprob_score is None:
+            return None
+        
+        return logprob_score
 
 
 if __name__ == '__main__':
+
+    import numpy as np
 
     data = pd.DataFrame({
         DatasetColumn.FEATURES: ["Ich heiße Alex", "Auf Wiedersehen!"],
         DatasetColumn.LABEL: ['Greeting', 'Goodbye']
     })
 
-    llm = SingleShotLLM(
+    llm = ZeroShotLLM(
         model_str=LLMModels.LLAMA_3_8B_Remote_HF.value
     )
 
@@ -75,6 +61,9 @@ if __name__ == '__main__':
 
     print(result)
 
-    result = llm.predict_batch(["Hello", "Goodbye"])
-    print(result)
+    result2 = llm.predict(
+        x=np.array([["Hello"]], dtype=np.object_),
+        include_outlierscore=True
+    )
 
+    print(result2)

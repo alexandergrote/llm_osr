@@ -30,9 +30,10 @@ class BankingDataset(BaseDataset, BaseModel):
 
         filename = self.data_home / "banking77.parquet"
 
-        """if filename.exists():
+        # to speed up the process, we "cache" the data in a parquet file
+        if filename.exists():
             data = pd.read_parquet(filename)
-            return data"""
+            return data
 
         dataset = load_dataset("banking77")
         train_data = dataset["train"].to_pandas()

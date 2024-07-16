@@ -12,6 +12,12 @@ from src.util.hashing import Hash
 # pydantic model fields
 Percentage = Annotated[float, Field(ge=0, le=1)]
 
+
+class LogProb(BaseModel):
+    text: str
+    logprob: float
+
+
 # custom dataframe
 class MLDataFrame(BaseModel):
 
