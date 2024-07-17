@@ -115,9 +115,6 @@ class Oslo(BaseModel, BaseBenchmark):
         if self.outlier_model is None:
             raise ValueError("Outlier model not provided")
         
-        if include_outlierscore:
-            raise ValueError("Outlier score not implemented yet")
-        
         x_tensor = torch.Tensor(x)
 
         num_classes = self.support_labels.unique().size(0)

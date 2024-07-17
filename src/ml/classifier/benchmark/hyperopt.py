@@ -179,9 +179,6 @@ class HyperTuner(BaseModel, BaseClassifier):
         if not isinstance(self.model, BaseBenchmark):
             raise ValueError("Model is not an instance of BaseBenchmark")
         
-        if include_outlierscore:
-            raise ValueError("Outlier score not implemented yet")
-
         return self.model.predict(x, include_outlierscore=include_outlierscore, **kwargs)
     
     def predict_proba(self, x: np.ndarray, **kwargs) -> np.ndarray:

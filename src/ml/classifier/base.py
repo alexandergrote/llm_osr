@@ -41,8 +41,9 @@ class BaseClassifier(BaseExecutionBlock):
             y_valid=data_valid.target(),
             **kwargs
         )
-        y_pred = self.predict(
+        y_pred, _ = self.predict(
             x=data_test.features(),
+            include_outlierscore=True,
             **kwargs
         )
 

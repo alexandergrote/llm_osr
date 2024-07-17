@@ -81,10 +81,7 @@ class SimpleShot(BaseModel, BaseBenchmark):
 
         if self.prototypes is None:
             raise ValueError("Model not fitted")
-        
-        if include_outlierscore:
-            raise ValueError("Outlier score not implemented yet")
-        
+                
         x_tensor = torch.Tensor(x)
 
         logits = self.get_logits_from_cosine_distances_to_prototypes(samples=x_tensor)

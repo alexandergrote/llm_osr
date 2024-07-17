@@ -112,9 +112,6 @@ class SetFit(BaseModel, BaseBenchmark):
         if self.model is None:
             raise ValueError("Model not fitted")
         
-        if include_outlierscore:
-            raise ValueError("Outlier score not implemented yet")
-        
         assert len(x.shape) == 1, "Input data must be 1D"
 
         x_list = list(x)
