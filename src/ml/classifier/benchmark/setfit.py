@@ -8,9 +8,9 @@ from typing import Optional, Dict, Any, Union, Tuple
 from setfit import SetFitModel, Trainer, TrainingArguments
 from datasets import Dataset
 
-from src.ml.classifier.nn.cls.base import BaseBenchmark
+from src.ml.classifier.benchmark.base import BaseBenchmark
 from src.util.constants import DatasetColumn
-from src.ml.classifier.nn.cls.util.fewshot import compute_outlier_scores
+from src.ml.classifier.benchmark.util.fewshot import compute_outlier_scores
 
 # set random seed for reproducibility
 torch.manual_seed(0)

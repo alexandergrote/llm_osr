@@ -29,9 +29,9 @@ class HWUDataset(BaseDataset, BaseModel):
 
         filename = self.data_home / "hwu64.parquet"
 
-        """if filename.exists():
+        if filename.exists():
             data = pd.read_parquet(filename)
-            return data"""
+            return data
 
         # Modified URL to point to the raw content
         base_url = 'https://raw.githubusercontent.com/jianguoz/Few-Shot-Intent-Detection/main/Datasets/HWU64/'

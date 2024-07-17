@@ -4,7 +4,7 @@ import numpy as np
 
 from .util import Data
 
-from src.ml.classifier.nn.cls.setfit import SetFit
+from src.ml.classifier.benchmark.setfit import SetFit
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
 

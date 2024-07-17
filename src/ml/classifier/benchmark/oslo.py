@@ -7,9 +7,9 @@ from pydantic.v1 import validate_arguments
 from typing import Optional, Dict, Any, Union, Tuple
 from sklearn.neighbors import LocalOutlierFactor
 
-from src.ml.classifier.nn.cls.base import BaseBenchmark
-from src.ml.classifier.nn.cls.util.labelling import LabellingUtilities
-from src.ml.classifier.nn.cls.util.fewshot import compute_prototypes, compute_predictions_from_logits
+from src.ml.classifier.benchmark.base import BaseBenchmark
+from src.ml.classifier.benchmark.util.labelling import LabellingUtilities
+from src.ml.classifier.benchmark.util.fewshot import compute_prototypes, compute_predictions_from_logits
 from src.util.constants import UnknownClassLabel
 
 # set random seed for reproducibility

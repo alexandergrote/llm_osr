@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from src.ml.classifier.nn.cls.naive import NaiveClf
+from src.ml.classifier.benchmark.naive import NaiveClf
 
 
 class TestNaiveClf(unittest.TestCase):

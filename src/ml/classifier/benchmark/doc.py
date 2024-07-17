@@ -8,14 +8,14 @@ from pydantic.v1 import validate_arguments
 from scipy.stats import norm
 from typing import Optional, Dict, Any, Union, Tuple
 
-from src.ml.classifier.nn.cls.base import BaseBenchmark
-from src.ml.classifier.nn.cls.util.torch_util import TorchMixin
-from src.ml.classifier.nn.cls.util.labelling import LabellingUtilities
-from src.ml.classifier.nn.cls.util.torch_early_stopping import EarlyStopping
+from src.ml.classifier.benchmark.base import BaseBenchmark
+from src.ml.classifier.benchmark.util.torch_util import TorchMixin
+from src.ml.classifier.benchmark.util.labelling import LabellingUtilities
+from src.ml.classifier.benchmark.util.torch_early_stopping import EarlyStopping
 from src.util.dynamic_import import DynamicImport 
 from src.util.dict_extraction import DictExtraction
 from src.util.constants import UnknownClassLabel
-from src.ml.classifier.nn.cls.util.fewshot import compute_outlier_scores
+from src.ml.classifier.benchmark.util.fewshot import compute_outlier_scores
 
 # set random seed for reproducibility
 torch.manual_seed(0)

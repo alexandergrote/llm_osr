@@ -10,7 +10,7 @@ from pydantic.v1.utils import deep_update
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.base import BaseClassifier
-from src.ml.classifier.nn.cls.base import BaseBenchmark
+from src.ml.classifier.benchmark.base import BaseBenchmark
 from src.ml.evaluation.osr import Evaluator
 from src.util.constants import Directory
 from src.util.types import MLPrediction

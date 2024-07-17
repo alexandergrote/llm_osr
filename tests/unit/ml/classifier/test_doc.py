@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .util import Data
 
-from src.ml.classifier.nn.cls.doc import DOC, GaussianModels
+from src.ml.classifier.benchmark.doc import DOC, GaussianModels
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
 

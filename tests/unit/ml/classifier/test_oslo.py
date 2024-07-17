@@ -3,7 +3,7 @@ import numpy as np
 
 from .util import Data
 
-from src.ml.classifier.nn.cls import Oslo
+from src.ml.classifier.benchmark import Oslo
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
 

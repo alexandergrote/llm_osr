@@ -1,5 +1,5 @@
-from .nn.cls.naive import NaiveClf
-from .nn import DOC, MLP, HyperTuner, SimpleShot, Oslo, SetFit
+from .benchmark.naive import NaiveClf
+from .benchmark import DOC, MLP, HyperTuner, SimpleShot, Oslo, SetFit
 from .llm import LLM
 
 __all__ = [

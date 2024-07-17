@@ -3,7 +3,7 @@ import numpy as np
 
 from .util import Data
 
-from src.ml.classifier.nn.cls.simpleshot import SimpleShot
+from src.ml.classifier.benchmark.simpleshot import SimpleShot
 from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
 

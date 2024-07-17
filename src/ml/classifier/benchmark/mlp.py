@@ -7,12 +7,12 @@ from pydantic.v1 import validate_arguments
 from typing import Optional, Any, Union, Tuple
 
 from src.ml.classifier.base import BaseClassifier
-from src.ml.classifier.nn.cls.util.torch_util import TorchMixin
-from src.ml.classifier.nn.cls.util.torch_early_stopping import EarlyStopping
+from src.ml.classifier.benchmark.util.torch_util import TorchMixin
+from src.ml.classifier.benchmark.util.torch_early_stopping import EarlyStopping
 from src.util.dynamic_import import DynamicImport 
 from src.util.dict_extraction import DictExtraction
 from src.util.constants import UnknownClassLabel
-from src.ml.classifier.nn.cls.util.fewshot import compute_outlier_scores
+from src.ml.classifier.benchmark.util.fewshot import compute_outlier_scores
 
 # set random seed for reproducibility
 torch.manual_seed(0)
