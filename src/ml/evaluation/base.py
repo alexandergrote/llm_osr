@@ -42,7 +42,13 @@ class BaseEvaluator(ABC):
         ).values)
 
         # evaluate
-        result = self.evaluate(y_pred=y_pred, y_true=y_true, classes_in_training=unique_classes, **kwargs)
+        result = self.evaluate(
+            y_pred=y_pred, 
+            y_true=y_true, 
+            classes_in_training=unique_classes, 
+            unknown_scores=prediction.outlier_score,
+            **kwargs
+        )
 
         console.log(result['metrics']['f1_avg'])
 

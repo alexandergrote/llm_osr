@@ -10,6 +10,7 @@ class TestEvaluator(unittest.TestCase):
         # Set up test data
         self.y_true = np.array([0, 1, 1, 0, 2])
         self.y_pred = np.array([0, 1, 0, 0, -1])
+        self.outlier_score = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
         self.classes_in_training = {0, 1}
 
         # Set up evaluator
@@ -22,7 +23,10 @@ class TestEvaluator(unittest.TestCase):
             y_pred=self.y_pred,
             y_true=self.y_true,
             classes_in_training=self.classes_in_training,
+            unknown_scores=self.outlier_score
         )['metrics']
+
+        print(final_result)
 
         test_options = [
             ('precision_known_class_0', 2/3),

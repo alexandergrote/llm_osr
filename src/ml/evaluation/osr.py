@@ -10,6 +10,8 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     accuracy_score,
+    roc_curve, 
+    auc
 )
 
 from sklearn.metrics._classification import UndefinedMetricWarning
@@ -20,8 +22,8 @@ from src.ml.evaluation.base import BaseEvaluator
 
 class Evaluator(BaseModel, BaseEvaluator):
 
+    @staticmethod
     def _add_binary_result(
-        self,
         data: dict,
         y_true: np.ndarray,
         y_pred: np.ndarray,
@@ -76,6 +78,7 @@ class Evaluator(BaseModel, BaseEvaluator):
         y_pred: np.ndarray,
         name_tag: str,
         unknown_classes: List[int],
+        **kwargs
     ):
 
         truth = y_true.copy()
@@ -107,10 +110,19 @@ class Evaluator(BaseModel, BaseEvaluator):
         data["ratio_unknown_pred"] = np.sum(binary_pred) / len(binary_pred)
         data["ratio_unknown_true"] = np.sum(binary_test) / len(binary_test)
 
+        outlier_score = kwargs.get('unknown_scores', None)
+
+        if outlier_score is not None:
+            
+            fpr, tpr, _ = roc_curve(binary_test, outlier_score)
+            roc_auc = auc(fpr, tpr)
+
+            data['unknown_scores_auc'] = roc_auc
+
         return data
 
+    @staticmethod
     def _add_overall_results(
-        self,
         data: dict,
         y_true: np.ndarray,
         y_pred: np.ndarray,
@@ -174,6 +186,7 @@ class Evaluator(BaseModel, BaseEvaluator):
                 y_pred=y_pred,
                 name_tag="unknown",
                 unknown_classes=np.setdiff1d(y_true, classes),
+                **kwargs
             )
 
             # add overall results to the results
@@ -201,3 +214,27 @@ class Evaluator(BaseModel, BaseEvaluator):
         kwargs['y_true'] = y_true
 
         return kwargs
+    
+
+if __name__ == "__main__":
+    
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+
+    outlier_score = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99])
+    y_true = np.array([0, 0, 1, 1, 1, 1, 1, 0, 1, 1])
+
+    fpr, tpr, thresholds = roc_curve(y_true, outlier_score)
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+    plt.show()
