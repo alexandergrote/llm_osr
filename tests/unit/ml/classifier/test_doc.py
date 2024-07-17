@@ -20,6 +20,8 @@ class TestDOC(unittest.TestCase):
             filename=config_classifier_dir / 'doc.yaml'
         )
 
+        self.clf.epochs = 1
+
         self.x, self.y = Data.get_data()
         
     def test_fit(self):

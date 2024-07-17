@@ -41,7 +41,8 @@ class BaseClassifier(BaseExecutionBlock):
             y_valid=data_valid.target(),
             **kwargs
         )
-        y_pred, _ = self.predict(
+        
+        y_pred, outlier_score = self.predict(
             x=data_test.features(),
             include_outlierscore=True,
             **kwargs
@@ -53,7 +54,8 @@ class BaseClassifier(BaseExecutionBlock):
         kwargs["prediction"] = MLPrediction(
             y_pred=pd.Series(y_pred),
             y_test=pd.Series(y_test),
-            classes_in_training=list(set(data_train.target()))
+            classes_in_training=list(set(data_train.target())),
+            outlier_score=pd.Series(outlier_score)
         )
         
         return kwargs

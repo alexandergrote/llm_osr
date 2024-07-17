@@ -94,6 +94,7 @@ class MLPrediction(BaseModel):
     y_test: pd.Series
 
     classes_in_training: Set[StrictStr]  # set of classes in training, needed for evaluation
+    outlier_score: Optional[pd.Series] = None  # score for being unknown, that is not being reflected in training data
 
 
     class Config:
@@ -127,6 +128,12 @@ class MLPrediction(BaseModel):
         # check for NaN values
         assert not self.y_pred.isnull().any(), "Prediction contains NaN values"
         assert not self.y_test.isnull().any(), "Test set contains NaN values"
+
+        # check outlier scores if given
+        if self.outlier_score is not None:
+            assert len(self.outlier_score) == len(self.y_pred), "Length of prediction and outlier scores do not match"
+            assert pd.api.types.is_float_dtype(self.outlier_score.dtype), "Outlier scores must be of type int"
+            assert not self.outlier_score.isnull().any(), "Outlier scores contain NaN values"
 
         # check for classes
         assert len(self.classes_in_training) > 0, "Classes in training must be provided"

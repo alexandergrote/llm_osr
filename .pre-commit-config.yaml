@@ -17,7 +17,7 @@ repos:
   hooks:
   - id: unittest
     name: unittest
-    entry: pytest -s -v --cov-report term --cov=src --durations=0 tests/unit
+    entry: pytest -s -v --cov-report term-missing --cov=src --durations=0 tests/unit
     language: system
     types: [python]
     pass_filenames: false
