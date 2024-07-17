@@ -31,3 +31,11 @@ repos:
     pass_filenames: false
     verbose: true
     always_run: false
+  - id: end2end
+    name: end2end
+    entry: pytest -v -s --durations=0 tests/end2end
+    language: system
+    types: [python]
+    pass_filenames: false
+    verbose: true
+    always_run: false
