@@ -2,7 +2,7 @@ class: src.HyperTuner
 params:
   n_trials: 100
   model:
-    class: src.SimpleShot
+    class: src.Oslo
     params: 
       unknown_threshold: -0.05
   evaluator: 

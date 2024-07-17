@@ -5,21 +5,20 @@ from tempfile import TemporaryDirectory
 
 from tests.integration.util import get_hydra_config
 from src.main import main
-from src.util.constants import Directory
 
 
 temp_dir = TemporaryDirectory()
 
 
-class TestDoc(unittest.TestCase):
+class TestHyperSimpleShot(unittest.TestCase):
 
     def setUp(self):
         
         self.cfg = get_hydra_config(
             overrides=[
                 'ml__preprocessing=embedding',
-                'ml__classifier=doc',
-                'ml__classifier.params.epochs=1'
+                'ml__classifier=hyper_simpleshot',
+                'ml__classifier.params.n_trials=1'
             ]
         )
 
@@ -34,9 +33,6 @@ class TestDoc(unittest.TestCase):
 
         temp_dir.cleanup()
 
-        # remove generated files
-        for filename in ['checkpoint_doc_model.pth', 'loss.png']:
-            (Directory.ROOT / filename).unlink(missing_ok=True)
 
 if __name__ == '__main__':
     unittest.main()
