@@ -25,8 +25,14 @@ for path in paths:
 
 
 def get_hydra_output_dir() -> Path:
-    config = hydra.core.hydra_config.HydraConfig
-    return Path(config.get().runtime.output_dir)
+
+    try:
+        config = hydra.core.hydra_config.HydraConfig
+        return Path(config.get().runtime.output_dir)
+    
+    except ValueError:
+        return Directory.OUTPUT_DIR
+    
 
 
 class File:

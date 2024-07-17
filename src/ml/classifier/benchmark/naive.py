@@ -30,9 +30,6 @@ class NaiveClf(BaseClassifier, BaseModel):
 
         if any([self.y_train is None, self.y_valid is None]):
             raise ValueError("Model has not been trained yet")
-        
-        if include_outlierscore:
-            raise ValueError("Outlier score not implemented yet")
 
         labels = np.concatenate([self.y_train, self.y_valid])
 
@@ -42,7 +39,12 @@ class NaiveClf(BaseClassifier, BaseModel):
         # get most frequent label
         most_frequent_label = unique[np.argmax(counts)]
 
-        return np.full(x.shape[0], most_frequent_label)
+        y_pred = np.full(x.shape[0], most_frequent_label)
+        
+        if include_outlierscore:
+            return y_pred, np.zeros(x.shape[0])
+
+        return y_pred
         
 
     def predict_proba(self, x: np.ndarray, **kwargs) -> np.ndarray:

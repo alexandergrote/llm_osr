@@ -3,7 +3,7 @@ from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from tests.integration.util import get_hydra_config
+from src.util.load_hydra import get_hydra_config
 from src.main import main
 from src.util.constants import Directory
 
