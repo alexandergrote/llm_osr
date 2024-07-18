@@ -1,0 +1,7 @@
+- name: fewshot_naive
+  overrides:
+    - io__import=banking,clinc,hwu 
+    - ml__classifier=naive
+    - ml__datasplit=fewshot_osr
+    - ml__datasplit.params.percentage_unknown_classes=0,0.2,0.4,0.6
+    - random_seed=0,1,2,3,4

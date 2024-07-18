@@ -8,35 +8,23 @@ Current caching solutions may have io issues when in parallel mode.
 
 import multiprocessing
 import typer
-from pydantic import BaseModel
-from typing import List
+from typing import Optional
 
-from src.util.load_hydra import get_hydra_config
-from src.main import main
-
-
-class Experiment(BaseModel):
-
-    overrides: List[str]
-
-    def run(self):
-
-        config = get_hydra_config(overrides=self.overrides)
-
-        main(config)
+from src.experiments import Experiment
+from src.util.constants import Directory
 
 
-doc_experiment = Experiment(overrides=[])
+experiments = Experiment.create_experiments_from_yaml(
+    path=Directory.CONFIG / "experiments" / "fewshot.yaml"
+)
 
 
+def run_experiments(num_processes: int = 1, filter_by_experiment: Optional[str] = None):
 
-experiments = [
-    doc_experiment,
-    doc_experiment
-]
+    global experiments
 
-
-def run_experiments(num_processes: int = 1):
+    if filter_by_experiment is not None:
+        experiments = [experiment for experiment in experiments if experiment.name == filter_by_experiment]
 
     if num_processes < 1:
         raise ValueError("Number of processes must be greater than 0.")
@@ -61,11 +49,6 @@ def run_experiments(num_processes: int = 1):
 
 
 if __name__ == "__main__":
-
-    import time
-
-    start_time = time.time()
-
     typer.run(run_experiments)
 
-    print(f"Time taken: {time.time() - start_time} seconds.")
+    

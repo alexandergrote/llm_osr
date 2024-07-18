@@ -86,6 +86,9 @@ class TestYamlConfig(TestCase):
             if yaml_filepath.name == "config.yaml":
                 continue
 
+            if yaml_filepath.parent.name == 'experiments':
+                continue
+
             yaml_dict = self._load_yaml_file(path=yaml_filepath)
 
             if not yaml_dict:
