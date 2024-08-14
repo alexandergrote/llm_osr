@@ -7,10 +7,11 @@ from src.util.constants import Directory
 from src.io.data_import.mlflow_engine import QueryEngine
 from src.experiments.analysis.base import BaseAnalyser
 from src.util.logging import console
+from src.util.mlflow_columns import id_columns, f1_analysis_columns
 
 experiments = Experiment.create_experiments_from_yaml(
-        path=Directory.CONFIG / "experiments" / "fewshot.yaml"
-    )
+    path=Directory.CONFIG / "experiments" / "fewshot.yaml"
+)
 
 class FewShotAnalyser(BaseModel, BaseAnalyser):
 
@@ -19,9 +20,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         # work on copy
         data_copy = data.copy(deep=True)
 
-        metric_col = "metrics.f1_avg"
-        dataset_col = "params.io__import.class"
-        perc_unknown_col = "params.ml__datasplit.params.percentage_unknown_classes"
+        metric_col, dataset_col, perc_unknown_col = f1_analysis_columns.f1_avg.column_name, id_columns.dataset.column_name, id_columns.perc_unknown_classes.column_name
 
         all_columns = [metric_col, perc_unknown_col, dataset_col]
 
@@ -30,7 +29,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
 
         data_copy_grouped = data_copy.groupby([dataset_col, perc_unknown_col])[metric_col].mean().reset_index()
 
-        console.log(data_copy_grouped)
+        print(data_copy_grouped)
     
 
 def main():
@@ -40,6 +39,8 @@ def main():
     analyser = FewShotAnalyser()   
 
     for experiment in experiments:
+
+        console.log(f"Analyse experiment: {experiment.name}")
 
         data = mlflow_engine.get_results_of_single_experiment(experiment_name=experiment.name, n=100)
         

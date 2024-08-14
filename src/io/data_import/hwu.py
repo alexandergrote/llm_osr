@@ -57,6 +57,9 @@ class HWUDataset(BaseDataset, BaseModel):
                     raise Exception(f"Failed to retrieve data from {url}")
                 
             data = pd.DataFrame(tmp)
+
+        # remove rows with empty labels
+        data = data[data[DatasetColumn.LABEL] != '']
         
 
         if self.filter is not None:

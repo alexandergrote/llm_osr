@@ -5,6 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 from typing import List
 
 # load package specific code
+from src.io.data_import.mlflow_engine import QueryEngine
 from src.interface.execution_block import ExecutionBlock
 from src.util.constants import DictConfigNames, Directory, File, get_hydra_output_dir
 from src.util.logging import console
@@ -21,6 +22,11 @@ warnings.filterwarnings(
 def main(cfg: DictConfig) -> None:
 
     console.rule(f"Executing experiment: {cfg['name']}")
+
+    # check if experiment run exists
+    if QueryEngine.check_if_experiment_run_exists(config=cfg):
+        console.log(f"Experiment {cfg['name']} exists. Aborting.")
+        return
 
     # convert omega configuration dictionary to native python dictionary
     # needed to dynamically edit the dictionary
@@ -49,6 +55,7 @@ def main(cfg: DictConfig) -> None:
     # execute sequence
     for el in event_blocks:
         output = el.execute(**output)
+
 
 if __name__ == "__main__":
     main()

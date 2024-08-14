@@ -31,7 +31,10 @@ class Experiment(BaseModel):
         # and does not allow --multirun
         final_command = sys.executable + f" {str(Directory.SRC / 'main.py')} --multirun " + " ".join(overrides_copy)
         console.log(final_command)
-        os.system(final_command)
+        return_code = os.system(final_command)
+
+        if return_code != 0:
+            raise RuntimeError(f"Experiment {self.name} failed with return code {return_code}")
 
     @classmethod
     def create_experiments_from_yaml(cls, path: Path) -> List["Experiment"]:

@@ -21,7 +21,7 @@ class TestHWUDataset(unittest.TestCase):
 
     def test_rows(self):
         output = self.dataset._load(random_seed=42)
-        self.assertEqual(len(output), 11109)
+        self.assertEqual(len(output), 11106)
 
 if __name__ == '__main__':
     unittest.main()

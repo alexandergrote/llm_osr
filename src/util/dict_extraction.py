@@ -1,10 +1,29 @@
 import importlib
 import yaml
+import copy
 from pydantic import BaseModel
+from omegaconf import DictConfig
 from pydantic.v1.utils import deep_update
-from typing import Iterable, Tuple, Union
+from typing import Iterable, Tuple, Union, List
 
 from src.util.constants import YamlField
+
+
+def get_nested_dict_values(list_of_keys: List[List[str]], dictionary: DictConfig) -> List[str]:
+
+    attributes = []
+
+    for keys in list_of_keys:
+
+        tmp = copy.copy(dictionary)
+
+        # get value from config
+        for k in keys:
+            tmp = tmp[k]
+
+        attributes.append(tmp)
+
+    return attributes        
 
 
 def convert(value, type_):
@@ -97,4 +116,3 @@ class DictExtraction(BaseModel):
         return DictExtraction.get_class_obj_and_params(
             dictionary=dictionary
         )
-        
