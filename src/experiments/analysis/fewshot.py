@@ -1,13 +1,11 @@
-import typer
 import pandas as pd
 from pydantic import BaseModel
 
-from src.experiments import Experiment
-from src.util.constants import Directory
-from src.io.data_import.mlflow_engine import QueryEngine
-from src.experiments.analysis.base import BaseAnalyser
 from src.util.logging import console
 from src.util.mlflow_columns import id_columns, f1_analysis_columns
+from src.experiments import Experiment
+from src.util.constants import Directory
+from src.experiments.analysis.base import BaseAnalyser
 
 experiments = Experiment.create_experiments_from_yaml(
     path=Directory.CONFIG / "experiments" / "fewshot.yaml"
@@ -29,23 +27,4 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
 
         data_copy_grouped = data_copy.groupby([dataset_col, perc_unknown_col])[metric_col].mean().reset_index()
 
-        print(data_copy_grouped)
-    
-
-def main():
-
-    mlflow_engine = QueryEngine()
-
-    analyser = FewShotAnalyser()   
-
-    for experiment in experiments:
-
-        console.log(f"Analyse experiment: {experiment.name}")
-
-        data = mlflow_engine.get_results_of_single_experiment(experiment_name=experiment.name, n=100)
-        
-        analyser.analyse(data=data)
-
-
-if __name__ == '__main__':
-    typer.run(main)
+        console.log(data_copy_grouped)
