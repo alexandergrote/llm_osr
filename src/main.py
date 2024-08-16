@@ -8,7 +8,10 @@ from typing import List
 from src.io.data_import.mlflow_engine import QueryEngine
 from src.interface.execution_block import ExecutionBlock
 from src.util.constants import DictConfigNames, Directory, File, get_hydra_output_dir
-from src.util.logging import console
+from src.util.logger import console
+from src.util.environment import PydanticEnvironment
+
+env = PydanticEnvironment.from_environment()
 
 warnings.filterwarnings(
     "ignore"
@@ -51,6 +54,9 @@ def main(cfg: DictConfig) -> None:
 
     # init sequence
     event_blocks: List[ExecutionBlock] = [ExecutionBlock(name=key, block=cfg[key]) for key in sequence]
+
+    if env.is_dryrun_mode():
+        return
 
     # execute sequence
     for el in event_blocks:

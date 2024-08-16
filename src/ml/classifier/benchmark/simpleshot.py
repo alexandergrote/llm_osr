@@ -3,6 +3,7 @@ import optuna
 import numpy as np
 from torch.functional import F
 from pydantic import BaseModel, validate_call
+from pydantic.config import ConfigDict
 from pydantic.v1 import validate_arguments
 from typing import Optional, Dict, Any, Union, Tuple
 
@@ -27,8 +28,7 @@ class SimpleShot(BaseModel, BaseBenchmark):
     unknown_threshold: float = -0.05
 
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
 
     @staticmethod
@@ -61,6 +61,12 @@ class SimpleShot(BaseModel, BaseBenchmark):
 
         assert len(x_train.shape) == 2, "Input data must be 2D"
         assert len(y_train.shape) == 1, "Labels must be 1D"
+        assert len(x_valid.shape) == 2, "Input data must be 2D"
+        assert len(y_valid.shape) == 1, "Labels must be 1D"
+
+        # check feature dtype
+        assert np.issubdtype(x_train.dtype, np.floating), "Features must be of type float"
+        assert np.issubdtype(x_valid.dtype, np.floating), "Features must be of type float"
 
         # prepare label mapping
         self.label2idx, self.idx2label = LabellingUtilities.create_label_mapping(y=y_train)

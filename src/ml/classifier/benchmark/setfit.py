@@ -3,6 +3,7 @@ import optuna
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, validate_call
+from pydantic.config import ConfigDict
 from pydantic.v1 import validate_arguments
 from typing import Optional, Dict, Any, Union, Tuple
 from setfit import SetFitModel, Trainer, TrainingArguments
@@ -31,8 +32,7 @@ class SetFit(BaseModel, BaseBenchmark):
     # osr threshold
     unknown_threshold: float = -0.05
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
 
     @staticmethod

@@ -1,7 +1,7 @@
 import pandas as pd
 from pydantic import BaseModel
 
-from src.util.logging import console
+from src.util.logger import console
 from src.util.mlflow_columns import id_columns, f1_analysis_columns
 from src.experiments import Experiment
 from src.util.constants import Directory

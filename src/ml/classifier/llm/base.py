@@ -6,11 +6,12 @@ from tqdm import tqdm
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.exceptions import OutputParserException
 from pydantic import BaseModel, model_validator
+from pydantic.config import ConfigDict
 from numpy import ndarray
 from typing import Optional, Union, Tuple
 from langchain_core.prompts import PromptTemplate
 
-from src.util.logging import console
+from src.util.logger import console
 from src.util.constants import ErrorValues
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.llm.util.prediction import PredictionV1, Prediction
@@ -37,7 +38,7 @@ NAIVE_RETRY_PROMPT = PromptTemplate.from_template(NAIVE_COMPLETION_RETRY)
 class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
     model: AbstractLLM
-    model_str: str
+    clf_str: str
 
     # placeholders, values will be set later
     x_train: Optional[np.ndarray] = None
@@ -45,13 +46,12 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
     classes: Optional[np.ndarray] = None
     parser: Optional[PydanticOutputParser] = None
     
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode='before')
     def _init_model(data: dict):
 
-        data['model'] = LLM_Mapping[LLMModels(data['model_str'])]
+        data['model'] = LLM_Mapping[LLMModels(data['clf_str'])]
 
         return data
     

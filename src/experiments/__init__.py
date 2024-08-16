@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from src.util.constants import Directory
-from src.util.logging import console
 
 
 class Experiment(BaseModel):
@@ -24,13 +23,13 @@ class Experiment(BaseModel):
 
         overrides_copy = copy(self.overrides)
 
+        overrides_copy.append(f"name={self.name}")
         overrides_copy.append("io__export=mlflow")
         overrides_copy.append(f"io__export.params.experiment_name={self.name}")
 
         # defaulting to os.system because compose api is limited
         # and does not allow --multirun
         final_command = sys.executable + f" {str(Directory.SRC / 'main.py')} --multirun " + " ".join(overrides_copy)
-        console.log(final_command)
         return_code = os.system(final_command)
 
         if return_code != 0:

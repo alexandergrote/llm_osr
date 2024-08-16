@@ -7,9 +7,7 @@ from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.ml.classifier.llm.util.prompt import PromptCreator
 from src.util.constants import DatasetColumn, LLMModels
-from src.util.environment import PydanticEnvironment
 
-env = PydanticEnvironment()
 
 class FewShotLLM(AbstractClassifierLLM):
 
@@ -86,7 +84,7 @@ if __name__ == '__main__':
     })
 
     llm = FewShotLLM(
-        model_str=LLMModels.LLAMA_3_8B_Remote_HF.value
+        clf_str=LLMModels.LLAMA_3_8B_Remote_HF.value
     )
 
     llm.fit(

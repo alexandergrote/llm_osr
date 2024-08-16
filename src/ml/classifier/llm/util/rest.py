@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Callable, Optional
 from pydantic import BaseModel
+from pydantic.config import ConfigDict
 
 from src.util.caching import JsonCache
 from src.util.hashing import Hash
@@ -26,8 +27,7 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
     request_output_formatter: Callable
     request_output: Optional[RequestOutput] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __call__(self, *, prompt: str, **kwargs) -> RequestOutput:
         

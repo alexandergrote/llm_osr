@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 from typing import Optional
 from pydantic import BaseModel
+from pydantic.config import ConfigDict
 
 
 from src.ml.util.cached_sentence_encoder import CachedSentenceEncoder
@@ -16,8 +17,7 @@ class EmbeddingPreprocessor(BaseModel, BasePreprocessor):
     embedding_model_name: str = 'paraphrase-MiniLM-L6-v2'
     embedding_model_params: Optional[dict] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def hash(self, *args, **kwargs) -> str:
         return Hash.hash_recursive(self.embedding_model_name, self.embedding_model_params)

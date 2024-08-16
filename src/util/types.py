@@ -4,6 +4,7 @@ from typing import Tuple
 
 from typing_extensions import Annotated
 from pydantic import Field, BaseModel, model_validator, StrictStr
+from pydantic.config import ConfigDict
 from typing import Optional, Set
 
 from src.util.constants import DatasetColumn
@@ -27,8 +28,7 @@ class MLDataFrame(BaseModel):
     feature_column: Optional[str]
     target_column: str
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
     @model_validator(mode='after')
@@ -96,10 +96,7 @@ class MLPrediction(BaseModel):
     classes_in_training: Set[StrictStr]  # set of classes in training, needed for evaluation
     outlier_score: Optional[pd.Series] = None  # score for being unknown, that is not being reflected in training data
 
-
-    class Config:
-        arbitrary_types_allowed = True
-
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
     @model_validator(mode='before')
     def _escape_numpy_dtype(data):

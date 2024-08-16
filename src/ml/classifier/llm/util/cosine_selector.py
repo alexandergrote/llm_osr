@@ -6,7 +6,7 @@ from typing import List
 
 from src.ml.util.cached_sentence_encoder import CachedSentenceEncoder
 from src.util.constants import DatasetColumn as dfc
-from src.util.logging import console
+from src.util.logger import console
 
 
 class CosineSelector(BaseModel):

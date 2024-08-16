@@ -3,7 +3,7 @@ from typing import Any, Union, Dict
 from src.interface.base import BaseExecutionBlock
 from pydantic import BaseModel, validator
 from src.util.dynamic_import import DynamicImport
-from src.util.logging import console
+from src.util.logger import console
 
 
 class ExecutionBlock(BaseExecutionBlock, BaseModel):

@@ -7,7 +7,15 @@ from tempfile import TemporaryDirectory
 from src.experiments import Experiment
 from src.experiments.main import execute
 
-experiments = [Experiment(name='tmp', overrides=[])]
+overrides = [
+    "io__import=hwu",
+    "ml__classifier=naive",
+    "ml__datasplit=fewshot_osr",
+    "ml__datasplit.params.percentage_unknown_classes=0",
+    "random_seed=0,1"
+]
+
+experiments = [Experiment(name='tmp', overrides=overrides)]
 
 temp_dir = TemporaryDirectory()
 

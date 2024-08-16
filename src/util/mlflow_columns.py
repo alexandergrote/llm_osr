@@ -28,6 +28,12 @@ class IDColumns(BaseModel):
         verbose_str='dataset'
     )
 
+    seed: MLFlowColumn = MLFlowColumn(
+        column_name="params.random_seed",
+        yaml_keys=["random_seed"],
+        verbose_str="seed"
+    )
+
     def get_columns(self) -> List[MLFlowColumn]:
         return [el[1] for el in self]
 

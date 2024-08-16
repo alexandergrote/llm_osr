@@ -5,7 +5,7 @@ from src.util.types import LogProb
 from src.util.environment import PydanticEnvironment
 
 
-env = PydanticEnvironment()
+env = PydanticEnvironment.from_environment()
 
 
 def add_prompt_to_data_hf(*, data: dict, prompt_value: str, **kwargs) -> dict:

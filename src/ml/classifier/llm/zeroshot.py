@@ -46,7 +46,7 @@ if __name__ == '__main__':
     })
 
     llm = ZeroShotLLM(
-        model_str=LLMModels.LLAMA_3_8B_Remote_HF.value
+        clf_str=LLMModels.LLAMA_3_8B_Remote_HF.value
     )
 
     llm.fit(

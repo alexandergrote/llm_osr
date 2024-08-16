@@ -5,7 +5,7 @@ from pydantic.v1 import validate_arguments
 from typing import Set
 
 from src.util.types import MLPrediction
-from src.util.logging import console
+from src.util.logger import console
 from src.ml.evaluation.util.class_mapping import ClassMapper
 
 

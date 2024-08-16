@@ -1,5 +1,11 @@
+import warnings
+
 from pydantic import BaseModel, Field, validator
+from pydantic.warnings import PydanticDeprecatedSince20
 from langchain import pydantic_v1
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 
 
 class Prediction(BaseModel):
@@ -7,7 +13,7 @@ class Prediction(BaseModel):
     reasoning: str = Field(description="The reasoning behind the prediction")
     label: str = Field(description="The predicted label")
 
-    @validator("label", allow_reuse=True)
+    @validator("label")
     def label_must_be_valid(cls, label: str):
 
         if not hasattr(cls, 'valid_labels'):
@@ -25,7 +31,7 @@ class PredictionV1(pydantic_v1.BaseModel):
     reasoning: str = pydantic_v1.Field(description="The reasoning behind the prediction")
     label: str = pydantic_v1.Field(description="The predicted label")
 
-    @pydantic_v1.validator("label", allow_reuse=True)
+    @pydantic_v1.validator("label")
     def label_must_be_valid(cls, label: str):
 
         if not hasattr(cls, 'valid_labels'):

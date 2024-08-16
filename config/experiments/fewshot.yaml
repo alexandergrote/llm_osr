@@ -8,7 +8,8 @@
 
 - name: fewshot_simpelshot
   overrides:
-    - io__import=banking,clinc,hwu 
+    - io__import=banking,clinc,hwu
+    - ml__preprocessing=embedding
     - ml__classifier=simpleshot
     - ml__datasplit=fewshot_osr
     - ml__datasplit.params.percentage_unknown_classes=0,0.2,0.4,0.6

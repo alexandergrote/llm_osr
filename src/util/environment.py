@@ -1,10 +1,10 @@
 import os
 from pydantic import BaseModel
+from pydantic.config import ConfigDict
 from dotenv import load_dotenv
 from typing import Optional
 
 from src.util.constants import EnvMode
-from src.util.logging import console
 
 
 load_dotenv()
@@ -12,53 +12,68 @@ load_dotenv()
 
 class PydanticEnvironment(BaseModel):
 
-    mode: EnvMode = EnvMode.DEV
-    hf_token: Optional[str] = os.environ.get('HF')
-    openai_key: Optional[str] = os.environ.get("OPENAI_API_KEY")
+    _mode: EnvMode
+    _hf_token: Optional[str]
+    _openai_key: Optional[str]
 
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(extra = 'forbid')
+
+    @property
+    def hf_token(self) -> str:
+
+        if self._hf_token is None:
+            raise ValueError("hf token not set")
+
+        return self._hf_token
+    
+    @hf_token.setter
+    def hf_token(self, value):
+        self._hf_token = value
+
+    @property
+    def openai_key(self) -> str:
+
+        if self._openai_key is None:
+            raise ValueError("hf token not set")
+
+        return self._openai_key
+    
+    @openai_key.setter
+    def openai_key(self, value: str):
+        self._openai_key = value
+
+    @property
+    def mode(self) -> str:
+        return EnvMode(self._mode).value
+    
+    @mode.setter
+    def mode(self, value: EnvMode):        
+        assert isinstance(value, EnvMode)
+        self._mode = value
 
     def is_dev_mode(self) -> bool:
-        return self.mode == EnvMode.DEV
-
-    @staticmethod
-    def set_environment_variables(data: dict):
-
-        for key, value in data.items():
-
-            # check if supplied argument is an enum and add value to environment
-            if isinstance(value, EnvMode):
-                value = value.value
-
-            os.environ[key] = str(value)
-
-    @classmethod
-    def create_from_environment(cls):
-        
-        # create dictionary with all attributes of the class as keys and its environment variables as values
-        data = {key: os.environ.get(key) for key in cls.model_fields.keys()}
-
-        # check if attribute is enum and convert it to enum
-        for key, value in data.items():
-            if cls.__annotations__[key] == EnvMode:
-
-                if value is None:
-                    console.log(f"Environment variable {key} is not set. Defaulting to DEV.")
-                    data[key] = EnvMode.DEV
-                    continue
-
-                data[key] = EnvMode(value)
-
-        return cls(**data)
+        return self._mode == EnvMode.DEV
     
+    def is_dryrun_mode(self) -> bool:
+        return self._mode == EnvMode.DRYRUN
+    
+    @classmethod
+    def from_environment(cls) -> 'PydanticEnvironment':
+
+        # Create an instance and set attributes
+        instance = cls()
+
+        instance.mode = EnvMode(os.environ.get('MODE', EnvMode.DEV.value))  # type: ignore
+        instance.openai_key = os.environ.get("OPENAI_API_KEY")  # type: ignore
+        instance.hf_token = os.environ.get('HF')  # type: ignore
+
+        return instance
+
 
 if __name__ == '__main__':
 
-    PydanticEnvironment.set_environment_variables(data={
-        'model': EnvMode.DEV,
-        'hf_token': 'test'
-    })
-    env = PydanticEnvironment.create_from_environment()
+    os.environ['MODE'] = EnvMode.DRYRUN.value
 
-    print(env.model_dump())
+    env = PydanticEnvironment.from_environment()
+    print(env)
+    print(env.mode)

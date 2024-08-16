@@ -3,6 +3,7 @@ import optuna
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+from pydantic.config import ConfigDict
 from pydantic import BaseModel, validator, validate_call
 from pydantic.v1 import validate_arguments
 from scipy.stats import norm
@@ -32,8 +33,7 @@ class GaussianModels(BaseModel):
     models: Optional[Dict[int, GaussianModel]] = None
     classes: np.ndarray = np.empty(shape=(0,))
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def fit_gaussian_models(
         self, y_train: np.ndarray, y_pred_proba: np.ndarray
@@ -145,8 +145,7 @@ class DOC(BaseModel, TorchMixin, BaseBenchmark):
     # hyperparameter tunining
     perform_hyperopt: bool = False
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
     @validator("model")
     def _set_epochs(cls, v):

@@ -1,5 +1,7 @@
 import numpy as np
+
 from pydantic import BaseModel
+from pydantic.config import ConfigDict
 from typing import Optional, Union, Tuple
 
 from src.ml.classifier.base import BaseClassifier
@@ -9,8 +11,7 @@ class NaiveClf(BaseClassifier, BaseModel):
     y_train: Optional[np.ndarray] = None  # will be set during fit
     y_valid: Optional[np.ndarray] = None  # will be set during fit
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def fit(
         self,

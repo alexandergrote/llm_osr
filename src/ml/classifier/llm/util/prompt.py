@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic.config import ConfigDict
 from typing import Any, List, Dict
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.prompts.few_shot import FewShotPromptTemplate, PromptTemplate
@@ -14,8 +15,7 @@ class PromptCreator(BaseModel):
     _task_prompt: str = "Let's think step by step! Question: {query} -> <your response>"
     _suffix_prompt: str = "Provide your final desired output in the following format: {format_instructions}"
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def classes_prompt(self) -> str:

@@ -3,6 +3,7 @@ import warnings
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
+from pydantic.config import ConfigDict
 from typing import Optional
 
 from src.util.caching import PickleCacheHandler
@@ -17,8 +18,7 @@ class CachedSentenceEncoder(BaseModel):
     _cache_handler: Optional[PickleCacheHandler] = None
     _memory: Optional[dict] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def cache_handler(self) -> PickleCacheHandler:

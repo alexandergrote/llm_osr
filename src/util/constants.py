@@ -66,6 +66,7 @@ class YamlField(BaseEnum):
 class EnvMode(BaseEnum):
     DEV = 'dev'
     PROD = 'prod'
+    DRYRUN = 'dryrun'
 
 
 class LLMModels(BaseEnum):

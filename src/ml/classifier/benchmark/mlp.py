@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from pydantic import BaseModel, validator, validate_call
+from pydantic.config import ConfigDict
 from pydantic.v1 import validate_arguments
 from typing import Optional, Any, Union, Tuple
 
@@ -69,8 +70,7 @@ class MLP(BaseModel, TorchMixin, BaseClassifier):
     filename_loss: str = "loss_mlp.png"
     filename_checkpoint: str = "checkpoint_mlp_model.pth"
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
     @validator("model")
     def _set_model(cls, v):

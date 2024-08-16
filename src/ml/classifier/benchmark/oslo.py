@@ -3,6 +3,7 @@ import optuna
 import numpy as np
 from torch.nn import functional as F
 from pydantic import BaseModel, validate_call, confloat
+from pydantic.config import ConfigDict
 from pydantic.v1 import validate_arguments
 from typing import Optional, Dict, Any, Union, Tuple
 from sklearn.neighbors import LocalOutlierFactor
@@ -35,8 +36,7 @@ class Oslo(BaseModel, BaseBenchmark):
     outlier_model: Optional[LocalOutlierFactor] = None 
 
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
 
     @staticmethod

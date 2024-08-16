@@ -1,6 +1,7 @@
 import numpy as np
 
 from pydantic import BaseModel
+from pydantic.config import ConfigDict
 from typing import List
 
 from src.util.constants import UnknownClassLabel
@@ -13,8 +14,7 @@ class LogProbScore(BaseModel):
     answer: Prediction
     logprobs: List[LogProb]
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @staticmethod
     def calculate_linear_prob(log_prob):
