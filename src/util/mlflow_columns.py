@@ -6,9 +6,15 @@ class MLFlowColumn(BaseModel):
     column_name: str
     yaml_keys: List[str]  # list of keys in yaml dict
     verbose_str: str
+
+
+class ColumnMixin(BaseModel):
+
+    def get_columns(self) -> List[MLFlowColumn]:
+        return [el[1] for el in self]
     
 
-class IDColumns(BaseModel):
+class IDColumns(ColumnMixin, BaseModel):
 
     experiment_name: MLFlowColumn = MLFlowColumn(
         column_name="params.io__export.params.experiment_name",
@@ -34,11 +40,8 @@ class IDColumns(BaseModel):
         verbose_str="seed"
     )
 
-    def get_columns(self) -> List[MLFlowColumn]:
-        return [el[1] for el in self]
 
-
-class F1AnalysisColumns(BaseModel):
+class F1AnalysisColumns(ColumnMixin, BaseModel):
 
     f1_avg: MLFlowColumn = MLFlowColumn(
         column_name="metrics.f1_avg",
@@ -52,5 +55,6 @@ f1_analysis_columns = F1AnalysisColumns()
 
 __all__ = [
     "id_columns", 
-    "f1_analysis_columns"
+    "f1_analysis_columns",
+    "MLFlowColumn",
 ]

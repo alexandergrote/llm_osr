@@ -5,11 +5,11 @@ from omegaconf import DictConfig, OmegaConf
 from typing import List
 
 # load package specific code
-from src.io.data_import.mlflow_engine import QueryEngine
 from src.interface.execution_block import ExecutionBlock
 from src.util.constants import DictConfigNames, Directory, File, get_hydra_output_dir
 from src.util.logger import console
 from src.util.environment import PydanticEnvironment
+from src.util.mlflow_checks import check_if_experiment_run_exists, get_results_as_str
 
 env = PydanticEnvironment.from_environment()
 
@@ -27,8 +27,14 @@ def main(cfg: DictConfig) -> None:
     console.rule(f"Executing experiment: {cfg['name']}")
 
     # check if experiment run exists
-    if QueryEngine.check_if_experiment_run_exists(config=cfg):
-        console.log(f"Experiment {cfg['name']} exists. Aborting.")
+    if check_if_experiment_run_exists(config=cfg):
+
+        console.log(f"Experiment {cfg['name']} exists. Its results are:")
+
+        results = get_results_as_str(config=cfg)
+
+        console.log(results)
+
         return
 
     # convert omega configuration dictionary to native python dictionary

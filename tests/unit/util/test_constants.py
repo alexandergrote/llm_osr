@@ -28,7 +28,7 @@ class TestAnalysisColumns(TestCase):
         ]
 
         attributes = get_nested_dict_values(columns2extract, config)
-        self.assertEqual(attributes, [0.1, 'my_dataset_class'])
+        self.assertEqual(attributes, ["0.1", 'my_dataset_class'])
 
         
 

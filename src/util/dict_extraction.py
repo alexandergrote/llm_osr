@@ -21,7 +21,7 @@ def get_nested_dict_values(list_of_keys: List[List[str]], dictionary: DictConfig
         for k in keys:
             tmp = tmp[k]
 
-        attributes.append(tmp)
+        attributes.append(str(tmp))
 
     return attributes        
 
