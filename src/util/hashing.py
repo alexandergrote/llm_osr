@@ -38,12 +38,7 @@ class Hash(BaseModel):
         if isinstance(obj, float):
             return str(obj.__hash__())
 
-        try:
-            obj_str = str(obj)
-        except Exception:
-            obj_str = ''
-
-        raise ValueError(f"Object {obj_str} cannot be hashed")
+        raise ValueError(f"Object {obj} cannot be hashed")
     
     @staticmethod
     def hash_dict(dictionary: dict) -> str:  
@@ -51,7 +46,15 @@ class Hash(BaseModel):
         items = {k: v for k, v in dictionary.items()}
 
         return Hash.hash_recursive(**items)
+
+    @staticmethod
+    def hash_list(lst: list) -> str:
+        return Hash.hash_recursive(*lst)
     
+    @staticmethod
+    def hash_tuple(tup: tuple) -> str:
+        return Hash.hash_recursive(*tup)
+
     @staticmethod
     def hash_recursive(*args, **kwargs) -> str:
         
@@ -63,12 +66,28 @@ class Hash(BaseModel):
                 hash_list.append(Hash.hash_dict(obj))
                 continue
 
+            if isinstance(obj, list):
+                hash_list.append(Hash.hash_list(obj))
+                continue
+
+            if isinstance(obj, tuple):
+                hash_list.append(Hash.hash_tuple(obj))
+                continue
+
             hash_list.append(Hash.hash(obj))
         
         for key, value in kwargs.items():
 
             if isinstance(value, dict):
                 hash_list.append(Hash.hash_dict(value))
+                continue
+
+            if isinstance(value, list):
+                hash_list.append(Hash.hash_list(value))
+                continue
+
+            if isinstance(value, tuple):
+                hash_list.append(Hash.hash_tuple(value))
                 continue
 
             hash_list.append(Hash.hash(key))

@@ -1,0 +1,4 @@
+class: src.RandomEmbeddingPreprocessor
+params:
+  embedding_model_name: mixedbread-ai/mxbai-embed-large-v1
+  embedding_model_params:

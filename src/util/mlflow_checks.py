@@ -1,4 +1,6 @@
+import pandas as pd
 from omegaconf import DictConfig
+from typing import Optional
 
 from src.io.data_import.mlflow_engine import QueryEngine
 from src.util.mlflow_columns import id_columns
@@ -7,7 +9,7 @@ from src.util.mlflow_columns import f1_analysis_columns, MLFlowColumn
 from src.util.environment import PydanticEnvironment
 
 
-def check_if_experiment_run_exists(config: DictConfig) -> bool:
+def get_experiment(config: DictConfig) -> Optional[pd.DataFrame]:
     
     experiment_name = get_nested_dict_values(list_of_keys=[id_columns.experiment_name.yaml_keys], dictionary=config)[0]
 
@@ -15,13 +17,13 @@ def check_if_experiment_run_exists(config: DictConfig) -> bool:
     experiment_names = QueryEngine.get_experiment_names()
 
     if experiment_name not in experiment_names:
-        return False
+        return None
 
     # check if required run exists
     data = QueryEngine.get_results_of_single_experiment(experiment_name, n=999)
 
-    if len(data) == 0:
-        return False
+    if data is None:
+        return None
     
     mlflow_columns = id_columns.get_columns()
 
@@ -34,11 +36,15 @@ def check_if_experiment_run_exists(config: DictConfig) -> bool:
         value = get_nested_dict_values(list_of_keys=[mlflow_column.yaml_keys], dictionary=config)[0]
 
         if str(value) not in unique_values:
-            return False
+            return None
 
-    return True
+    return data
 
-def get_results_as_str(config: DictConfig) -> str:
+
+def get_results_as_str(config: DictConfig, data: pd.DataFrame) -> str:
+
+    assert isinstance(data, pd.DataFrame)
+    assert isinstance(config, DictConfig)
 
     # get list of keys for nested dict
     list_values = []
@@ -56,13 +62,21 @@ def get_results_as_str(config: DictConfig) -> str:
 
         assert isinstance(el, MLFlowColumn)
 
-        values = get_nested_dict_values(
-            list_of_keys=[el.yaml_keys], 
-            dictionary=config
-        )
+        if el.column_name.startswith("metrics"):
 
-        assert len(values) == 1
+            values = data[el.column_name].values
+            list_values.append(f"{el.verbose_str}: {values.mean()} +- {values.std()}")
 
-        list_values.append(f"{el.verbose_str}: {values[0]}")
+        else:
 
+            values = get_nested_dict_values(
+                list_of_keys=[el.yaml_keys], 
+                dictionary=config
+            )
+
+            assert len(values) == 1
+
+            list_values.append(f"{el.verbose_str}: {values[0]}")
+
+            
     return '\n'.join(list_values)

@@ -9,7 +9,7 @@ from src.interface.execution_block import ExecutionBlock
 from src.util.constants import DictConfigNames, Directory, File, get_hydra_output_dir
 from src.util.logger import console
 from src.util.environment import PydanticEnvironment
-from src.util.mlflow_checks import check_if_experiment_run_exists, get_results_as_str
+from src.util.mlflow_checks import get_experiment, get_results_as_str
 
 env = PydanticEnvironment.from_environment()
 
@@ -26,12 +26,13 @@ def main(cfg: DictConfig) -> None:
 
     console.rule(f"Executing experiment: {cfg['name']}")
 
+    experiment = get_experiment(config=cfg)
+
     # check if experiment run exists
-    if check_if_experiment_run_exists(config=cfg):
+    if experiment is not None:
 
         console.log(f"Experiment {cfg['name']} exists. Its results are:")
-
-        results = get_results_as_str(config=cfg)
+        results = get_results_as_str(config=cfg, data=experiment)
 
         console.log(results)
 

@@ -1,7 +1,7 @@
 import pandas as pd
 
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from mlflow.entities import ViewType, Run
 from mlflow.store.entities.paged_list import PagedList
 
@@ -38,7 +38,7 @@ class QueryEngine(BaseResultDataset, BaseModel):
         return df_copy
 
     @staticmethod
-    def _runs_to_df(runs):
+    def _runs_to_df(runs) -> Optional[pd.DataFrame]:
 
         metrics = [pd.DataFrame(run.data.metrics, index=[0]) for run in runs]
         params = [pd.DataFrame(run.data.params, index=[0]) for run in runs]
@@ -54,6 +54,9 @@ class QueryEngine(BaseResultDataset, BaseModel):
             for run in runs
         ]
 
+        if len(metrics) == 0:
+            return None
+
         metrics_df = pd.concat(metrics, ignore_index=True)
         params_df = pd.concat(params, ignore_index=True)
         meta_df = pd.concat(meta, ignore_index=True)
@@ -66,7 +69,7 @@ class QueryEngine(BaseResultDataset, BaseModel):
         return pd.concat(dataframes, axis=1)
     
     @staticmethod
-    def get_results_of_single_experiment(experiment_name: str, n: int, filter_str: str = "") -> pd.DataFrame:
+    def get_results_of_single_experiment(experiment_name: str, n: int, filter_str: str = "") -> Optional[pd.DataFrame]:
 
         experiment = client.get_experiment_by_name(experiment_name)
         experiment_id: str = experiment.experiment_id
@@ -81,18 +84,25 @@ class QueryEngine(BaseResultDataset, BaseModel):
 
         data = QueryEngine._runs_to_df(runs)
 
+        if data is None:
+            return None
+
         return data
     
     @staticmethod
     def get_results_of_multiple_experiments(experiment_names: list, n: int, filter_str: str = "") -> pd.DataFrame:
 
-        data = pd.concat(
-            [
-                QueryEngine.get_results_of_single_experiment(experiment_name, n, filter_str)
-                for experiment_name in experiment_names
-            ],
-            ignore_index=True,
-        )
+        experiment_data = [
+            QueryEngine.get_results_of_single_experiment(experiment_name, n, filter_str)
+            for experiment_name in experiment_names
+        ]
+
+        experiment_data_cleaned = [el for el in experiment_data if el is not None]
+
+        if len(experiment_data_cleaned) == 0:
+            return None
+
+        data = pd.concat(experiment_data_cleaned, ignore_index=True)
 
         return data
 

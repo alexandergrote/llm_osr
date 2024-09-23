@@ -3,13 +3,8 @@ from pydantic import BaseModel
 
 from src.util.logger import console
 from src.util.mlflow_columns import id_columns, f1_analysis_columns
-from src.experiments import Experiment
-from src.util.constants import Directory
 from src.experiments.analysis.base import BaseAnalyser
 
-experiments = Experiment.create_experiments_from_yaml(
-    path=Directory.CONFIG / "experiments" / "fewshot.yaml"
-)
 
 class FewShotAnalyser(BaseModel, BaseAnalyser):
 

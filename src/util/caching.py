@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from src.util.constants import Directory
+from src.util.hashing import Hash
 
 
 def get_executing_script_filepath():
@@ -65,7 +66,7 @@ class PickleCacheHandler(BaseModel, CacheHandler):
 
 
 class JsonCache(BaseModel, CacheHandler):
-
+    
     filepath: Path
 
     @field_validator("filepath")
@@ -99,3 +100,59 @@ class JsonCache(BaseModel, CacheHandler):
 
         with open(self.filepath, 'w') as file:
             json.dump(obj, file)
+
+
+def environ_pickle_cache():
+
+    def decorator(fn):
+
+        def wrapped(*args, **kwargs):
+
+            # create filename from function call
+            full_filename = os.path.join(os.getcwd(), fn.__code__.co_filename)
+
+            repo_path = Path(full_filename).relative_to(Directory.ROOT)
+
+            # transform slashes to dots
+            # makes them independent of OS
+            repo_path = repo_path.as_posix().replace('/', '.')
+            
+            filename_components = [repo_path, fn.__qualname__]
+            current_filename = '.'.join(filename_components)
+                      
+            # create hash for shorter filenames
+            hash_object = Hash.hash_recursive(
+                *args, **kwargs
+            )
+
+            cachedir = Directory.CACHING_DIR / current_filename
+            cachedir.mkdir(exist_ok=True, parents=True)
+
+            filename_pickle = Path(cachedir) / f"{hash_object}.pickle"
+
+            cache_handler = PickleCacheHandler(
+                filepath=filename_pickle
+            )
+
+            # if not cache specified, execute function
+            if current_filename not in os.environ:
+                res = fn(*args, **kwargs)
+                cache_handler.write(obj=res)
+                return res
+
+            res = cache_handler.read()
+            
+            if res is not None:
+                return res
+
+            # execute the function with all arguments passed
+            res = fn(*args, **kwargs)
+
+            # write to cache file
+            cache_handler.write(obj=res)
+
+            return res
+
+        return wrapped
+
+    return decorator
