@@ -95,9 +95,6 @@ if __name__ == '__main__':
         classes=set(["class1", "class2"]),
         parser=parser
     )
-    
-    prompt = prompt_creator.create_single_shot_prompt()
-    print(prompt.format(query="Go away!"))
 
     examples = [
         {"input": "Hello", "output": "Greeting"},

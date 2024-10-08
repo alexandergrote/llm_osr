@@ -1,15 +1,86 @@
 import numpy as np
 import pandas as pd
 
+from copy import copy
 from typing import Dict, List, Optional
+from langchain.output_parsers import PydanticOutputParser
+from langchain_core.exceptions import OutputParserException
+from pydantic import model_validator, ConfigDict
+from langchain_core.prompts import PromptTemplate
 
+from src.ml.classifier.llm.util.prediction import PredictionV1, Prediction
+from src.ml.classifier.llm.util.request import RequestOutput
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.ml.classifier.llm.util.prompt import PromptCreator
 from src.util.constants import DatasetColumn, LLMModels
+from src.ml.classifier.llm.util.mapping import LLM_Mapping
+from src.util.constants import UnknownClassLabel
+from src.ml.classifier.llm.util.rest import AbstractLLM
+
+
+# prompts taken from retry output parser from langchain
+NAIVE_COMPLETION_RETRY = """Prompt:
+{prompt}
+Completion:
+{completion}
+
+Above, the Completion did not satisfy the constraints given in the Prompt.
+Please try again:"""
+
+NAIVE_RETRY_PROMPT = PromptTemplate.from_template(NAIVE_COMPLETION_RETRY)
 
 
 class FewShotLLM(AbstractClassifierLLM):
+
+    model: AbstractLLM
+    clf_str: str
+
+    parser: Optional[PydanticOutputParser] = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode='before')
+    def _init_model(data: dict):
+
+        data['model'] = LLM_Mapping[LLMModels(data['clf_str'])]
+
+        return data
+    
+    def _get_parsed_output(self, model: AbstractLLM, parser: PydanticOutputParser, prompt: str, retries: int = 3) -> Optional[LogProbScore]:
+
+        # work on copy
+        prompt_copy = copy(prompt)
+
+        result = None
+
+        for _ in range(retries):
+
+            try:
+                completion = model(prompt=prompt_copy)
+
+                if not isinstance(completion, RequestOutput):
+                    raise ValueError("Model did not return a RequestOutput object")
+                
+                parsed_data = parser.parse(text = completion.text)
+
+                Prediction.valid_labels = parsed_data.valid_labels
+                
+                result = LogProbScore(
+                    answer=Prediction(**parsed_data.dict()),
+                    logprobs=completion.logprobas
+                )
+
+
+            except OutputParserException:
+
+                prompt_copy = NAIVE_RETRY_PROMPT.format(prompt=prompt_copy, completion=completion.text)
+
+            if result:
+                return result
+            
+        return None
+
 
     def _get_examples(self, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:
 
@@ -38,6 +109,31 @@ class FewShotLLM(AbstractClassifierLLM):
             examples.append({query: x_chosen, answer: selected_class})
 
         return examples
+    
+    def fit(
+        self,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        x_valid: np.ndarray,
+        y_valid: np.ndarray,
+        **kwargs
+    ):
+
+       self.y_train = np.concatenate([
+           y_train, y_valid
+       ]) 
+
+       self.x_train = np.concatenate([
+           x_train, x_valid
+       ])
+
+       self.classes = np.unique(self.y_train)
+
+       # Example usage
+       valid_labels = [UnknownClassLabel.UNKNOWN_STR.value] + list(self.classes)
+       PredictionV1.valid_labels = valid_labels
+       
+       self.parser = PydanticOutputParser(pydantic_object=PredictionV1)
 
 
     def _single_predict(self, text: str) -> Optional[LogProbScore]:

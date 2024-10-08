@@ -18,6 +18,10 @@ class LogProb(BaseModel):
     text: str
     logprob: float
 
+    @classmethod
+    def from_prob(cls, text: str, prob: float) -> 'LogProb':
+        return cls(text=text, logprob=np.log(prob))
+
 
 # custom dataframe
 class MLDataFrame(BaseModel):

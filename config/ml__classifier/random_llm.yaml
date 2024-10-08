@@ -1,0 +1,3 @@
+class: src.RandomLLM
+params:
+  clf_str: 'gpt3'

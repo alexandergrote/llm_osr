@@ -49,12 +49,21 @@ class F1AnalysisColumns(ColumnMixin, BaseModel):
         verbose_str="f1_avg"
     )
 
+class UnknownAUCAnalysisColumns(ColumnMixin, BaseModel):
+    auc: MLFlowColumn = MLFlowColumn(
+        column_name="metrics.unknown_scores_auc",
+        yaml_keys=["metrics", "unknown_scores_auc"],
+        verbose_str="unknown_scores_auc"
+    )
+
 id_columns = IDColumns()
 f1_analysis_columns = F1AnalysisColumns()
+unknown_auc_analysis_columns = UnknownAUCAnalysisColumns()
 
 
 __all__ = [
     "id_columns", 
     "f1_analysis_columns",
+    "unknown_auc_analysis_columns",
     "MLFlowColumn",
 ]
