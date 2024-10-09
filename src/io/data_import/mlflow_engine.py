@@ -72,6 +72,10 @@ class QueryEngine(BaseResultDataset, BaseModel):
     def get_results_of_single_experiment(experiment_name: str, n: int, filter_str: str = "") -> Optional[pd.DataFrame]:
 
         experiment = client.get_experiment_by_name(experiment_name)
+
+        if experiment is None:
+            return None
+        
         experiment_id: str = experiment.experiment_id
 
         runs: PagedList[Run] = client.search_runs(

@@ -2,9 +2,7 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from typing import Optional
 from pydantic import BaseModel
-from pydantic.config import ConfigDict
 
 
 from src.ml.preprocessing.base import BasePreprocessor
@@ -14,13 +12,8 @@ from src.util.hashing import Hash
 
 class RandomEmbeddingPreprocessor(BaseModel, BasePreprocessor):
 
-    embedding_model_name: str = 'random'
-    embedding_model_params: Optional[dict] = None
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     def hash(self, *args, **kwargs) -> str:
-        return Hash.hash_recursive(self.embedding_model_name, self.embedding_model_params)
+        return Hash.hash_recursive(self.__class__.__name__)
 
 
     def _fit(self, data: pd.DataFrame, **kwargs):

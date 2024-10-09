@@ -11,7 +11,7 @@ class PromptCreator(BaseModel):
     classes: set
     parser: Any
 
-    _system_msg: str = "You are a classifier for an Open Set Recognition problem."
+    _system_msg: str = "You are a classifier for an Open Set Recognition problem. Your task is to 1) recognize known classes and 2) detect unknown classes."
     _task_prompt: str = "Let's think step by step! Question: {query} -> <your response>"
     _suffix_prompt: str = "Provide your final desired output in the following format: {format_instructions}"
 
@@ -41,19 +41,6 @@ class PromptCreator(BaseModel):
     @staticmethod
     def get_chain_input_field_name() -> str:
         return "query"
-    
-    def create_zero_shot_prompt(self) -> PromptTemplate:
-
-        template_msg = f"{self.prefix_prompt}\n{self.suffix_prompt}"
-
-        prompt = PromptTemplate(
-            template=template_msg,
-            input_variables=[PromptCreator.get_chain_input_field_name()],
-            partial_variables={"format_instructions": self.parser.get_format_instructions()},
-            validate_template=True
-        )
-
-        return prompt
 
     def create_few_shot_prompt(self, examples: List[Dict[str, str]]) -> FewShotPromptTemplate:
 

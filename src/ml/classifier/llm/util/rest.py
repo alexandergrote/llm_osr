@@ -1,14 +1,12 @@
 import json
 import requests  # type: ignore
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Callable, Optional
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
-from src.util.caching import JsonCache
 from src.util.hashing import Hash
-from src.ml.classifier.llm.util.backoff import BackoffMixin
+from src.ml.util.backoff import BackoffMixin
 from src.ml.classifier.llm.util.request import RequestInputData, RequestOutput
 
 
@@ -28,12 +26,12 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
     request_output: Optional[RequestOutput] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    def __call__(self, prompt, **kwargs) -> RequestOutput:
 
-    def __call__(self, *, prompt: str, **kwargs) -> RequestOutput:
-        
         request_kwargs = self.request_input.model_dump(exclude={'data', 'data_modifying_function'})
         request_data = self.request_input.data.copy()
-        
+
         if self.request_input.data_modifying_function is None:
             raise ValueError("Data modifying function not set")
 
@@ -43,27 +41,27 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
         )
     
         # send request if not cached
-        hash_filename = Path(self.name) / (Hash.hash_string(prompt) + '.json')
-        
-        cache = JsonCache(filepath=hash_filename)
+        hash_filename = f"{self.name}_{Hash.hash_string(prompt)}"
 
-        json_data = cache.read()
+        request_kwargs['data'] = json.dumps(request_data)
 
-        if json_data is None:
+        response = self.completion_with_backoff_and_queue(
+            function=requests.post,
+            job_id=hash_filename,
+            **request_kwargs
+        )
 
-            response = self.completion_with_backoff(
-                requests.post,
-                data=json.dumps(request_data),
-                **request_kwargs
-            )
+        try:
 
-            json_data = response.json()
+            result = self.request_output_formatter(response.request_output)
 
-            # cache the response
-            cache.write(json_data)
+            if not isinstance(result, RequestOutput):
+                raise ValueError("Results needs to be a Request Output")
+            
+        except Exception as e:
+            print(f"Error formatting request output: {e}")
 
-        return self.request_output_formatter(json_data)
-
+        return result
 
 if __name__ == '__main__':
 

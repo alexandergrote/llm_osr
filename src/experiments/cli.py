@@ -43,12 +43,19 @@ class ExperimentRunner(BaseModel):
 
         # get output from command
         try:
-            output = subprocess.run(command, shell=True, check=True)
+
+            return subprocess.run(command, shell=True, check=True)
+
         except subprocess.CalledProcessError as e:
-            print(f"Error: {e.stderr.decode('utf-8')}")
+
+            if hasattr(e.stderr, "decode"):
+                print(f"Error: {e.stderr.decode('utf-8')}")
+
+            else:
+                print(f"Error: {e.stderr}")
 
         
-        return output
+        
 
 
     @staticmethod
@@ -70,11 +77,16 @@ class ExperimentRunner(BaseModel):
 
     @staticmethod
     @environ_pickle_cache()
-    def get_experiment_data_from_mlflow(experiments: List[str]):
+    def get_experiment_data_from_mlflow(experiments: List[str]) -> Optional[pd.DataFrame]:
 
-        data = pd.concat(
-            [mlflow_engine.get_results_of_single_experiment(experiment_name=el, n=100) for el in experiments]
-        )
+        mlflow_dfs = [mlflow_engine.get_results_of_single_experiment(experiment_name=el, n=100) for el in experiments]
+
+        mlflow_dfs = [el for el in mlflow_dfs if el is not None]
+
+        if len(mlflow_dfs) == 0:
+            return None
+        
+        data = pd.concat(mlflow_dfs)
 
         return data
 
@@ -98,9 +110,16 @@ class ExperimentRunner(BaseModel):
 
         console.rule("Get aggregated results of experiment runs")
 
-        experiments = [el.name for el in self.experiments]
+        experiments = [el.name for el in self.experiments if el is not None]
+
+        if len(experiments) == 0:
+            console.print("No experiments found.")
 
         datasets = ExperimentRunner.get_experiment_data_from_mlflow(experiments=experiments)
+
+        if datasets is None:
+            console.print("No data found.")
+            return
 
         self.analyser.analyse(data=datasets)
 

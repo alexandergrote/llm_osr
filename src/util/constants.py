@@ -12,6 +12,7 @@ class Directory:
     INPUT_DIR = ROOT / 'data'
     OUTPUT_DIR = ROOT / "outputs"
     CACHING_DIR = ROOT / "cache"
+    JOB_DIR = ROOT / "jobs"
 
 
 paths = [

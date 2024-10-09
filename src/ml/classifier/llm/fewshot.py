@@ -2,12 +2,14 @@ import numpy as np
 import pandas as pd
 
 from copy import copy
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.exceptions import OutputParserException
 from pydantic import model_validator, ConfigDict
 from langchain_core.prompts import PromptTemplate
 
+from src.util.dynamic_import import DynamicImport
+from src.ml.classifier.llm.util.cosine_selector import CosineSelector
 from src.ml.classifier.llm.util.prediction import PredictionV1, Prediction
 from src.ml.classifier.llm.util.request import RequestOutput
 from src.ml.classifier.llm.util.logprob import LogProbScore
@@ -37,6 +39,7 @@ class FewShotLLM(AbstractClassifierLLM):
     clf_str: str
 
     parser: Optional[PydanticOutputParser] = None
+    selector: Optional[Union[dict, CosineSelector]] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -45,7 +48,13 @@ class FewShotLLM(AbstractClassifierLLM):
 
         data['model'] = LLM_Mapping[LLMModels(data['clf_str'])]
 
+        data_selector = data.get('selector')
+
+        if isinstance(data_selector, dict):
+            data['selector'] = DynamicImport.init_class_from_dict(data_selector)
+
         return data
+    
     
     def _get_parsed_output(self, model: AbstractLLM, parser: PydanticOutputParser, prompt: str, retries: int = 3) -> Optional[LogProbScore]:
 
@@ -129,6 +138,10 @@ class FewShotLLM(AbstractClassifierLLM):
 
        self.classes = np.unique(self.y_train)
 
+       if self.selector is not None:
+           
+           pass
+               
        # Example usage
        valid_labels = [UnknownClassLabel.UNKNOWN_STR.value] + list(self.classes)
        PredictionV1.valid_labels = valid_labels
@@ -149,6 +162,8 @@ class FewShotLLM(AbstractClassifierLLM):
         
         if self.parser is None:
             raise ValueError("Not fitted")
+
+        
         
         prompt_creator = PromptCreator(
             text=text,

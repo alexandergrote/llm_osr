@@ -1,0 +1,3 @@
+class: src.HFEmbeddingPreprocessor
+params:
+  url: "https://api-inference.huggingface.co/models/mixedbread-ai/mxbai-embed-large-v1"

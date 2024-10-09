@@ -1,6 +1,7 @@
 class: src.FewShotDataSplitter
 params:
   n: 5
+  subset_test:
   replace: False
   percentage_unknown_classes: 0.2
   percentage_instances_of_known_classes_in_trainset: 0.6

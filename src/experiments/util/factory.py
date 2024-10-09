@@ -14,7 +14,7 @@ class ExperimentFactory(BaseModel):
         experiments = []
 
         if models is None:
-            models = ["naive", "simpleshot", "random_llm"]
+            models = ["naive", "hyper_simpleshot", "random_llm"]
 
         if datasets is None:
             datasets = ['banking', 'clinc', 'hwu']
@@ -23,7 +23,7 @@ class ExperimentFactory(BaseModel):
             unknown_classes = [0, 0.2, 0.4, 0.6]
 
         if random_seeds is None:
-            random_seeds = [0, 1, 2, 3, 4]
+            random_seeds = [0]
 
         for dataset in datasets:
 
@@ -37,15 +37,19 @@ class ExperimentFactory(BaseModel):
                         f'io__import={dataset}',
                         f'ml__classifier={model}',
                         'ml__datasplit=fewshot_osr',
+                        'ml__datasplit.params.subset_test=100',
                         f'ml__datasplit.params.percentage_unknown_classes={unknown_class}',
                         f'random_seed={",".join(map(str, random_seeds))}',
                         'ml__evaluation=osr',
-                        'io__export=mlflow',
+                        'io__export=dummy',
                         f'io__export.params.experiment_name={exp_name}'
                     ]
 
-                    if model == 'simpleshot':
-                        overrides.append('ml__preprocessing=random_embedding')
+                    # all the benchmark models need
+                    # 1) encoding of text features
+                    # 2) hyper parameter tuning
+                    if model.startswith('hyper_'):
+                        overrides.append('ml__preprocessing=rest_embedding')
 
                     experiments.append(Experiment(name=exp_name, overrides=overrides))
 

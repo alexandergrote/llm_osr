@@ -1,5 +1,7 @@
 import pandas as pd
 
+from typing import Optional
+
 from src.ml.datasplit.osr import DataSplitter
 from src.util.constants import DatasetColumn
 from src.util.types import TripleDataFrameTuple, MLDataFrame
@@ -8,6 +10,8 @@ class FewShotDataSplitter(DataSplitter):
 
     n: int 
     replace: bool = False
+
+    subset_test: Optional[int] = None
 
     @staticmethod
     def fewshot_split(data: pd.DataFrame, n: int, random_seed: int, replace: bool = False) -> pd.DataFrame:
@@ -23,8 +27,13 @@ class FewShotDataSplitter(DataSplitter):
 
             data_sub: pd.DataFrame = data[data[DatasetColumn.LABEL] == label]
 
+            if len(data_sub) <= n:
+                drawn_samples = data_sub
+            else:
+                drawn_samples = data_sub.sample(n, random_state=random_seed, replace=replace)
+
             data_list.append(
-                data_sub.sample(n, random_state=random_seed, replace=replace)
+                drawn_samples
             )
 
         return pd.concat(data_list)
@@ -35,10 +44,27 @@ class FewShotDataSplitter(DataSplitter):
             data=data, random_seed=random_seed, **kwargs
         )
 
-        train_df_sub = FewShotDataSplitter.fewshot_split(
+        train_df = FewShotDataSplitter.fewshot_split(
             data=train.data, n=self.n, random_seed=random_seed, replace=self.replace
         )
 
-        train_sub = MLDataFrame.from_raw_pandas_dataframe(train_df_sub)
+        valid_df = FewShotDataSplitter.fewshot_split(
+            data=valid.data, n=self.n, random_seed=random_seed, replace=self.replace
+        )
 
-        return train_sub, valid, test
+        # add data points that are not train and validaton subsets to test set
+        train_df_sub_disjunct = train.data.drop(train_df.index)
+        valid_df_sub_disjunct = valid.data.drop(valid_df.index)
+        test_df = pd.concat([train_df_sub_disjunct, valid_df_sub_disjunct, test.data])
+        
+        assert len(data) == len(train_df) + len(valid_df) + len(test_df)
+
+        # enable subset for development purposes
+        if self.subset_test is not None:
+            test_df = test_df.sample(self.subset_test, random_state=random_seed)
+
+        train = MLDataFrame.from_raw_pandas_dataframe(train_df)
+        valid = MLDataFrame.from_raw_pandas_dataframe(valid_df)
+        test = MLDataFrame.from_raw_pandas_dataframe(test_df)
+
+        return train, valid, test

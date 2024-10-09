@@ -47,8 +47,8 @@ class TestBaseSplit(unittest.TestCase):
 
         ## case: three observations per class
 
-        with self.assertRaises(ValueError):
-            FewShotDataSplitter.fewshot_split(n=3, **params)
+        actual_result = FewShotDataSplitter.fewshot_split(n=3, **params)
+        self.assertEqual(len(actual_result), 5)
 
 
     def test__split_data(self):
