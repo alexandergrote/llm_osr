@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from typing import Optional
+from typing import Tuple
 
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.util.constants import DatasetColumn, LLMModels
@@ -21,7 +21,7 @@ class RandomLLM(AbstractClassifierLLM):
         self.classes = np.unique(self.y_train)
 
 
-    def _single_predict(self, text: str) -> Optional[LogProbScore]:
+    def _single_predict(self, text: str) -> Tuple[str, float]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -49,7 +49,7 @@ class RandomLLM(AbstractClassifierLLM):
         if logprob_score is None:
             return None
         
-        return logprob_score
+        return logprob_score, score
 
 
 if __name__ == '__main__':

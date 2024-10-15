@@ -52,4 +52,5 @@ if __name__ == '__main__':
     
     print(prediction)
 
-    PredictionV1.create_from_pydantic_v2(prediction)
+    print(prediction.valid_labels)
+

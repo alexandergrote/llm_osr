@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from copy import copy
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.exceptions import OutputParserException
 from pydantic import model_validator, ConfigDict
@@ -14,7 +14,7 @@ from src.ml.classifier.llm.util.prediction import PredictionV1, Prediction
 from src.ml.classifier.llm.util.request import RequestOutput
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
-from src.ml.classifier.llm.util.prompt import PromptCreator
+from src.ml.classifier.llm.util.prompt import FewshotPromptCreator
 from src.util.constants import DatasetColumn, LLMModels
 from src.ml.classifier.llm.util.mapping import LLM_Mapping
 from src.util.constants import UnknownClassLabel
@@ -73,17 +73,20 @@ class FewShotLLM(AbstractClassifierLLM):
                 
                 parsed_data = parser.parse(text = completion.text)
 
+            except OutputParserException:
+
+                prompt_copy = NAIVE_RETRY_PROMPT.format(prompt=prompt_copy, completion=completion.text)
+
+            try:
                 Prediction.valid_labels = parsed_data.valid_labels
                 
                 result = LogProbScore(
                     answer=Prediction(**parsed_data.dict()),
                     logprobs=completion.logprobas
                 )
-
-
-            except OutputParserException:
-
-                prompt_copy = NAIVE_RETRY_PROMPT.format(prompt=prompt_copy, completion=completion.text)
+            except Exception as e:
+                print(e)
+                continue
 
             if result:
                 return result
@@ -149,7 +152,7 @@ class FewShotLLM(AbstractClassifierLLM):
        self.parser = PydanticOutputParser(pydantic_object=PredictionV1)
 
 
-    def _single_predict(self, text: str) -> Optional[LogProbScore]:
+    def _single_predict(self, text: str, **kwargs) -> Tuple[str, float]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -162,27 +165,32 @@ class FewShotLLM(AbstractClassifierLLM):
         
         if self.parser is None:
             raise ValueError("Not fitted")
+        
+        classes_msg = '\n'.join(list(self.classes))
+        system_msg = "You are an Open Set Recognition Classifier. Your goal is to 1) reject unknown classes and 2) classifier known classes into their corresponding classes"
+        task_desc = f"You are asked to classify the following text: {{{FewshotPromptCreator.get_chain_input_field_name()}}}"
+        cls_prompt = f"You must reply with one of these classes: \n{classes_msg}\nIf the query does not belong to any of these classes, answer with 'unknown'."
 
-        
-        
-        prompt_creator = PromptCreator(
-            text=text,
-            classes=set(list(self.classes)),
+        prefix_prompt = f"{system_msg}\n{task_desc}\n{cls_prompt}\nHere are some examples:"
+
+        suffix_prompt = f"You must give the answer by following these instructions {{{FewshotPromptCreator.get_format_instruction_field()}}}"
+
+        prompt_creator = FewshotPromptCreator(
+            text_to_classify=text,
+            examples=self._get_examples(),
+            prefix_prompt=prefix_prompt,
+            suffix_prompt=suffix_prompt,
             parser=self.parser
         )
 
-        prompt = prompt_creator.create_few_shot_prompt(
-            examples=self._get_examples()
-        )
-        prompt_key = PromptCreator.get_chain_input_field_name()
-        prompt_str = prompt.format(**{prompt_key: text})
+        prompt = prompt_creator.create()
             
-        logprob_score = self._get_parsed_output(model=self.model, parser=self.parser, prompt=prompt_str, retries=3)
+        logprob_score = self._get_parsed_output(model=self.model, parser=self.parser, prompt=prompt, retries=3)
 
         if logprob_score is None:
-            return None
+            raise ValueError("Result cannot be None")
         
-        return logprob_score
+        return logprob_score, logprob_score.unknown_score
 
 
 if __name__ == '__main__':

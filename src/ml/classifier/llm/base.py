@@ -10,7 +10,6 @@ from typing import Optional, Union, Tuple
 from src.util.logger import console
 from src.util.constants import ErrorValues
 from src.ml.classifier.base import BaseClassifier
-from src.ml.classifier.llm.util.logprob import LogProbScore
 
 
 class AbstractClassifierLLM(BaseModel, BaseClassifier):
@@ -18,6 +17,8 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
     # placeholders, values will be set later
     x_train: Optional[np.ndarray] = None
     y_train: Optional[np.ndarray] = None
+    x_valid: Optional[np.ndarray] = None
+    y_valid: Optional[np.ndarray] = None
     classes: Optional[np.ndarray] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -27,7 +28,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         raise NotImplementedError("Method must be implemented in subclass")
 
     @abstractmethod
-    def _single_predict(self, text: str) -> Optional[LogProbScore]:
+    def _single_predict(self, text: str) -> Tuple[str, float]:
         raise NotImplementedError("Method must be implemented in subclass")
     
     def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
@@ -43,26 +44,27 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
             el_str = el[0]
 
+            result_text = ErrorValues.PARSING_STR.value
+            result_score = float(ErrorValues.PARSING_NUM.value)
+
+            result = None
+
             try:
 
                 result = self._single_predict(text=el_str)
 
-                result_text = ErrorValues.PARSING_STR.value
-                result_score = 0.0
-
-                if result is not None:
-
-                    result_text = result.answer.label
-                    result_score = result.unknown_score
-
-                result_text_list.append(result_text)
-                result_score_list.append(result_score)
-
-            except Exception as e:
+            except Exception:
 
                 console.log(f"Error processing text: {el_str}")
 
-                raise e
+                pass
+
+            if result is not None:
+                result_text, result_score = result
+
+            result_text_list.append(result_text)
+            result_score_list.append(result_score)
+
             
         if include_outlierscore:
             return np.array(result_text_list), np.array(result_score_list)

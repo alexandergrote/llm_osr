@@ -41,7 +41,7 @@ class ExperimentFactory(BaseModel):
                         f'ml__datasplit.params.percentage_unknown_classes={unknown_class}',
                         f'random_seed={",".join(map(str, random_seeds))}',
                         'ml__evaluation=osr',
-                        'io__export=dummy',
+                        'io__export=mlflow',
                         f'io__export.params.experiment_name={exp_name}'
                     ]
 

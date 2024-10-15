@@ -1,9 +1,9 @@
 import requests  # type: ignore
 import json 
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Iterator, Generator
 from tqdm import tqdm
 from pathlib import Path
 
@@ -68,6 +68,7 @@ class Job(BaseModel):
     def execute(self) -> "Job":
 
         if self.filepath.exists():
+
             job = Job.from_json_file(self.filepath)
 
             if job.is_success:
@@ -100,7 +101,15 @@ class Job(BaseModel):
 
 class JobQueue(BaseModel):
 
-    jobs: List[Job] = []
+    jobs: Union[Iterator[Job], List] = []
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @classmethod
+    def _job_iterator(cls, job_files: Generator) -> Iterator[Job]:
+        for file_path in job_files:
+            with open(file_path) as f:
+                yield Job(**json.load(f))
 
     @classmethod
     def from_json_files(cls) -> 'JobQueue':
@@ -109,16 +118,7 @@ class JobQueue(BaseModel):
 
         job_files = job_dir.glob("*.json")
 
-        jobs = [Job(**json.load(open(file_path))) for file_path in job_files]
-
-        return cls(jobs=jobs)
-
-
-    def add_job(self, job: Job):
-        self.jobs.append(job)
-
-    def delete_job(self, job: Job):
-        self.jobs.remove(job)
+        return cls(jobs=cls._job_iterator(job_files))
 
     def run_failed_jobs(self):
 

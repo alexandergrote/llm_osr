@@ -17,7 +17,7 @@ class LogProbScore(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @staticmethod
-    def calculate_linear_prob(log_prob):
+    def calculate_linear_prob(log_prob: float) -> float:
         return np.exp(log_prob)
     
     @property

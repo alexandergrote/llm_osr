@@ -46,7 +46,7 @@ class LogProbExtractor(BaseModel):
             else:
                 pseq = copy(prior_sequence)
 
-        raise Exception("Prior sequence not found")
+        raise Exception("Sequence not found")
 
     @staticmethod
     def get_target_logprobas(prior_sequence: List[str], end_sequence: List[str], log_sequences: List[LogProb]) -> List[LogProb]:
@@ -55,15 +55,28 @@ class LogProbExtractor(BaseModel):
         assert len(end_sequence) <= len(log_sequences)
         assert len(prior_sequence) + len(end_sequence) <= len(log_sequences)
 
-        try: 
-            
+        # set start index
+        answer_idx_start = 0
+
+        # overwrite for given prior sequence
+        if len(prior_sequence) > 0:
             answer_idx_start = LogProbExtractor._get_index_after_prior_sequence(prior_sequence=prior_sequence, log_sequences=log_sequences)
-            answer_idx_end = LogProbExtractor._get_index_after_prior_sequence(prior_sequence=end_sequence, log_sequences=log_sequences, start_idx=answer_idx_start) - len(end_sequence)
-        
-        except Exception as e:
-            raise e
+            
+        # set end index
+        answer_idx_end = len(log_sequences)
+
+        # overwrite for given end sequence
+        if len(end_sequence) > 0:
+            answer_idx_end = LogProbExtractor._get_index_after_prior_sequence(prior_sequence=end_sequence, log_sequences=log_sequences, start_idx=answer_idx_start) - len(end_sequence)    
         
         return log_sequences[answer_idx_start:answer_idx_end]
+    
+    @staticmethod
+    def get_specific_logprobas(text: str, log_sequences: List[LogProb]) -> List[LogProb]:
+
+        result_list = [el for el in log_sequences if LogProbExtractor._standardize_string(el.text) == LogProbExtractor._standardize_string(text)]
+
+        return result_list
     
 
 if __name__ == '__main__':

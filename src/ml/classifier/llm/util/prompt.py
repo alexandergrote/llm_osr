@@ -1,53 +1,70 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from pydantic.config import ConfigDict
 from typing import Any, List, Dict
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.prompts.few_shot import FewShotPromptTemplate, PromptTemplate
         
         
-class PromptCreator(BaseModel):
+class FewshotPromptCreator(BaseModel):
 
-    text: str
-    classes: set
     parser: Any
 
-    _system_msg: str = "You are a classifier for an Open Set Recognition problem. Your task is to 1) recognize known classes and 2) detect unknown classes."
-    _task_prompt: str = "Let's think step by step! Question: {query} -> <your response>"
-    _suffix_prompt: str = "Provide your final desired output in the following format: {format_instructions}"
+    prefix_prompt: str 
+    suffix_prompt: str
+
+    text_to_classify: str
+    examples: List[Dict[str, str]]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    @property
-    def classes_prompt(self) -> str:
-
-        classes_msg = '\n'.join(self.classes)
-
-        prompt = f"You must reply with one of these classes: \n{classes_msg}\nIf the query does not belong to any of these classes, answer with 'unknown'"
-
-        return prompt
-    
-    @property
-    def prefix_prompt(self) -> str:
-        return f"{self._system_msg}\n{self.classes_prompt}\n{self._task_prompt}"
-    
-    @property
-    def suffix_prompt(self) -> str:
-        return self._suffix_prompt
-    
-    @property
-    def task_prompt(self) -> str:
-        return self._task_prompt
 
     @staticmethod
     def get_chain_input_field_name() -> str:
         return "query"
+    
+    @staticmethod
+    def get_format_instruction_field() -> str:
+        return "format_instructions"
 
-    def create_few_shot_prompt(self, examples: List[Dict[str, str]]) -> FewShotPromptTemplate:
+    @field_validator("prefix_prompt")
+    @classmethod
+    def validate_prefix_prompt(cls, v):
 
-        # assert structure of examples
-        for example in examples:
+        field = "{" + cls.get_chain_input_field_name() + "}"
+        assert field in v, f"prefix_prompt must contain the field {field}"
+
+        return v
+    
+    @field_validator("suffix_prompt")
+    @classmethod
+    def validate_suffix(cls, v):
+
+        field = "{" + cls.get_format_instruction_field() + "}"
+        assert field in v, f"suffix_prompt must contain the field {field}"
+
+        return v
+
+    @field_validator("examples")
+    @classmethod
+    def validate_examples(cls, v):
+
+        for example in v:
             assert "input" in example
             assert "output" in example
+
+        return v
+    
+    @field_validator("parser")
+    @classmethod
+    def validate_parser(cls, v):
+
+        assert hasattr(v, "get_format_instructions")
+
+        return v
+    
+
+    def create(self) -> str:
+
+        instructions = self.parser.get_format_instructions()
 
         example_prompt = PromptTemplate(
             template="{input} -> {output}",
@@ -57,14 +74,15 @@ class PromptCreator(BaseModel):
         prompt = FewShotPromptTemplate(
             prefix=self.prefix_prompt,
             suffix=self.suffix_prompt,
-            examples=examples,
+            examples=self.examples,
             example_prompt=example_prompt,
-            input_variables=[PromptCreator.get_chain_input_field_name()],
-            partial_variables={"format_instructions": self.parser.get_format_instructions()},
+            input_variables=[FewshotPromptCreator.get_chain_input_field_name()],
+            partial_variables={FewshotPromptCreator.get_format_instruction_field(): instructions},
             validate_template=True
         )
 
-        return prompt
+        return prompt.format(**{FewshotPromptCreator.get_chain_input_field_name(): self.text_to_classify}) 
+
 
 
 if __name__ == '__main__':
@@ -77,16 +95,18 @@ if __name__ == '__main__':
 
     parser = PydanticOutputParser(pydantic_object=Greeting)
 
-    prompt_creator = PromptCreator(
-        text="Some question",
-        classes=set(["class1", "class2"]),
-        parser=parser
-    )
-
     examples = [
         {"input": "Hello", "output": "Greeting"},
         {"input": "Goodbye", "output": "Farewell"}
     ]
 
-    prompt = prompt_creator.create_few_shot_prompt(examples=examples)
-    print(prompt.format(query="Go away!"))
+    prompt_creator = FewshotPromptCreator(
+        examples=examples,
+        text_to_classify="Hola",
+        prefix_prompt=f"You are a classifier. {{{FewshotPromptCreator.get_chain_input_field_name()}}} -> <your response>",
+        suffix_prompt=f"Use this format for your response: {{{FewshotPromptCreator.get_format_instruction_field()}}}",
+        parser=parser
+    )
+
+    prompt = prompt_creator.create()
+    print(prompt)

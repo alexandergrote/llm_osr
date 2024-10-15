@@ -24,22 +24,13 @@ class TestJobQueue(unittest.TestCase):
 
         TMP_DIR.cleanup()
 
-    def test_add_job(self):
-
-        job_queue = JobQueue()
-
-        for job in self.jobs:
-            job_queue.add_job(job)
-
-        self.assertEqual(len(job_queue.jobs), len(self.jobs))
-
 
     @patch("src.ml.util.job_queue.get_job_dir")
     def test_execution(self, mock_job_dir):
 
         mock_job_dir.return_value = PATCH_JOB_DIR
 
-        queue = JobQueue(jobs=self.jobs)
+        queue = JobQueue(jobs=iter(self.jobs))
         queue.run_failed_jobs()
 
         for job in queue.jobs:
