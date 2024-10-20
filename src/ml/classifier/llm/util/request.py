@@ -1,4 +1,4 @@
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, cast
 from pydantic import BaseModel
 
 from src.util.types import LogProb
@@ -37,38 +37,50 @@ class RequestInputData(BaseModel):
     data_modifying_function: Optional[Callable] = None  # function to modify the data before sending the request
 
     @classmethod
-    def create_openai_request_input(cls, name) -> "RequestInputData":
+    def create_openai_request_input(cls, url: str = "https://api.openai.com/v1/chat/completions", payload: dict = {}) -> "RequestInputData":
         
+        assert 'name' in payload, "Payload must contain a 'name' key"
+
+        final_payload = {
+            "temperature": 0,
+            "max_tokens": 1000,
+            "stop": None,
+            "logprobs": True,
+            "top_logprobs": 0,
+            "tools": None
+        }
+
+        for k, v in payload.items():
+            final_payload[k] = v        
+
         return RequestInputData(
-            url="https://api.openai.com/v1/chat/completions",
+            url=url,
             headers={
                 "Content-Type": "application/json", 
                 "Authorization": f"Bearer {env.openai_key}"
                 },
-            data={
-                "model": name,
-                "temperature": 0,
-                "max_tokens": 1000,
-                "stop": None,
-                "logprobs": True,
-                "top_logprobs": 0,
-                "tools": None
-            },
+            data=final_payload,
             data_modifying_function=add_prompt_to_data_openai
         )
         
 
     @classmethod
-    def create_hf_llama_request_input(cls, url) -> "RequestInputData":
+    def create_hf_llama_request_input(cls, url, payload: dict = {}) -> "RequestInputData":
+
+        final_payload = {
+            "temperature": 0.01, 
+            "max_new_tokens": 1000,
+            "stop": ["}"],
+            'details': True,
+            "return_full_text": False,
+        }
+
+        for k, v in payload.items():
+            final_payload[k] = v 
 
         return RequestInputData(
             url=url,
-            data={'parameters': {
-                    "temperature": 0.01, 
-                    "max_new_tokens": 1000,
-                    "stop": ["}"],
-                    'details': True,
-                }},
+            data={'parameters': final_payload},
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {env.hf_token}"},
             data_modifying_function=add_prompt_to_data_hf
         )
@@ -107,13 +119,13 @@ class RequestOutput(BaseModel):
 
         # extract json_str from the answer
         # Extract the JSON part from the text
+        # needed because otherwise pydantic cannot parse the json
         start_index = generated_text.rfind('{')
         end_index = generated_text.rfind('}') + 1
         text_response = generated_text[start_index:end_index]
 
         # extract logproba_output from the answer
         logprobas = [LogProb(text=el['text'], logprob=el['logprob']) for el in tokens]
-
 
         return cls(
             text=text_response,

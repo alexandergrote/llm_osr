@@ -19,6 +19,7 @@ env = PydanticEnvironment.from_environment()
 class HFEmbeddingPreprocessor(BackoffMixin, BaseModel, BasePreprocessor):
 
     url: str
+    tqdm_disable: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -66,7 +67,7 @@ class HFEmbeddingPreprocessor(BackoffMixin, BaseModel, BasePreprocessor):
         # iterate over data
         embeddings = []
 
-        for _, row in tqdm(data_copy.iterrows(), total=len(data_copy)):
+        for _, row in tqdm(data_copy.iterrows(), total=len(data_copy), disable=self.tqdm_disable):
 
             text = row[dfc.TEXT]
 

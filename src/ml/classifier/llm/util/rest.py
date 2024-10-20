@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from typing import Callable, Optional
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
+from langchain.output_parsers import PydanticOutputParser
+from langchain_core.exceptions import OutputParserException
 
 from src.util.hashing import Hash
 from src.ml.util.backoff import BackoffMixin
@@ -26,10 +28,17 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
     request_output: Optional[RequestOutput] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
-    def __call__(self, prompt, **kwargs) -> RequestOutput:
 
-        request_kwargs = self.request_input.model_dump(exclude={'data', 'data_modifying_function'})
+    def get_hash_id(self, prompt: str) -> str:
+        return f"{self.name}_{Hash.hash_string(prompt)}"
+
+    
+    def __call__(self, prompt, parser: Optional[PydanticOutputParser] = None, **kwargs) -> RequestOutput:
+
+        request_kwargs = self.request_input.model_dump(
+            exclude={'data', 'data_modifying_function'}
+        )
+
         request_data = self.request_input.data.copy()
 
         if self.request_input.data_modifying_function is None:
@@ -41,13 +50,16 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
         )
     
         # send request if not cached
-        hash_filename = f"{self.name}_{Hash.hash_string(prompt)}"
+        hash_filename = self.get_hash_id(prompt)
 
         request_kwargs['data'] = json.dumps(request_data)
+
+        save = True if parser is None else False
 
         response = self.completion_with_backoff_and_queue(
             function=requests.post,
             job_id=hash_filename,
+            save=save,
             **request_kwargs
         )
 
@@ -57,6 +69,21 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
 
             if not isinstance(result, RequestOutput):
                 raise ValueError("Results needs to be a Request Output")
+            
+            # check if output is parsable and then save it
+            if parser is not None:
+                
+                parser.parse(text=result.text)
+                
+                if not response.exists:
+                    response.save()
+
+        except OutputParserException as e:
+
+                print('-'*10)
+                print("Output parser failed: {}".format(str(e)))
+                print(result.text)
+                print('-'*10)
             
         except Exception as e:
             print(f"Error formatting request output: {e}")

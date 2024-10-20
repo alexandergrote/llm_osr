@@ -65,7 +65,7 @@ class Job(BaseModel):
         with open(file_path, "r") as f:
             return cls(**json.load(f))
         
-    def execute(self) -> "Job":
+    def execute(self, save: bool = True) -> "Job":
 
         if self.filepath.exists():
 
@@ -94,7 +94,8 @@ class Job(BaseModel):
             if hasattr(response, "text"):
                 self.error_description = response.text
 
-        self.save()
+        if save:
+            self.save()
 
         return self
 

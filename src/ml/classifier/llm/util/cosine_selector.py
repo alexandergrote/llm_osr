@@ -2,16 +2,20 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from pydantic import BaseModel
-from typing import List
+from typing import Type
 
-from src.ml.util.cached_sentence_encoder import CachedSentenceEncoder
+from src.ml.preprocessing.base import BasePreprocessor
+from src.ml.preprocessing.rest_embedding import HFEmbeddingPreprocessor
 from src.util.constants import DatasetColumn as dfc
 from src.util.logger import console
 
 
 class CosineSelector(BaseModel):
 
-    sentence_transformer: CachedSentenceEncoder
+    embedder: Type[BasePreprocessor] = HFEmbeddingPreprocessor(
+        url="https://api-inference.huggingface.co/models/mixedbread-ai/mxbai-embed-large-v1",
+        tqdm_disable=True
+    )
     _key: str = 'cosine_score'
 
     def get_n_most_similar_datapoints(self, query: str, data: pd.DataFrame, n: int, include_score: bool = False) -> pd.DataFrame:
@@ -19,17 +23,11 @@ class CosineSelector(BaseModel):
         # work on copy
         data_copy = data.copy()
 
-        data_comparison: List[str] = data_copy[dfc.TEXT].to_list()
+        embeddings_df = self.embedder._fit_transform(data=data_copy)
+        embeddings = np.stack(embeddings_df[dfc.FEATURES].to_list())
 
-        embeddings = []
-
-        for text in data_comparison:
-            embeddings.append(self.sentence_transformer.encode(text))
-
-        embeddings = np.array(embeddings)
-
-        query_embedding = self.sentence_transformer.encode(query)
-        query_embedding = query_embedding.reshape(1, -1)
+        query_embedding_df = self.embedder._transform(data=pd.DataFrame({dfc.TEXT: [query]}))
+        query_embedding = np.stack(query_embedding_df[dfc.FEATURES].to_list())
 
         # Calculate cosine similarity between the query and each sentence
         cosine_similarities = cosine_similarity(query_embedding, embeddings).flatten()
@@ -71,13 +69,6 @@ class CosineSelector(BaseModel):
 
 if __name__ == '__main__':
 
-    embedding_model_name: str = 'paraphrase-MiniLM-L6-v2'
-    
-    model = CachedSentenceEncoder(
-        embedding_model_name=embedding_model_name,
-        embedding_model_params=None
-    )
-
     data = pd.DataFrame({
         dfc.TEXT: [
             "Physical exercise is good",
@@ -94,9 +85,7 @@ if __name__ == '__main__':
 
     query = 'My cat eats daily'
 
-    selector = CosineSelector(
-        sentence_transformer=model
-    )
+    selector = CosineSelector()
 
     result = selector.get_n_most_similar_datapoints(
         query=query,

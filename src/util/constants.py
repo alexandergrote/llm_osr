@@ -13,6 +13,7 @@ class Directory:
     OUTPUT_DIR = ROOT / "outputs"
     CACHING_DIR = ROOT / "cache"
     JOB_DIR = ROOT / "jobs"
+    ERROR_LOG_DIR = ROOT / "logs"
 
 
 paths = [
@@ -33,7 +34,6 @@ def get_hydra_output_dir() -> Path:
     
     except ValueError:
         return Directory.OUTPUT_DIR
-    
 
 
 class File:
@@ -87,6 +87,8 @@ class UnknownClassLabel(BaseEnum):
 class ErrorValues(BaseEnum):
     PARSING_STR = 'parse_error'
     PARSING_NUM = -2
+    LOGPROB_STR = 'logprob_error'
+    LOGPROB_NUM = -3
     
 
 RESTAPI_URLS = {

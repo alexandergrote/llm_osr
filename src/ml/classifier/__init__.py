@@ -1,6 +1,6 @@
 from .benchmark.naive import NaiveClf
 from .benchmark import DOC, MLP, HyperTuner, SimpleShot, Oslo, SetFit
-from .llm import LLM, RandomLLM
+from .llm import LLM, RandomLLM, TwoStageLLM
 
 __all__ = [
     "NaiveClf",
@@ -11,5 +11,6 @@ __all__ = [
     "HyperTuner",
     "SimpleShot",
     "Oslo",
-    "SetFit"
+    "SetFit",
+    "TwoStageLLM",
 ]

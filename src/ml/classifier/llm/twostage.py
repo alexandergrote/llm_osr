@@ -4,21 +4,24 @@ import pandas as pd
 from copy import copy
 from typing import Dict, List, Optional, Union, Tuple
 from langchain.output_parsers import PydanticOutputParser
-from langchain_core.exceptions import OutputParserException
 from pydantic import model_validator, ConfigDict
 from langchain_core.prompts import PromptTemplate
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
 from src.ml.classifier.llm.util.prediction import PredictionV1, Prediction
-from src.ml.classifier.llm.util.request import RequestOutput
+from src.ml.classifier.llm.util.request import RequestOutput, RequestInputData
 from src.ml.classifier.llm.util.logprob import LogProbScore, LogProb
 from src.ml.classifier.llm.base import AbstractClassifierLLM
+from src.ml.classifier.llm.util.rest import LLM as RestLLM
 from src.util.constants import DatasetColumn, LLMModels
 from src.ml.classifier.llm.util.mapping import LLM_Mapping
 from src.util.constants import UnknownClassLabel
 from src.ml.classifier.llm.util.rest import AbstractLLM
 from src.ml.classifier.llm.util.logprob_extraction import LogProbExtractor
+from src.util.logger import log_error
+from src.util.hashing import Hash
+from src.util.constants import ErrorValues
 
 
 # prompts taken from retry output parser from langchain
@@ -28,6 +31,9 @@ Completion:
 {completion}
 
 Above, the Completion did not satisfy the constraints given in the prompt.
+The error message is: 
+{error_message}
+
 Please try again:"""
 
 NAIVE_RETRY_PROMPT = PromptTemplate.from_template(NAIVE_COMPLETION_RETRY)
@@ -40,17 +46,42 @@ NAIVE_RETRY_PROMPT = PromptTemplate.from_template(NAIVE_COMPLETION_RETRY)
 
 class TwoStageLLM(AbstractClassifierLLM):
 
-    model: AbstractLLM
-    clf_str: str
+    model: Union[AbstractLLM, dict]
 
+    # fewshot selection of data points
     selector: Optional[Union[dict, CosineSelector]] = None
+
+    n_classes: Optional[int] = 3
+    n_datapoints_per_class: Optional[int] = 5
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode='before')
     def _init_model(data: dict):
 
-        data['model'] = LLM_Mapping[LLMModels(data['clf_str'])]
+        model_config = data["model"]
+        
+        function_key = 'function'
+        function_key_params = 'params'
+
+        key = 'request_output_formatter'
+        
+        function_output = DynamicImport.get_attribute_from_class(
+            model_config[key][function_key]
+        )
+
+        key = 'request_input'
+        function_input = DynamicImport.get_attribute_from_class(
+            model_config[key][function_key]
+        )
+
+        input_obj = function_input(**model_config[key][function_key_params])
+        
+        data['model'] = RestLLM(
+            name=model_config['name'],
+            request_output_formatter=function_output, 
+            request_input=input_obj
+        )
 
         data_selector = data.get('selector')
 
@@ -70,18 +101,13 @@ class TwoStageLLM(AbstractClassifierLLM):
         for _ in range(retries):
 
             try:
-                completion = model(prompt=prompt_copy)
+
+                completion = model(prompt=prompt_copy, parser=parser)
 
                 if not isinstance(completion, RequestOutput):
                     raise ValueError("Model did not return a RequestOutput object")
                 
-                parsed_data = parser.parse(text =completion.text)
-
-            except OutputParserException:
-
-                prompt_copy = NAIVE_RETRY_PROMPT.format(prompt=prompt_copy, completion=completion.text)
-
-            try:
+                parsed_data = parser.parse(text=completion.text)
 
                 Prediction.valid_labels = parsed_data.valid_labels
                 
@@ -91,8 +117,16 @@ class TwoStageLLM(AbstractClassifierLLM):
                 )
 
             except Exception as e:
-                print(e)
-                continue
+
+                log_error(
+                    filename=Hash.hash(prompt) + ".json",
+                    json_dict={
+                        "prompt": prompt,
+                        "response": completion.text,
+                        "error_message": str(e)
+                    }
+
+                )
 
             if result:
                 return result
@@ -146,7 +180,7 @@ class TwoStageLLM(AbstractClassifierLLM):
         return examples
 
 
-    def _get_examples(self, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:
+    def _get_examples(self, text_to_classify: str, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:
 
         if self.y_train is None:
             raise ValueError("Model is not fitted")
@@ -166,17 +200,43 @@ class TwoStageLLM(AbstractClassifierLLM):
         # draw a random example from each class
         examples = []
 
-        rng = np.random.default_rng(42)
+        if self.selector is None:
 
-        for selected_class in self.classes:
+            rng = np.random.default_rng(42)
 
-            y_mask = self.y_train == selected_class
+            for selected_class in self.classes:
 
-            x_sub = self.x_train[y_mask]
+                y_mask = self.y_train == selected_class
 
-            x_chosen = rng.choice(x_sub)
+                x_sub = self.x_train[y_mask]
 
-            examples.append({query: x_chosen, answer: selected_class})
+                x_chosen = rng.choice(x_sub)
+
+                examples.append({query: x_chosen, answer: selected_class})
+
+        else:
+
+            data = pd.DataFrame({
+                DatasetColumn.LABEL: self.y_train,
+                DatasetColumn.TEXT: self.x_train.reshape(-1,)
+            })
+
+            n_classes = len(self.classes) if self.n_classes is None else self.n_classes
+            n_datapoints_per_class = 1 if self.n_datapoints_per_class is None else self.n_datapoints_per_class
+
+            dataframe = self.selector.get_most_similar_datapoints_for_n_classes(
+                query=text_to_classify,
+                data=data,
+                n_classes=n_classes,
+                n=n_datapoints_per_class
+            )
+
+            for _, row in dataframe.iterrows():
+                examples.append({
+                    query: row[DatasetColumn.TEXT], 
+                    answer: row[DatasetColumn.LABEL]
+                })
+
 
         return examples
     
@@ -201,7 +261,7 @@ class TwoStageLLM(AbstractClassifierLLM):
            pass
                
 
-    def _detect_unknown_class(self, text: str) -> LogProbScore:
+    def _detect_unknown_class(self, text: str) -> Optional[LogProbScore]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -217,8 +277,11 @@ class TwoStageLLM(AbstractClassifierLLM):
         PredictionV1.valid_labels = valid_labels
         
         parser = PydanticOutputParser(pydantic_object=PredictionV1)
+        instructions = parser.get_format_instructions()
 
-        examples = self._get_examples()
+        examples = self._get_examples(
+            text_to_classify=text,
+        )
 
         examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
 
@@ -235,22 +298,60 @@ class TwoStageLLM(AbstractClassifierLLM):
         
         Provide the reasoning containing your thought process first and then the label.
         The label must be 'true' if the overall concept of the incoming data point is significantly different to the examples and 'false' if the concept is similar.
- 
-        For your answer, you must use this json format: 
-        {{
-           "reasoning": <your reasoning>,
-           "label": <your final label>
-        }}.
+        
+        {instructions}
         
         """
             
-        logprob_score = self._get_parsed_output(model=self.model, parser=parser, prompt=prompt, retries=3)
-
-        if logprob_score is None:
-            raise Exception("logprob score should not be None")
+        logprob_score = self._get_parsed_output(model=self.model, parser=parser, prompt=prompt, retries=5)
         
         return logprob_score
     
+    def _get_unknown_class_logprob_value(self, logprobs: List[LogProb]) -> Optional[LogProb]:
+
+        logprob_value = None
+
+        try:
+
+            """logprob_candidates = LogProbExtractor.get_target_logprobas(
+                log_sequences=logprobs,
+                prior_sequence=["label", '"'],
+                end_sequence=[]
+            )"""
+
+            logprob_candidates = logprobs
+
+            assert len(logprob_candidates) > 0  
+
+            logprob_true_values = LogProbExtractor.get_specific_logprobas(text='true', log_sequences=logprob_candidates)       
+            logprob_false_values = LogProbExtractor.get_specific_logprobas(text='false', log_sequences=logprob_candidates)
+
+            if all([len(logprob_false_values) > 0, len(logprob_true_values) > 0]):
+                raise Exception("Ambiguous Logprobs")
+
+            if len(logprob_true_values) == 1:
+                logprob_value = logprob_true_values[0]
+
+            if len(logprob_false_values) == 1:
+                logprob_value = logprob_false_values[0]
+
+        except Exception as e:
+
+            from IPython import embed; embed()
+
+            log_probs = [logprob.text for logprob in logprobs]
+
+            text = ''.join(log_probs)
+
+            log_error(
+                filename=Hash.hash(text) + '.json',
+                json_dict={
+                    "error": str(e),
+                    "logprobs": log_probs,
+                }
+            )
+
+        return logprob_value
 
     def _classify_known_classes(self, text: str) -> LogProbScore:
 
@@ -268,10 +369,13 @@ class TwoStageLLM(AbstractClassifierLLM):
         PredictionV1.valid_labels = valid_labels
         
         parser = PydanticOutputParser(pydantic_object=PredictionV1)
+        instructions = parser.get_format_instructions()
 
         classes_msg = '\n'.join(valid_labels)
 
-        examples = self._get_examples()
+        examples = self._get_examples(
+            text_to_classify=text,
+        )
 
         examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
 
@@ -288,17 +392,13 @@ class TwoStageLLM(AbstractClassifierLLM):
         Third, compare the overall concept of the incoming data point with the concepts of each class and answer with the more probable answer.
         
         Provide the reasoning containing your thought process first and then the label.
-        The label must be one of those values:
-        {classes_msg}
- 
-        For your answer, you must use this json format: 
-        {{
-           "reasoning": <your reasoning>,
-           "label": <your final label>
-        }}.
+        The label must be one of those values: {classes_msg}
+        
+        {instructions}
+
         """
 
-        logprob_score = self._get_parsed_output(model=self.model, parser=parser, prompt=prompt, retries=3)
+        logprob_score = self._get_parsed_output(model=self.model, parser=parser, prompt=prompt, retries=5)
 
         if logprob_score is None:
             raise Exception("logprob score should not be None")
@@ -319,33 +419,16 @@ class TwoStageLLM(AbstractClassifierLLM):
 
         unknown_prediction = self._detect_unknown_class(text=text)
 
-        logprob_candidates = LogProbExtractor.get_target_logprobas(
-            log_sequences=unknown_prediction.logprobs,
-            prior_sequence=["label", '":'],
-            end_sequence=[]
+        if unknown_prediction is None:
+            return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
+
+        logprob_value = self._get_unknown_class_logprob_value(
+            logprobs=unknown_prediction.logprobs[-10:],
         )
-
-        assert len(logprob_candidates) > 0
-
-        logprob_value = None
-
-        logprob_true_values = LogProbExtractor.get_specific_logprobas(text='true', log_sequences=logprob_candidates)       
-        logprob_false_values = LogProbExtractor.get_specific_logprobas(text='false', log_sequences=logprob_candidates)
-
-        if all([len(logprob_false_values) > 0, len(logprob_true_values) > 0]):
-            raise Exception("Ambiguous Logprobs")
-
-        if len(logprob_true_values) == 1:
-            logprob_value = logprob_true_values[0]
-
-        if len(logprob_false_values) == 1:
-            logprob_value = logprob_false_values[0]
-
-        if logprob_value is None:
-            raise Exception("No logprob value found")
         
-        assert isinstance(logprob_value, LogProb)
-
+        if logprob_value is None:
+            return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
+        
         unknown_class: str = logprob_value.text.lower()
         unknown_score: float = LogProbScore.calculate_linear_prob(logprob_value.logprob)
 
@@ -365,20 +448,34 @@ class TwoStageLLM(AbstractClassifierLLM):
 if __name__ == '__main__':
 
     import numpy as np
+    from typing import cast
+    from src.util.load_hydra import get_hydra_config
 
+    key = "ml__classifier"
+
+    config = get_hydra_config(
+        overrides=[
+            f"{key}=two_stage_llm_llama"
+        ]
+    )
+
+    llm = DynamicImport.init_class_from_dict(
+        dictionary=config[key],
+    )
+
+    # Explicitly cast llm to TwoStageLLM
+    llm = cast(TwoStageLLM, llm)
+
+    
     data_train = pd.DataFrame({
-        DatasetColumn.FEATURES: ["Ich heiße Alex", "Auf Wiedersehen!", "Hallo"],
-        DatasetColumn.LABEL: ['Greeting', 'Farewell', "Greeting"]
+        DatasetColumn.FEATURES: ["Ich heiße Alex", "Auf Wiedersehen!", "Hallo", "Wo kann ich Kekse kaufen?", "Die Apfelsaftschorle finde ich wo?", "Das Essen ist sehr lecker", "München ist eine große Stadt."],
+        DatasetColumn.LABEL: ['Greeting', 'Farewell', "Greeting", "Food", "Food", "Food", "City"]
     })
 
     data_valid = pd.DataFrame({
         DatasetColumn.FEATURES: ["Ich bin ein Mensch", "Ich war noch nie in Berlin"],
-        DatasetColumn.LABEL: ['Mensch', 'Berlin']
+        DatasetColumn.LABEL: ['Mensch', 'City']
     })
-
-    llm = TwoStageLLM(
-        clf_str=LLMModels.LLAMA_3_70B_Remote_HF.value
-    )
 
     llm.fit(
         x_train=data_train[DatasetColumn.FEATURES].values,
@@ -397,9 +494,3 @@ if __name__ == '__main__':
     )
 
     print(result2)
-
-    
-
-    
-    
-

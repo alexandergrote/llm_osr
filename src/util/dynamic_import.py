@@ -1,5 +1,6 @@
-from typing import Optional
+import importlib
 
+from typing import Optional
 from pydantic import BaseModel
 
 from src.util.dict_extraction import DictExtraction
@@ -28,7 +29,7 @@ class DynamicImport(BaseModel):
 
         if params is None:
             return class_object()
-
+        
         return class_object(**params)
     
     @staticmethod
@@ -47,3 +48,20 @@ class DynamicImport(BaseModel):
         filename=filename, **kwargs)
 
         return DynamicImport.init_class(*args)
+    
+    @staticmethod
+    def get_attribute_from_class(name: str):
+
+        splits = name.split(".")
+
+        attribute_name = splits[-1]
+        class_name = splits[-2]
+
+        module_name = '.'.join(splits[:-2])
+
+        # Import the module dynamically
+        module = importlib.import_module(module_name)
+        class_obj = getattr(module, class_name)
+        attribute = getattr(class_obj, attribute_name)
+
+        return attribute

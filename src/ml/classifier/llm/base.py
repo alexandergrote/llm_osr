@@ -53,9 +53,10 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
                 result = self._single_predict(text=el_str)
 
-            except Exception:
+            except Exception as e:
 
-                console.log(f"Error processing text: {el_str}")
+                tqdm.write(f"Error processing text: {el_str}")
+                tqdm.write(f"Error: {e}")
 
                 pass
 

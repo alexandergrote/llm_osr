@@ -7,7 +7,7 @@ from src.util.constants import LLMModels, RESTAPI_URLS
 Llama3_8B_Remote_HF_Input = RequestInputData.create_hf_llama_request_input(url=RESTAPI_URLS[LLMModels.LLAMA_3_8B_Remote_HF])
 Llama3_70B_Remote_HF_Input = RequestInputData.create_hf_llama_request_input(url=RESTAPI_URLS[LLMModels.LLAMA_3_70B_Remote_HF])
 
-GPT3_5_Turbo_Input = RequestInputData.create_openai_request_input(name='gpt-3.5-turbo-0125')
+GPT3_5_Turbo_Input = RequestInputData.create_openai_request_input(payload={'name': 'gpt-3.5-turbo-0125'})
 
 LLM_Mapping = LazyDict({
     LLMModels.OAI_GPT3: (RestLLM, {'name': 'gpt-3.5-turbo', 'request_input': GPT3_5_Turbo_Input, 'request_output_formatter': RequestOutput.from_openai_request}),

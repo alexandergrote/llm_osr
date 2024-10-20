@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from pydantic import BaseModel
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 from sklearn.metrics import (
     f1_score,
     precision_score,
@@ -17,10 +17,12 @@ from sklearn.metrics import (
 from sklearn.metrics._classification import UndefinedMetricWarning
 
 from src.ml.evaluation.base import BaseEvaluator
-
+from src.util.constants import ErrorValues
 
 
 class Evaluator(BaseModel, BaseEvaluator):
+
+    remove_errors: bool = True
 
     @staticmethod
     def _add_binary_result(
@@ -160,13 +162,32 @@ class Evaluator(BaseModel, BaseEvaluator):
         return data
 
     def evaluate(
-        self, y_pred: np.ndarray, y_true: np.ndarray, classes_in_training: Set, **kwargs
+        self, 
+        y_pred: np.ndarray, 
+        y_true: np.ndarray, 
+        classes_in_training: Set, 
+        unknown_scores: Optional[pd.Series],
+        **kwargs
     ) -> dict:
 
         # result placeholder
         results: Dict[str, float] = {}
 
         classes = list(classes_in_training)
+
+        """errors = [
+            (f"ratio_{ErrorValues.PARSING_STR.value}", ErrorValues.PARSING_NUM.value),
+            (f"ratio_{ErrorValues.LOGPROB_STR.value}", ErrorValues.LOGPROB_NUM.value)
+        ]"""
+
+        if self.remove_errors:
+
+            mask_parsing = y_pred != ErrorValues.PARSING_NUM.value
+            y_pred = y_pred[mask_parsing]
+            y_true = y_true[mask_parsing]
+            unknown_scores = unknown_scores[mask_parsing]
+
+            ratio_parsing_error = 1 - sum(mask_parsing) / len(mask_parsing)
 
         with warnings.catch_warnings():
             
@@ -201,12 +222,23 @@ class Evaluator(BaseModel, BaseEvaluator):
         # summarize results in dataframe for easier data wrangling
         report = pd.DataFrame(results, index=[0])
 
-        # calculate average values
-        for score in ["f1", "precision", "recall"]:
-            report[f"{score}_avg"] = report.filter(like=f"{score}_known").mean(
-                axis=1
-            )[0]
+        # calculate micro average values
+        num_known = report.filter(like="sample_size_known").sum(axis=1)[0]
+        scores = ["f1", "precision", "recall"]
 
+        for score in scores:
+            report[f"{score}_avg"] = 0
+
+        for class_value in classes_in_training:
+
+            sample_size_known = report[f'sample_size_known_class_{str(class_value)}'][0]
+            weighting_factor = sample_size_known / num_known
+
+            for score in scores:
+                report[f"{score}_avg"] += weighting_factor * report[f'{score}_known_class_{str(class_value)}'][0]
+
+        # adding error metrics
+        report["ratio_parsing_error"] = ratio_parsing_error
         final_result = report.iloc[0, :].to_dict()
 
         kwargs['metrics'] = final_result
