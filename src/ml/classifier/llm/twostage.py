@@ -5,7 +5,7 @@ from copy import copy
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Union, Tuple, Callable
 from langchain.output_parsers import PydanticOutputParser
-from pydantic import model_validator, ConfigDict, field_validator
+from pydantic import model_validator, ConfigDict
 from langchain_core.prompts import PromptTemplate
 
 from src.util.dynamic_import import DynamicImport
@@ -15,6 +15,7 @@ from src.ml.classifier.llm.util.request import RequestOutput, RequestInputData
 from src.ml.classifier.llm.util.logprob import LogProbScore, LogProb
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.ml.classifier.llm.util.rest import LLM as RestLLM
+from src.ml.util.job_queue import Job
 from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
 from src.ml.classifier.llm.util.rest import AbstractLLM
 from src.ml.classifier.llm.util.logprob_extraction import LogProbExtractor
@@ -143,28 +144,18 @@ class TwoStageLLM(AbstractClassifierLLM):
 
         # work on copy
         prompt_copy = copy(prompt)
+        
+        for _ in range(retries):
 
-        result = None
-        completion = None
-
-        for i in range(retries):
+            log_filename = Hash.hash(prompt) + ".json"
 
             try:
 
-                completion: RequestOutput = model(prompt=prompt_copy, parser=parser)
+                completion: Job = model(prompt=prompt_copy)
 
-                if completion.error:
-                    raise ValueError(completion.text)
-                
-                parsed_data = parser.parse(text=completion.text)
-
-                Prediction.valid_labels = parsed_data.valid_labels
-                
-                result = LogProbScore(
-                    answer=Prediction(**parsed_data.dict()),
-                    logprobs=completion.logprobas
-                )
-
+                if not completion.is_success:
+                    raise ValueError(completion.error_description)
+            
             except Exception as e:
 
                 #prompt_copy = NAIVE_RETRY_PROMPT.format(
@@ -172,17 +163,66 @@ class TwoStageLLM(AbstractClassifierLLM):
                 #)
 
                 log_error(
-                    filename=Hash.hash(prompt) + ".json",
+                    filename=log_filename,
                     json_dict={
                         "prompt": prompt,
-                        "response": completion.text,
+                        "response": completion.error_description,
                         "error_message": str(e)
                     }
                 )
 
-            if result is not None:
-                return result
+                continue
+
+
+            # parse response
+            # first parsing: request output will be parsed to a pydantic object
+            # second parsing: output needs to follow the parser object
+            # the first step is needed to manually exclude parts of the output that lead to errors with the pydantic output parser
+
+            try:
+
+                first_parsed_response: RequestOutput = model.format_output(job=completion)
             
+            except Exception as e:
+
+                log_error(
+                    filename=log_filename,
+                    json_dict={
+                        "prompt": prompt,
+                        "response": str(completion.request_output),
+                        "error_message": str(e)
+                    }
+                )
+
+            if first_parsed_response is None:
+                raise ValueError("No parsed response")
+
+            try:
+
+                second_parsed_response: PredictionV1 = parser.parse(text=first_parsed_response.text)
+
+                Prediction.valid_labels = second_parsed_response.valid_labels
+                
+                result = LogProbScore(
+                    answer=Prediction(**second_parsed_response.dict()),
+                    logprobs=first_parsed_response.logprobas
+                )
+
+                completion.save()
+
+                return result
+
+            except Exception as e:
+                
+                log_error(
+                    filename=log_filename,
+                    json_dict={
+                        "prompt": prompt,
+                        "response": first_parsed_response.text,
+                        "error_message": str(e)
+                    }
+                )
+
         return None
 
 
@@ -276,6 +316,9 @@ class TwoStageLLM(AbstractClassifierLLM):
             n_classes = len(self.classes) if self.n_classes is None else self.n_classes
             n_datapoints_per_class = 1 if self.n_datapoints_per_class is None else self.n_datapoints_per_class
 
+            if not isinstance(self.selector, CosineSelector):
+                raise ValueError("Selector must be of type CosineSelector")
+
             dataframe = self.selector.get_most_similar_datapoints_for_n_classes(
                 query=text_to_classify,
                 data=data,
@@ -315,8 +358,6 @@ class TwoStageLLM(AbstractClassifierLLM):
 
     def _detect_unknown_class(self, text: str) -> Optional[LogProbScore]:
 
-        # todo: the output of a function must either be a string with the error message or a pydantic object
-
         if self.y_train is None:
             raise ValueError("Not fitted")
         
@@ -344,12 +385,15 @@ class TwoStageLLM(AbstractClassifierLLM):
             text=text,
             instructions=instructions
         )
+
+        if not isinstance(self.unknown_detection_model, AbstractLLM):
+            raise ValueError("Unknown detection model must be of type AbstractLLM")
     
         logprob_score = self._get_parsed_output(model=self.unknown_detection_model, parser=parser, prompt=prompt, retries=5)
         
         return logprob_score
     
-    def _get_unknown_class_logprob_value(self, logprobs: List[LogProb], last_n: Optional[int] = None, fallback: bool = False) -> LogProb:
+    def _get_unknown_class_logprob_value(self, logprobs: List[LogProb], last_n: Optional[int] = None, fallback: bool = False) -> Optional[LogProb]:
 
         try:
 
@@ -397,6 +441,8 @@ class TwoStageLLM(AbstractClassifierLLM):
                 }
             )
 
+            return None
+
     def _classify_known_classes(self, text: str) -> LogProbScore:
 
         if self.y_train is None:
@@ -423,24 +469,15 @@ class TwoStageLLM(AbstractClassifierLLM):
 
         examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
 
-        prompt = f"""\n
-        You are a classifier that classifies an incoming data point into predefined classes. 
-        Your task is to decide if "{text}" belongs to these classes: \n{classes_msg}\n
+        prompt = self.classifier_prompt.format(
+            examples_msg=examples_msg,
+            text=text,
+            instructions=instructions,
+            classes_msg=classes_msg
+        )
 
-        Here's a list of examples associated with these classes:\n 
-        
-        {examples_msg}
-
-        First, think step by step of the overall concept behind the incoming data point.
-        Second, think step by step about the concepts of each class.
-        Third, compare the overall concept of the incoming data point with the concepts of each class and answer with the more probable answer.
-        
-        Provide the reasoning containing your thought process first and then the label.
-        The label must be one of those values: {classes_msg}
-        
-        {instructions}
-
-        """
+        if not isinstance(self.classifier_model, AbstractLLM):
+            raise ValueError("Classifier model must be an AbstractLLM")
 
         logprob_score = self._get_parsed_output(model=self.classifier_model, parser=parser, prompt=prompt, retries=5)
 
@@ -479,7 +516,7 @@ class TwoStageLLM(AbstractClassifierLLM):
                 return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
             
             unknown_class: str = logprob_value.text.lower()
-            unknown_score: float = LogProbScore.calculate_linear_prob(logprob_value.logprob)
+            unknown_score = LogProbScore.calculate_linear_prob(logprob_value.logprob)
 
             if "true" in unknown_class:            
                 return UnknownClassLabel.UNKNOWN_STR.value, unknown_score

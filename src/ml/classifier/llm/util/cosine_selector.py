@@ -2,9 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from pydantic import BaseModel
-from typing import Type
 
-from src.ml.preprocessing.base import BasePreprocessor
 from src.ml.preprocessing.rest_embedding import HFEmbeddingPreprocessor
 from src.util.constants import DatasetColumn as dfc
 from src.util.logger import console
@@ -12,7 +10,7 @@ from src.util.logger import console
 
 class CosineSelector(BaseModel):
 
-    embedder: Type[BasePreprocessor] = HFEmbeddingPreprocessor(
+    embedder: HFEmbeddingPreprocessor = HFEmbeddingPreprocessor(
         url="https://api-inference.huggingface.co/models/mixedbread-ai/mxbai-embed-large-v1",
         tqdm_disable=True
     )

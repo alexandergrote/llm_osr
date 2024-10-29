@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
 from pydantic.v1 import validate_arguments
-from typing import Set
+from typing import Set, Optional
 
 from src.util.types import MLPrediction
 from src.util.logger import console
@@ -13,7 +13,7 @@ class BaseEvaluator(ABC):
 
     @abstractmethod
     def evaluate(
-        self, y_pred: np.ndarray, y_true: np.ndarray, classes_in_training: Set, **kwargs
+        self, y_pred: np.ndarray, y_true: np.ndarray, classes_in_training: Set, unknown_scores: Optional[pd.Series], **kwargs
     ) -> dict:
         raise NotImplementedError("Method not implemented")
 

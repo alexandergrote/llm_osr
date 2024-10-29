@@ -4,21 +4,24 @@ from abc import ABC, abstractmethod
 from typing import Callable, Optional
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
-from langchain.output_parsers import PydanticOutputParser
-from langchain_core.exceptions import OutputParserException
 
 from src.util.hashing import Hash
 from src.ml.util.backoff import BackoffMixin
 from src.ml.classifier.llm.util.request import RequestInputData, RequestOutput
-from src.ml.util.job_queue import JobStatus
+from src.ml.util.job_queue import Job
 
 
 class AbstractLLM(ABC):
     
     @abstractmethod
-    def __call__(self, *, prompt: str, **kwargs) -> RequestOutput:
+    def __call__(self, *, prompt: str, **kwargs) -> Job:
 
         raise NotImplementedError()
+    
+    @abstractmethod
+    def format_output(self, *, job: Job, **kwargs) -> RequestOutput:
+        raise NotImplementedError()
+
 
 
 class LLM(BaseModel, AbstractLLM, BackoffMixin):
@@ -33,8 +36,15 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
     def get_hash_id(self, prompt: str) -> str:
         return f"{self.name}_{Hash.hash_string(prompt)}"
 
-    
-    def __call__(self, prompt, parser: Optional[PydanticOutputParser] = None, **kwargs) -> RequestOutput:
+    def format_output(self, *, job: Job, **kwargs) -> RequestOutput:
+
+        result = self.request_output_formatter(job.request_output)
+
+        assert isinstance(result, RequestOutput)
+
+        return result   
+        
+    def __call__(self, prompt, save: bool = False, **kwargs) -> Job:
 
         request_kwargs = self.request_input.model_dump(
             exclude={'data', 'data_modifying_function'}
@@ -55,10 +65,6 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
 
         request_kwargs['data'] = json.dumps(request_data)
 
-        # we need the parser to conduct an addtional test on the output
-        # only if this test is passed, we can then save the output
-        save = True if parser is None else False
-
         # rest api response
         response = self.completion_with_backoff_and_queue(
             function=requests.post,
@@ -67,69 +73,7 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
             **request_kwargs
         )
 
-        if response.status == JobStatus.failed:
-
-            return RequestOutput(
-                text=response.error_description,
-                error=True,
-                logprobas=[]
-            )
-
-
-        # parse response
-        # first parsing: request output will be parsed to a pydantic object
-        # second parsing: output needs to follow the parser object
-        # the first step is needed to manually exclude parts of the output that lead to errors with the pydantic output parser
-        first_parsed_response = None   
-        
-        try:
-
-            first_parsed_response: RequestOutput = self.request_output_formatter(response.request_output)
-
-        except Exception as e:
-
-            error_message = f"Exception {str(e)};\n\nError parsing request output: {response.error_description}"
-
-            return RequestOutput(
-                text=error_message,
-                error=True,
-                logprobas=[]
-            )
-
-        if not isinstance(first_parsed_response, RequestOutput):
-            raise ValueError("Results needs to be a Request Output")
-            
-        # check if output is parsable and then save it
-        try:
-
-            if parser is not None:
-                
-                parser.parse(text=first_parsed_response.text)
-                
-                if not response.exists:
-                    response.save()
-
-            return first_parsed_response
-
-        except OutputParserException as e:
-
-            error_message = f"Output parser failed: {first_parsed_response.text}"
-            
-            return RequestOutput(
-                text=error_message,
-                error=True,
-                logprobas=[]
-            )
-            
-        except Exception as e:
-
-            error_message = f"Error formatting request output: {e}"
-
-            return RequestOutput(
-                text=error_message,
-                error=True,
-                logprobas=[]
-            )
+        return response
 
 
 if __name__ == '__main__':
@@ -146,10 +90,8 @@ if __name__ == '__main__':
     )
 
     gpt35 = LLM(
-        name='gpt-3.5-turbo',
-        request_input=RequestInputData.create_openai_request_input(
-            name='gpt-3.5-turbo-0125'
-        ),
+        name='gpt-3.5-turbo-0125',
+        request_input=RequestInputData.create_openai_request_input(),
         request_output_formatter=RequestOutput.from_openai_request
     )
 
