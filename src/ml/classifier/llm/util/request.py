@@ -89,8 +89,8 @@ class RequestOutput(BaseModel):
     
     text: str
     logprobas: List[LogProb]
+    error: bool = False
     
-
     @classmethod
     def from_llama_hf_request(cls, x: List[dict], **kwargs) -> "RequestOutput":
 

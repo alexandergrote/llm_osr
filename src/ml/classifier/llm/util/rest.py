@@ -10,6 +10,7 @@ from langchain_core.exceptions import OutputParserException
 from src.util.hashing import Hash
 from src.ml.util.backoff import BackoffMixin
 from src.ml.classifier.llm.util.request import RequestInputData, RequestOutput
+from src.ml.util.job_queue import JobStatus
 
 
 class AbstractLLM(ABC):
@@ -54,8 +55,11 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
 
         request_kwargs['data'] = json.dumps(request_data)
 
+        # we need the parser to conduct an addtional test on the output
+        # only if this test is passed, we can then save the output
         save = True if parser is None else False
 
+        # rest api response
         response = self.completion_with_backoff_and_queue(
             function=requests.post,
             job_id=hash_filename,
@@ -63,32 +67,70 @@ class LLM(BaseModel, AbstractLLM, BackoffMixin):
             **request_kwargs
         )
 
+        if response.status == JobStatus.failed:
+
+            return RequestOutput(
+                text=response.error_description,
+                error=True,
+                logprobas=[]
+            )
+
+
+        # parse response
+        # first parsing: request output will be parsed to a pydantic object
+        # second parsing: output needs to follow the parser object
+        # the first step is needed to manually exclude parts of the output that lead to errors with the pydantic output parser
+        first_parsed_response = None   
+        
         try:
 
-            result = self.request_output_formatter(response.request_output)
+            first_parsed_response: RequestOutput = self.request_output_formatter(response.request_output)
 
-            if not isinstance(result, RequestOutput):
-                raise ValueError("Results needs to be a Request Output")
+        except Exception as e:
+
+            error_message = f"Exception {str(e)};\n\nError parsing request output: {response.error_description}"
+
+            return RequestOutput(
+                text=error_message,
+                error=True,
+                logprobas=[]
+            )
+
+        if not isinstance(first_parsed_response, RequestOutput):
+            raise ValueError("Results needs to be a Request Output")
             
-            # check if output is parsable and then save it
+        # check if output is parsable and then save it
+        try:
+
             if parser is not None:
                 
-                parser.parse(text=result.text)
+                parser.parse(text=first_parsed_response.text)
                 
                 if not response.exists:
                     response.save()
 
+            return first_parsed_response
+
         except OutputParserException as e:
 
-                print('-'*10)
-                print("Output parser failed: {}".format(str(e)))
-                print(result.text)
-                print('-'*10)
+            error_message = f"Output parser failed: {first_parsed_response.text}"
+            
+            return RequestOutput(
+                text=error_message,
+                error=True,
+                logprobas=[]
+            )
             
         except Exception as e:
-            print(f"Error formatting request output: {e}")
 
-        return result
+            error_message = f"Error formatting request output: {e}"
+
+            return RequestOutput(
+                text=error_message,
+                error=True,
+                logprobas=[]
+            )
+
 
 if __name__ == '__main__':
 

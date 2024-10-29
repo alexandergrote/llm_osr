@@ -14,6 +14,7 @@ class Directory:
     CACHING_DIR = ROOT / "cache"
     JOB_DIR = ROOT / "jobs"
     ERROR_LOG_DIR = ROOT / "logs"
+    PROMPT_DIR = ROOT / "prompts"
 
 
 paths = [

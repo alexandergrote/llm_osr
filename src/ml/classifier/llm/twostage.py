@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 
 from copy import copy
-from typing import Dict, List, Optional, Union, Tuple
+from pydantic import BaseModel
+from typing import Dict, List, Optional, Union, Tuple, Callable
 from langchain.output_parsers import PydanticOutputParser
-from pydantic import model_validator, ConfigDict
+from pydantic import model_validator, ConfigDict, field_validator
 from langchain_core.prompts import PromptTemplate
 
 from src.util.dynamic_import import DynamicImport
@@ -14,9 +15,7 @@ from src.ml.classifier.llm.util.request import RequestOutput, RequestInputData
 from src.ml.classifier.llm.util.logprob import LogProbScore, LogProb
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.ml.classifier.llm.util.rest import LLM as RestLLM
-from src.util.constants import DatasetColumn, LLMModels
-from src.ml.classifier.llm.util.mapping import LLM_Mapping
-from src.util.constants import UnknownClassLabel
+from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
 from src.ml.classifier.llm.util.rest import AbstractLLM
 from src.ml.classifier.llm.util.logprob_extraction import LogProbExtractor
 from src.util.logger import log_error
@@ -44,51 +43,100 @@ NAIVE_RETRY_PROMPT = PromptTemplate.from_template(NAIVE_COMPLETION_RETRY)
 # 3) reflection with bs detector https://www.nature.com/articles/s41586-024-07421-0
 
 
+class LLMClassifierFactory(BaseModel):
+
+    """
+    This class is used to create a LLM classifier.
+    Its secondary purpose is to provide type checking for the model_config used in any yaml file
+    """
+
+    name: str
+    request_output_formatter: Union[Callable, dict]
+    request_input: Union[RequestInputData, dict]
+
+    function_key: str = 'function'
+    function_key_params: str = 'params'
+
+    @model_validator(mode='after')
+    def _init_output_formatter(self):
+
+        key = 'request_output_formatter'
+
+        if not isinstance(self.request_output_formatter, dict):
+            raise ValueError(f"{key} must be a dict")
+        
+        self.request_output_formatter = DynamicImport.get_attribute_from_class(
+            self.request_output_formatter[self.function_key]
+        )
+
+        key = 'request_input'
+
+        if not isinstance(self.request_input, dict):
+            raise ValueError(f"{key} must be a dict")
+
+        function_input = DynamicImport.get_attribute_from_class(
+            self.request_input[self.function_key]
+        )
+
+        self.request_input = function_input(**self.request_input[self.function_key_params])
+
+        return self
+
+    def create(self) -> AbstractClassifierLLM:
+
+        llm = RestLLM(
+            name=self.name,
+            request_output_formatter=self.request_output_formatter,
+            request_input=self.request_input
+        )
+        
+        return llm
+
+
 class TwoStageLLM(AbstractClassifierLLM):
 
-    model: Union[AbstractLLM, dict]
+    unknown_detection_model: Union[AbstractLLM, dict]
+    unknown_detection_prompt: str = "ood.txt"
+
+    classifier_model: Union[AbstractLLM, dict]
+    classifier_prompt: str = "multiclass.txt"
+
+    # skip unknown detection
+    skip_unknown_detection: bool = False
 
     # fewshot selection of data points
     selector: Optional[Union[dict, CosineSelector]] = None
-
     n_classes: Optional[int] = 3
     n_datapoints_per_class: Optional[int] = 5
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode='before')
-    def _init_model(data: dict):
+    def _init_models(data: dict):
 
-        model_config = data["model"]
+        model_keys = ["unknown_detection_model", "classifier_model"]
+
+        for model in model_keys:
+            data[model] = LLMClassifierFactory(**data[model]).create()
         
-        function_key = 'function'
-        function_key_params = 'params'
-
-        key = 'request_output_formatter'
-        
-        function_output = DynamicImport.get_attribute_from_class(
-            model_config[key][function_key]
-        )
-
-        key = 'request_input'
-        function_input = DynamicImport.get_attribute_from_class(
-            model_config[key][function_key]
-        )
-
-        input_obj = function_input(**model_config[key][function_key_params])
-        
-        data['model'] = RestLLM(
-            name=model_config['name'],
-            request_output_formatter=function_output, 
-            request_input=input_obj
-        )
-
         data_selector = data.get('selector')
 
         if isinstance(data_selector, dict):
             data['selector'] = DynamicImport.init_class_from_dict(data_selector)
 
         return data
+    
+    @model_validator(mode='after')
+    def _init_model_prompts(self):
+
+        for prompt_attr_name in ["unknown_detection_prompt", "classifier_prompt"]:
+
+            prompt_filename = getattr(self, prompt_attr_name)
+
+            with open(Directory.PROMPT_DIR / prompt_filename, 'r') as f:
+                setattr(self, prompt_attr_name, f.read())
+
+        return self
     
     
     def _get_parsed_output(self, model: AbstractLLM, parser: PydanticOutputParser, prompt: str, retries: int = 5) -> Optional[LogProbScore]:
@@ -97,15 +145,16 @@ class TwoStageLLM(AbstractClassifierLLM):
         prompt_copy = copy(prompt)
 
         result = None
+        completion = None
 
-        for _ in range(retries):
+        for i in range(retries):
 
             try:
 
-                completion = model(prompt=prompt_copy, parser=parser)
+                completion: RequestOutput = model(prompt=prompt_copy, parser=parser)
 
-                if not isinstance(completion, RequestOutput):
-                    raise ValueError("Model did not return a RequestOutput object")
+                if completion.error:
+                    raise ValueError(completion.text)
                 
                 parsed_data = parser.parse(text=completion.text)
 
@@ -118,6 +167,10 @@ class TwoStageLLM(AbstractClassifierLLM):
 
             except Exception as e:
 
+                #prompt_copy = NAIVE_RETRY_PROMPT.format(
+                #    prompt=prompt,
+                #)
+
                 log_error(
                     filename=Hash.hash(prompt) + ".json",
                     json_dict={
@@ -125,10 +178,9 @@ class TwoStageLLM(AbstractClassifierLLM):
                         "response": completion.text,
                         "error_message": str(e)
                     }
-
                 )
 
-            if result:
+            if result is not None:
                 return result
             
         return None
@@ -263,6 +315,8 @@ class TwoStageLLM(AbstractClassifierLLM):
 
     def _detect_unknown_class(self, text: str) -> Optional[LogProbScore]:
 
+        # todo: the output of a function must either be a string with the error message or a pydantic object
+
         if self.y_train is None:
             raise ValueError("Not fitted")
         
@@ -271,7 +325,7 @@ class TwoStageLLM(AbstractClassifierLLM):
         
         if self.classes is None:
             raise ValueError("Not fitted")
-        
+
         # Example usage
         valid_labels = ["true", "false"]
         PredictionV1.valid_labels = valid_labels
@@ -285,41 +339,24 @@ class TwoStageLLM(AbstractClassifierLLM):
 
         examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
 
-
-        prompt = f"""\n
-        You are an Out-Of-Distribution detector for an open set recognition problem. 
-        Your task is to decide if "{text}" is similar in meaning to these examples and their corresponding classes:
-
-        {examples_msg} 
-        
-        First, think step by step about why the abstract concept behind the incoming data point might be similar to the concepts of the examples.
-        Second, think step by step about why the the abstract concept the incoming data point might differ significantly from the examples.
-        Third, compare the two scenarios and answer with the more probable answer.
-        
-        Provide the reasoning containing your thought process first and then the label.
-        The label must be 'true' if the overall concept of the incoming data point is significantly different to the examples and 'false' if the concept is similar.
-        
-        {instructions}
-        
-        """
-            
-        logprob_score = self._get_parsed_output(model=self.model, parser=parser, prompt=prompt, retries=5)
+        prompt = self.unknown_detection_prompt.format(
+            examples_msg=examples_msg,
+            text=text,
+            instructions=instructions
+        )
+    
+        logprob_score = self._get_parsed_output(model=self.unknown_detection_model, parser=parser, prompt=prompt, retries=5)
         
         return logprob_score
     
-    def _get_unknown_class_logprob_value(self, logprobs: List[LogProb]) -> Optional[LogProb]:
-
-        logprob_value = None
+    def _get_unknown_class_logprob_value(self, logprobs: List[LogProb], last_n: Optional[int] = None, fallback: bool = False) -> LogProb:
 
         try:
 
-            """logprob_candidates = LogProbExtractor.get_target_logprobas(
-                log_sequences=logprobs,
-                prior_sequence=["label", '"'],
-                end_sequence=[]
-            )"""
-
             logprob_candidates = logprobs
+
+            if last_n is not None:
+                logprob_candidates = logprob_candidates[-last_n:]
 
             assert len(logprob_candidates) > 0  
 
@@ -330,14 +367,23 @@ class TwoStageLLM(AbstractClassifierLLM):
                 raise Exception("Ambiguous Logprobs")
 
             if len(logprob_true_values) == 1:
-                logprob_value = logprob_true_values[0]
+                return logprob_true_values[0]
 
             if len(logprob_false_values) == 1:
-                logprob_value = logprob_false_values[0]
+                return logprob_false_values[0]
+
+            if fallback:
+
+                for logprob in logprobs[::-1]:
+                    if 'true' in logprob.text.lower():
+                        return logprob
+                        
+                    if 'false' in logprob.text.lower():
+                        return logprob
+                
+            raise Exception("No Logprob found")
 
         except Exception as e:
-
-            from IPython import embed; embed()
 
             log_probs = [logprob.text for logprob in logprobs]
 
@@ -350,8 +396,6 @@ class TwoStageLLM(AbstractClassifierLLM):
                     "logprobs": log_probs,
                 }
             )
-
-        return logprob_value
 
     def _classify_known_classes(self, text: str) -> LogProbScore:
 
@@ -398,13 +442,12 @@ class TwoStageLLM(AbstractClassifierLLM):
 
         """
 
-        logprob_score = self._get_parsed_output(model=self.model, parser=parser, prompt=prompt, retries=5)
+        logprob_score = self._get_parsed_output(model=self.classifier_model, parser=parser, prompt=prompt, retries=5)
 
         if logprob_score is None:
             raise Exception("logprob score should not be None")
         
         return logprob_score
-
 
     def _single_predict(self, text: str) -> Tuple[str, float]:
 
@@ -416,26 +459,35 @@ class TwoStageLLM(AbstractClassifierLLM):
         
         if self.classes is None:
             raise ValueError("Not fitted")
-
-        unknown_prediction = self._detect_unknown_class(text=text)
-
-        if unknown_prediction is None:
-            return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
-
-        logprob_value = self._get_unknown_class_logprob_value(
-            logprobs=unknown_prediction.logprobs[-10:],
-        )
         
-        if logprob_value is None:
-            return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
+        unknown_score = 0.0
         
-        unknown_class: str = logprob_value.text.lower()
-        unknown_score: float = LogProbScore.calculate_linear_prob(logprob_value.logprob)
+        if not self.skip_unknown_detection:
+            
+            unknown_prediction = self._detect_unknown_class(text=text)
 
-        if "true" in unknown_class:            
-            return UnknownClassLabel.UNKNOWN_STR.value, unknown_score
+            if unknown_prediction is None:
+                return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
+
+            logprob_value = self._get_unknown_class_logprob_value(
+                logprobs=unknown_prediction.logprobs,
+                last_n=10,
+                fallback=True
+            )
+            
+            if logprob_value is None:
+                return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
+            
+            unknown_class: str = logprob_value.text.lower()
+            unknown_score: float = LogProbScore.calculate_linear_prob(logprob_value.logprob)
+
+            if "true" in unknown_class:            
+                return UnknownClassLabel.UNKNOWN_STR.value, unknown_score
         
         known_prediction = self._classify_known_classes(text=text)
+
+        if known_prediction is None:
+            return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
 
         # recalculate the unknown score
         # if model was confidenct in their prediction and an in distribution example was detected, the anomaly score needs to be low

@@ -185,7 +185,9 @@ class Evaluator(BaseModel, BaseEvaluator):
             mask_parsing = y_pred != ErrorValues.PARSING_NUM.value
             y_pred = y_pred[mask_parsing]
             y_true = y_true[mask_parsing]
-            unknown_scores = unknown_scores[mask_parsing]
+
+            if unknown_scores is not None:
+                unknown_scores = unknown_scores[mask_parsing]
 
             ratio_parsing_error = 1 - sum(mask_parsing) / len(mask_parsing)
 
