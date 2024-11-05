@@ -1,12 +1,12 @@
 
 import pandas as pd
 import numpy as np
+import requests  # type: ignore
 from tqdm import tqdm
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
 from src.ml.util.backoff import BackoffMixin
-from src.ml.util.job_queue import RequestFunction
 from src.util.hashing import Hash
 from src.ml.preprocessing.base import BasePreprocessor
 from src.util.constants import DatasetColumn as dfc
@@ -48,7 +48,8 @@ class HFEmbeddingPreprocessor(BackoffMixin, BaseModel, BasePreprocessor):
 
         job = self.completion_with_backoff_and_queue(
             job_id=job_id,
-            function=RequestFunction.post,
+            function=requests.post,
+            save=True,
             **request_kwargs
         )
 

@@ -1,28 +1,23 @@
 import numpy as np
 import pandas as pd
 
-from copy import copy
-from pydantic import BaseModel
-from typing import Dict, List, Optional, Union, Tuple, Callable
+from typing import List, Optional, Union, Tuple
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
 from langchain_core.prompts import PromptTemplate
 
 from src.util.dynamic_import import DynamicImport
-from src.ml.classifier.llm.util.cosine_selector import CosineSelector
-from src.ml.classifier.llm.util.prediction import PredictionV1, Prediction
-from src.ml.classifier.llm.util.request import RequestOutput, RequestInputData
+from src.ml.classifier.llm.util.prediction import PredictionV1
 from src.ml.classifier.llm.util.logprob import LogProbScore, LogProb
 from src.ml.classifier.llm.base import AbstractClassifierLLM
-from src.ml.classifier.llm.util.rest import LLM as RestLLM
-from src.ml.util.job_queue import Job
 from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
 from src.ml.classifier.llm.util.rest import AbstractLLM
 from src.ml.classifier.llm.util.logprob_extraction import LogProbExtractor
-from src.util.logger import log_error
-from src.util.hashing import Hash
+from src.util.logger import log_pydantic_error
+from src.util.error import LogProbError
 from src.util.constants import ErrorValues
-
+from src.ml.classifier.llm.base import LLMClassifierMixin
+from src.ml.classifier.llm.factory import LLMClassifierFactory
 
 # prompts taken from retry output parser from langchain
 NAIVE_COMPLETION_RETRY = """Prompt:
@@ -44,57 +39,7 @@ NAIVE_RETRY_PROMPT = PromptTemplate.from_template(NAIVE_COMPLETION_RETRY)
 # 3) reflection with bs detector https://www.nature.com/articles/s41586-024-07421-0
 
 
-class LLMClassifierFactory(BaseModel):
-
-    """
-    This class is used to create a LLM classifier.
-    Its secondary purpose is to provide type checking for the model_config used in any yaml file
-    """
-
-    name: str
-    request_output_formatter: Union[Callable, dict]
-    request_input: Union[RequestInputData, dict]
-
-    function_key: str = 'function'
-    function_key_params: str = 'params'
-
-    @model_validator(mode='after')
-    def _init_output_formatter(self):
-
-        key = 'request_output_formatter'
-
-        if not isinstance(self.request_output_formatter, dict):
-            raise ValueError(f"{key} must be a dict")
-        
-        self.request_output_formatter = DynamicImport.get_attribute_from_class(
-            self.request_output_formatter[self.function_key]
-        )
-
-        key = 'request_input'
-
-        if not isinstance(self.request_input, dict):
-            raise ValueError(f"{key} must be a dict")
-
-        function_input = DynamicImport.get_attribute_from_class(
-            self.request_input[self.function_key]
-        )
-
-        self.request_input = function_input(**self.request_input[self.function_key_params])
-
-        return self
-
-    def create(self) -> AbstractClassifierLLM:
-
-        llm = RestLLM(
-            name=self.name,
-            request_output_formatter=self.request_output_formatter,
-            request_input=self.request_input
-        )
-        
-        return llm
-
-
-class TwoStageLLM(AbstractClassifierLLM):
+class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
     unknown_detection_model: Union[AbstractLLM, dict]
     unknown_detection_prompt: str = "ood.txt"
@@ -105,11 +50,6 @@ class TwoStageLLM(AbstractClassifierLLM):
     # skip unknown detection
     skip_unknown_detection: bool = False
 
-    # fewshot selection of data points
-    selector: Optional[Union[dict, CosineSelector]] = None
-    n_classes: Optional[int] = 3
-    n_datapoints_per_class: Optional[int] = 5
-
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode='before')
@@ -119,7 +59,8 @@ class TwoStageLLM(AbstractClassifierLLM):
 
         for model in model_keys:
             data[model] = LLMClassifierFactory(**data[model]).create()
-        
+            assert hasattr(data[model], "format_output"), f"Model {model} must have a predict method"
+
         data_selector = data.get('selector')
 
         if isinstance(data_selector, dict):
@@ -138,202 +79,7 @@ class TwoStageLLM(AbstractClassifierLLM):
                 setattr(self, prompt_attr_name, f.read())
 
         return self
-    
-    
-    def _get_parsed_output(self, model: AbstractLLM, parser: PydanticOutputParser, prompt: str, retries: int = 5) -> Optional[LogProbScore]:
 
-        # work on copy
-        prompt_copy = copy(prompt)
-        
-        for _ in range(retries):
-
-            log_filename = Hash.hash(prompt) + ".json"
-
-            try:
-
-                completion: Job = model(prompt=prompt_copy)
-
-                if not completion.is_success:
-                    raise ValueError(completion.error_description)
-            
-            except Exception as e:
-
-                #prompt_copy = NAIVE_RETRY_PROMPT.format(
-                #    prompt=prompt,
-                #)
-
-                log_error(
-                    filename=log_filename,
-                    json_dict={
-                        "prompt": prompt,
-                        "response": completion.error_description,
-                        "error_message": str(e)
-                    }
-                )
-
-                continue
-
-
-            # parse response
-            # first parsing: request output will be parsed to a pydantic object
-            # second parsing: output needs to follow the parser object
-            # the first step is needed to manually exclude parts of the output that lead to errors with the pydantic output parser
-
-            try:
-
-                first_parsed_response: RequestOutput = model.format_output(job=completion)
-            
-            except Exception as e:
-
-                log_error(
-                    filename=log_filename,
-                    json_dict={
-                        "prompt": prompt,
-                        "response": str(completion.request_output),
-                        "error_message": str(e)
-                    }
-                )
-
-            if first_parsed_response is None:
-                raise ValueError("No parsed response")
-
-            try:
-
-                second_parsed_response: PredictionV1 = parser.parse(text=first_parsed_response.text)
-
-                Prediction.valid_labels = second_parsed_response.valid_labels
-                
-                result = LogProbScore(
-                    answer=Prediction(**second_parsed_response.dict()),
-                    logprobs=first_parsed_response.logprobas
-                )
-
-                completion.save()
-
-                return result
-
-            except Exception as e:
-                
-                log_error(
-                    filename=log_filename,
-                    json_dict={
-                        "prompt": prompt,
-                        "response": first_parsed_response.text,
-                        "error_message": str(e)
-                    }
-                )
-
-        return None
-
-
-    def _get_ood_examples(self, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:
-
-        if self.y_train is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.y_valid is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.x_train is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.x_valid is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.classes is None:
-            raise ValueError("Model is not fitted")
-        
-        # draw a random example from each known class
-        examples = []
-
-        rng = np.random.default_rng(42)
-
-        for unique_class in self.classes:
-             
-            y_mask = self.y_train == unique_class
-
-            x_sub = self.x_train[y_mask]
-
-            x_chosen = rng.choice(x_sub)
-
-            examples.append({query: x_chosen, answer: "false"})
-
-        # draw example of unknown class
-        unkwown_classes = np.setdiff1d(self.y_valid, self.y_train)
-
-        for unkwown_class in unkwown_classes:
-            
-            y_mask = self.y_valid == unkwown_class
-            x_sub = self.x_valid[y_mask]
-            x_chosen = rng.choice(x_sub)
-
-            examples.append({query: x_chosen, answer: "true"})
-
-        return examples
-
-
-    def _get_examples(self, text_to_classify: str, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:
-
-        if self.y_train is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.y_valid is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.x_train is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.x_valid is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.classes is None:
-            raise ValueError("Model is not fitted")
-
-        # draw a random example from each class
-        examples = []
-
-        if self.selector is None:
-
-            rng = np.random.default_rng(42)
-
-            for selected_class in self.classes:
-
-                y_mask = self.y_train == selected_class
-
-                x_sub = self.x_train[y_mask]
-
-                x_chosen = rng.choice(x_sub)
-
-                examples.append({query: x_chosen, answer: selected_class})
-
-        else:
-
-            data = pd.DataFrame({
-                DatasetColumn.LABEL: self.y_train,
-                DatasetColumn.TEXT: self.x_train.reshape(-1,)
-            })
-
-            n_classes = len(self.classes) if self.n_classes is None else self.n_classes
-            n_datapoints_per_class = 1 if self.n_datapoints_per_class is None else self.n_datapoints_per_class
-
-            if not isinstance(self.selector, CosineSelector):
-                raise ValueError("Selector must be of type CosineSelector")
-
-            dataframe = self.selector.get_most_similar_datapoints_for_n_classes(
-                query=text_to_classify,
-                data=data,
-                n_classes=n_classes,
-                n=n_datapoints_per_class
-            )
-
-            for _, row in dataframe.iterrows():
-                examples.append({
-                    query: row[DatasetColumn.TEXT], 
-                    answer: row[DatasetColumn.LABEL]
-                })
-
-
-        return examples
     
     def fit(
         self,
@@ -352,9 +98,6 @@ class TwoStageLLM(AbstractClassifierLLM):
 
        self.classes = np.unique(self.y_train)
 
-       if self.selector is not None:
-           pass
-               
 
     def _detect_unknown_class(self, text: str) -> Optional[LogProbScore]:
 
@@ -433,17 +176,19 @@ class TwoStageLLM(AbstractClassifierLLM):
 
             text = ''.join(log_probs)
 
-            log_error(
-                filename=Hash.hash(text) + '.json',
-                json_dict={
-                    "error": str(e),
-                    "logprobs": log_probs,
-                }
+            error = LogProbError(
+                error_message=str(e),
+                logprobs=log_probs,
+            )
+
+            log_pydantic_error(
+                filename=self._get_log_filename(prompt=text),
+                error=error
             )
 
             return None
 
-    def _classify_known_classes(self, text: str) -> LogProbScore:
+    def _classify_known_classes(self, text: str) -> Optional[LogProbScore]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -461,12 +206,11 @@ class TwoStageLLM(AbstractClassifierLLM):
         parser = PydanticOutputParser(pydantic_object=PredictionV1)
         instructions = parser.get_format_instructions()
 
-        classes_msg = '\n'.join(valid_labels)
-
         examples = self._get_examples(
             text_to_classify=text,
         )
 
+        classes_msg = '\n'.join(set(example["output"] for example in examples))
         examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
 
         prompt = self.classifier_prompt.format(
@@ -481,9 +225,6 @@ class TwoStageLLM(AbstractClassifierLLM):
 
         logprob_score = self._get_parsed_output(model=self.classifier_model, parser=parser, prompt=prompt, retries=5)
 
-        if logprob_score is None:
-            raise Exception("logprob score should not be None")
-        
         return logprob_score
 
     def _single_predict(self, text: str) -> Tuple[str, float]:

@@ -3,6 +3,11 @@ import warnings
 from pydantic import BaseModel, Field, validator
 from pydantic.warnings import PydanticDeprecatedSince20
 from langchain import pydantic_v1
+from langchain_core.output_parsers import PydanticOutputParser
+from typing import List, Callable
+
+from src.ml.util.job_queue import Job
+from src.ml.classifier.llm.util.request import RequestOutput
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
@@ -25,6 +30,21 @@ class Prediction(BaseModel):
             raise ValueError(f"Label must be one of {valid_labels}")
         
         return label.lower()
+    
+    @classmethod
+    def from_llm_job(cls, filename: str, class_labels: List[str], output_format_fun: Callable) -> "Prediction":
+
+        job = Job.from_json_file(filename)
+
+        output: RequestOutput = output_format_fun(job=job)
+        
+        PredictionV1.valid_labels = class_labels
+        
+        parser = PydanticOutputParser(pydantic_object=PredictionV1)
+        prediction: PredictionV1 = parser.parse(output.text)
+
+        return Prediction(**prediction.dict())
+
 
 class PredictionV1(pydantic_v1.BaseModel):
     

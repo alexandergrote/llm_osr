@@ -1,9 +1,11 @@
 from .fewshot import FewShotLLM as LLM
-from .naive import RandomLLM as RandomLLM
-from .twostage import TwoStageLLM as TwoStageLLM
+from .fewshot import OneStageLLM
+from .naive import RandomLLM 
+from .twostage import TwoStageLLM 
 
 __all__ = [
     "LLM",
     "RandomLLM",
     "TwoStageLLM",
+    "OneStageLLM"
 ]

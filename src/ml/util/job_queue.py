@@ -65,7 +65,7 @@ class Job(BaseModel):
         with open(file_path, "r") as f:
             return cls(**json.load(f))
         
-    def execute(self, save: bool = True) -> "Job":
+    def execute(self, save: bool = False) -> "Job":
 
         if self.filepath.exists():
 
