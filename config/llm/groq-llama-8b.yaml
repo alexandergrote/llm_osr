@@ -1,0 +1,36 @@
+class: src.ml.classifier.llm.util.rest.StructuredRequestLLM
+params:
+  name: groq-llama-8b
+  url: "https://api.groq.com/openai/v1/chat/completions"
+  payload:
+    model: "llama-3.1-8b-instant"
+    temperature: 0.0
+  request_input_classmethod: "create_groq_request_input"
+  request_output_classmethod: "from_groq_request"
+  request_input_data_extraction: "get_prompt_from_openai_data"
+  rate_limit_manager:
+    class: "src.ml.classifier.llm.util.rate_limit.RateLimitManager"
+    params:
+      rate_limits:
+        num_req_minute:
+          limit: 30
+          increment_level: "frequency"
+          agg_level: "%Y-%m-%d %H:%M"
+          action: "wait"
+          waiting_time: 60
+        num_token_minute:
+          limit: 6000
+          increment_level: "token"
+          agg_level: "%Y-%m-%d %H:%M"
+          action: "wait"
+          waiting_time: 60
+        num_req_day:
+          limit: 14400
+          increment_level: "frequency"
+          agg_level: "%Y-%m-%d"
+          action: "exit"
+        num_token_day:
+          limit: 200000
+          increment_level: "token"
+          agg_level: "%Y-%m-%d"
+          action: "exit"

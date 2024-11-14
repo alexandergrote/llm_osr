@@ -3,28 +3,32 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from pydantic import BaseModel
 
-from src.ml.preprocessing.rest_embedding import HFEmbeddingPreprocessor
 from src.util.constants import DatasetColumn as dfc
 from src.util.logger import console
 
 
 class CosineSelector(BaseModel):
 
-    embedder: HFEmbeddingPreprocessor = HFEmbeddingPreprocessor(
-        url="https://api-inference.huggingface.co/models/mixedbread-ai/mxbai-embed-large-v1",
-        tqdm_disable=True
-    )
+    _url: str = "https://api-inference.huggingface.co/models/mixedbread-ai/mxbai-embed-large-v1"
     _key: str = 'cosine_score'
 
     def get_n_most_similar_datapoints(self, query: str, data: pd.DataFrame, n: int, include_score: bool = False) -> pd.DataFrame:
 
+        # to avoid circular imports
+        from src.ml.preprocessing.rest_embedding import HFEmbeddingPreprocessor
+
+        embedder: HFEmbeddingPreprocessor = HFEmbeddingPreprocessor(
+            url="https://api-inference.huggingface.co/models/mixedbread-ai/mxbai-embed-large-v1",
+            tqdm_disable=True
+        )
+
         # work on copy
         data_copy = data.copy()
 
-        embeddings_df = self.embedder._fit_transform(data=data_copy)
+        embeddings_df = embedder._fit_transform(data=data_copy)
         embeddings = np.stack(embeddings_df[dfc.FEATURES].to_list())
 
-        query_embedding_df = self.embedder._transform(data=pd.DataFrame({dfc.TEXT: [query]}))
+        query_embedding_df = embedder._transform(data=pd.DataFrame({dfc.TEXT: [query]}))
         query_embedding = np.stack(query_embedding_df[dfc.FEATURES].to_list())
 
         # Calculate cosine similarity between the query and each sentence

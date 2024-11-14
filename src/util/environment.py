@@ -15,6 +15,7 @@ class PydanticEnvironment(BaseModel):
     _mode: EnvMode
     _hf_token: Optional[str]
     _openai_key: Optional[str]
+    _groq_key: Optional[str]
 
     model_config = ConfigDict(extra = 'forbid')
 
@@ -34,13 +35,26 @@ class PydanticEnvironment(BaseModel):
     def openai_key(self) -> str:
 
         if self._openai_key is None:
-            raise ValueError("hf token not set")
+            raise ValueError("openai token not set")
 
         return self._openai_key
     
     @openai_key.setter
     def openai_key(self, value: str):
         self._openai_key = value
+
+    @property
+    def groq_key(self) -> str:
+
+        if self._groq_key is None:
+            raise ValueError("groq token not set")
+        
+        return self._groq_key
+    
+    @groq_key.setter
+    def groq_key(self, value: str):
+        self._groq_key = value
+
 
     @property
     def mode(self) -> str:
@@ -66,6 +80,7 @@ class PydanticEnvironment(BaseModel):
         instance.mode = EnvMode(os.environ.get('MODE', EnvMode.DEV.value))  # type: ignore
         instance.openai_key = os.environ.get("OPENAI_API_KEY")  # type: ignore
         instance.hf_token = os.environ.get('HF')  # type: ignore
+        instance.groq_key = os.environ.get('GROQ')  # type: ignore
 
         return instance
 

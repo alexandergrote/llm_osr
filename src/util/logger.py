@@ -15,6 +15,8 @@ def log_error(filename: str, json_dict: dict):
 
     full_path = get_log_dir() / filename
 
+    console.log(f"Logging error to {full_path}")
+
     with open(full_path, 'w') as f:
         json.dump(json_dict, f, indent=4)
         

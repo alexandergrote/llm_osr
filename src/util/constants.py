@@ -15,6 +15,7 @@ class Directory:
     JOB_DIR = ROOT / "jobs"
     ERROR_LOG_DIR = ROOT / "logs"
     PROMPT_DIR = ROOT / "prompts"
+    RATE_LIMITS_DIR = ROOT / "rate_limits"
 
 
 paths = [

@@ -25,3 +25,4 @@ outputs
 venv
 notebooks
 checkpoints
+rate_limits

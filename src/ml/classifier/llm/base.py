@@ -8,20 +8,15 @@ from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from numpy import ndarray
 from typing import Optional, Union, Tuple, List, Dict
-from langchain.output_parsers import PydanticOutputParser
 
-from src.ml.classifier.llm.util.request import RequestOutput
-from src.ml.classifier.llm.util.prediction import Prediction, PredictionV1
-from src.ml.util.job_queue import Job
-from src.util.hashing import Hash
+from src.ml.classifier.llm.util.prediction import PredictionV1
 from src.ml.classifier.llm.util.rest import AbstractLLM
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.util.constants import ErrorValues
 from src.ml.classifier.base import BaseClassifier
-from src.util.logger import log_pydantic_error, delete_error_log
-from src.util.error import LLMError
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
 from src.util.constants import DatasetColumn
+
 
 class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
@@ -204,96 +199,27 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
 class LLMClassifierMixin:
 
-    def _get_log_filename(self, prompt: str) -> str:
-        return Hash.hash(prompt) + ".json"
-
-    def _get_parsed_output(self, model: AbstractLLM, parser: PydanticOutputParser, prompt: str, retries: int = 5) -> Optional[LogProbScore]:
+    def _get_parsed_output(self, model: AbstractLLM, text: str, valid_labels: List[str], use_cache: bool = False, retries: int = 5, **kwargs) -> Optional[LogProbScore]:
 
         # work on copy
-        prompt_copy = copy(prompt)
+        prompt_copy = copy(text)
+        
+        PredictionV1.valid_labels = valid_labels
         
         for _ in range(retries):
 
-            log_filename = self._get_log_filename(prompt=prompt_copy) 
-
             try:
 
-                completion: Job = model(prompt=prompt_copy)
-
-                if not completion.is_success:
-                    raise ValueError(completion.error_description)
-            
-            except Exception as e:
-
-                error = LLMError(
-                    prompt=prompt,
-                    response=completion.error_description,
-                    error_message=str(e)
-                )
-
-                log_pydantic_error(
-                    filename=log_filename,
-                    error=error
-                )
-
-            # parse response
-            # first parsing: request output will be parsed to a pydantic object
-            # second parsing: output needs to follow the parser object
-            # the first step is needed to manually exclude parts of the output that lead to errors with the pydantic output parser
-
-            try:
-
-                first_parsed_response: RequestOutput = model.format_output(job=completion)
-            
-            except Exception as e:
-
-                error = LLMError(
-                    prompt=prompt,
-                    response=str(completion.request_output),
-                    error_message=str(e)
-                )
-
-                log_pydantic_error(
-                    filename=log_filename,
-                    error=error
-                )
-
-                continue
-
-            if first_parsed_response is None:
-                raise ValueError("No parsed response")
-
-            try:
-
-                second_parsed_response: PredictionV1 = parser.parse(text=first_parsed_response.text)
-
-                Prediction.valid_labels = second_parsed_response.valid_labels
-                
-                result = LogProbScore(
-                    answer=Prediction(**second_parsed_response.dict()),
-                    logprobs=first_parsed_response.logprobas
-                )
-
-                completion.save()
-
-                # delete potential error log file
-                delete_error_log(
-                    filename=self._get_log_filename(prompt=prompt_copy)
+                result: LogProbScore = model(
+                    text=prompt_copy,
+                    pydantic_model=PredictionV1, 
+                    use_cache=use_cache, 
+                    **kwargs
                 )
 
                 return result
 
-            except Exception as e:
-
-                error = LLMError(
-                    prompt=prompt,
-                    response=first_parsed_response.text,
-                    error_message=str(e)
-                )
-                
-                log_pydantic_error(
-                    filename=log_filename,
-                    error=error
-                )
+            except Exception:
+                pass
 
         return None

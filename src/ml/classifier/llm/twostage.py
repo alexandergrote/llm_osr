@@ -1,42 +1,18 @@
 import numpy as np
 import pandas as pd
 
-from typing import List, Optional, Union, Tuple
+from typing import Optional, Union, Tuple
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
-from langchain_core.prompts import PromptTemplate
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.prediction import PredictionV1
-from src.ml.classifier.llm.util.logprob import LogProbScore, LogProb
+from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
 from src.ml.classifier.llm.util.rest import AbstractLLM
-from src.ml.classifier.llm.util.logprob_extraction import LogProbExtractor
-from src.util.logger import log_pydantic_error
-from src.util.error import LogProbError
 from src.util.constants import ErrorValues
 from src.ml.classifier.llm.base import LLMClassifierMixin
-from src.ml.classifier.llm.factory import LLMClassifierFactory
-
-# prompts taken from retry output parser from langchain
-NAIVE_COMPLETION_RETRY = """Prompt:
-{prompt}
-Completion:
-{completion}
-
-Above, the Completion did not satisfy the constraints given in the prompt.
-The error message is: 
-{error_message}
-
-Please try again:"""
-
-NAIVE_RETRY_PROMPT = PromptTemplate.from_template(NAIVE_COMPLETION_RETRY)
-
-# two types of uncertainty prediction
-# 1) semantic entropy - common baseline, 
-# 2) epistemic uncertainty - state of the art, k = 5, https://arxiv.org/pdf/2402.10189
-# 3) reflection with bs detector https://www.nature.com/articles/s41586-024-07421-0
 
 
 class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
@@ -58,9 +34,8 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         model_keys = ["unknown_detection_model", "classifier_model"]
 
         for model in model_keys:
-            data[model] = LLMClassifierFactory(**data[model]).create()
-            assert hasattr(data[model], "format_output"), f"Model {model} must have a predict method"
-
+            data[model] = AbstractLLM.create_from_yaml_file(data[model])
+            
         data_selector = data.get('selector')
 
         if isinstance(data_selector, dict):
@@ -98,7 +73,6 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
        self.classes = np.unique(self.y_train)
 
-
     def _detect_unknown_class(self, text: str) -> Optional[LogProbScore]:
 
         if self.y_train is None:
@@ -132,62 +106,15 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         if not isinstance(self.unknown_detection_model, AbstractLLM):
             raise ValueError("Unknown detection model must be of type AbstractLLM")
     
-        logprob_score = self._get_parsed_output(model=self.unknown_detection_model, parser=parser, prompt=prompt, retries=5)
+        logprob_score = self._get_parsed_output(
+            model=self.unknown_detection_model,
+            valid_labels=PredictionV1.valid_labels,
+            text=prompt, 
+            retries=5
+        )
         
         return logprob_score
     
-    def _get_unknown_class_logprob_value(self, logprobs: List[LogProb], last_n: Optional[int] = None, fallback: bool = False) -> Optional[LogProb]:
-
-        try:
-
-            logprob_candidates = logprobs
-
-            if last_n is not None:
-                logprob_candidates = logprob_candidates[-last_n:]
-
-            assert len(logprob_candidates) > 0  
-
-            logprob_true_values = LogProbExtractor.get_specific_logprobas(text='true', log_sequences=logprob_candidates)       
-            logprob_false_values = LogProbExtractor.get_specific_logprobas(text='false', log_sequences=logprob_candidates)
-
-            if all([len(logprob_false_values) > 0, len(logprob_true_values) > 0]):
-                raise Exception("Ambiguous Logprobs")
-
-            if len(logprob_true_values) == 1:
-                return logprob_true_values[0]
-
-            if len(logprob_false_values) == 1:
-                return logprob_false_values[0]
-
-            if fallback:
-
-                for logprob in logprobs[::-1]:
-                    if 'true' in logprob.text.lower():
-                        return logprob
-                        
-                    if 'false' in logprob.text.lower():
-                        return logprob
-                
-            raise Exception("No Logprob found")
-
-        except Exception as e:
-
-            log_probs = [logprob.text for logprob in logprobs]
-
-            text = ''.join(log_probs)
-
-            error = LogProbError(
-                error_message=str(e),
-                logprobs=log_probs,
-            )
-
-            log_pydantic_error(
-                filename=self._get_log_filename(prompt=text),
-                error=error
-            )
-
-            return None
-
     def _classify_known_classes(self, text: str) -> Optional[LogProbScore]:
 
         if self.y_train is None:
@@ -223,7 +150,12 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         if not isinstance(self.classifier_model, AbstractLLM):
             raise ValueError("Classifier model must be an AbstractLLM")
 
-        logprob_score = self._get_parsed_output(model=self.classifier_model, parser=parser, prompt=prompt, retries=5)
+        logprob_score = self._get_parsed_output(
+            model=self.classifier_model,
+            valid_labels=PredictionV1.valid_labels,
+            text=prompt,
+            retries=5 
+        )
 
         return logprob_score
 
@@ -247,20 +179,8 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             if unknown_prediction is None:
                 return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
 
-            logprob_value = self._get_unknown_class_logprob_value(
-                logprobs=unknown_prediction.logprobs,
-                last_n=10,
-                fallback=True
-            )
-            
-            if logprob_value is None:
-                return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
-            
-            unknown_class: str = logprob_value.text.lower()
-            unknown_score = LogProbScore.calculate_linear_prob(logprob_value.logprob)
-
-            if "true" in unknown_class:            
-                return UnknownClassLabel.UNKNOWN_STR.value, unknown_score
+            if unknown_prediction.answer.label == "true":            
+                return UnknownClassLabel.UNKNOWN_STR.value, 1
         
         known_prediction = self._classify_known_classes(text=text)
 
@@ -285,7 +205,7 @@ if __name__ == '__main__':
 
     config = get_hydra_config(
         overrides=[
-            f"{key}=two_stage_llm_llama"
+            f"{key}=two_stage_groq_llama_8"
         ]
     )
 
@@ -296,7 +216,6 @@ if __name__ == '__main__':
     # Explicitly cast llm to TwoStageLLM
     llm = cast(TwoStageLLM, llm)
 
-    
     data_train = pd.DataFrame({
         DatasetColumn.FEATURES: ["Ich heiße Alex", "Auf Wiedersehen!", "Hallo", "Wo kann ich Kekse kaufen?", "Die Apfelsaftschorle finde ich wo?", "Das Essen ist sehr lecker", "München ist eine große Stadt."],
         DatasetColumn.LABEL: ['Greeting', 'Farewell', "Greeting", "Food", "Food", "Food", "City"]

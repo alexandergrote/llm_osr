@@ -30,7 +30,6 @@ class RequestFunction(str, Enum):
 class Job(BaseModel):
 
     job_id: str
-
     request_dict: dict
     request_function: str = RequestFunction.post
     request_output: Optional[Union[dict, List[dict], List]] = None
@@ -65,15 +64,16 @@ class Job(BaseModel):
         with open(file_path, "r") as f:
             return cls(**json.load(f))
         
-    def execute(self, save: bool = False) -> "Job":
+    def execute(self, save: bool = False, use_cache: bool = True) -> "Job":
 
-        if self.filepath.exists():
+        # check if cached
+        if self.filepath.exists() and use_cache:
 
             job = Job.from_json_file(self.filepath)
 
             if job.is_success:
                 return job
-
+  
         fun = getattr(requests, self.request_function)
 
         response = fun(**self.request_dict)

@@ -1,6 +1,6 @@
 
 from src.ml.classifier.llm.util.request import RequestOutput, RequestInputData
-from src.ml.classifier.llm.util.rest import LLM as RestLLM
+from src.ml.classifier.llm.util.rest import StructuredRequestLLM as RestLLM
 from src.util.lazy_dict import LazyDict
 from src.util.constants import LLMModels, RESTAPI_URLS
 

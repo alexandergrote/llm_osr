@@ -94,8 +94,6 @@ class TestOneStage(unittest.TestCase):
     @patch("src.ml.util.job_queue.get_job_dir")
     def test_error_messages(self, mock_job_dir, mock_log_dir):
 
-        print("test_error_messages")
-
         mock_job_dir.return_value = JOB_DIR
         mock_log_dir.return_value = LOG_DIR
 
@@ -131,8 +129,6 @@ class TestOneStage(unittest.TestCase):
     @patch("src.ml.util.job_queue.get_job_dir")
     def test__get_parsed_output(self, mock_job_dir, mock_log_dir):
 
-        print("test__get_parsed_output")
-        
         mock_job_dir.return_value = JOB_DIR
         mock_log_dir.return_value = LOG_DIR
 
@@ -166,8 +162,6 @@ class TestOneStage(unittest.TestCase):
     @patch("src.util.logger.get_log_dir")
     @patch("src.ml.util.job_queue.get_job_dir")
     def test__get_parsed_output_with_unknown(self, mock_job_dir, mock_log_dir):
-
-        print("test__get_parsed_output_with_unknown")
 
         mock_job_dir.return_value = JOB_DIR
         mock_log_dir.return_value = LOG_DIR

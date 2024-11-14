@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from typing import Callable, Optional, Any
 
 from tenacity import (
     retry,
@@ -26,36 +26,34 @@ class BackoffMixin:
         return result
     
     @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(5), reraise=True)
-    def _completion_with_backoff_and_queue(self, function: Callable, job_id: str, *args, save: bool = True, **kwargs) -> Job:
+    def _completion_with_backoff_and_queue(self, job: Job, save: bool = True, use_cache: bool = True, **kwargs) -> Job:
 
         """
         This function fails with expoential retries
         """
 
-        job = Job(
-            job_id=job_id,
-            function=function,
-            request_dict=kwargs
-        )
-        
-        job = job.execute(save=save)
+        job = job.execute(save=save, use_cache=use_cache)
         
         if job.status == JobStatus.failed:
             raise Exception(job.error_description)
         
         return job
 
-    def completion_with_backoff_and_queue(self, function: Callable, job_id: str, *args, save: bool = True, **kwargs) -> Job:
+    def completion_with_backoff_and_queue(self, function: Callable, job_id: str, save: bool = True, use_cache: bool = True, **kwargs) -> Job:
 
         """
         This function never fails, it returns a job object with an error message
         """
 
-        job = Job(job_id=job_id, function=function, request_dict=kwargs)
+        job = Job(
+            job_id=job_id, 
+            function=function, 
+            request_dict=kwargs,
+        )
 
         try:
 
-            job = self._completion_with_backoff_and_queue(function, job_id, *args, save=save, **kwargs)
+            job = self._completion_with_backoff_and_queue(job=job, save=save, use_cache=use_cache, **kwargs)
 
             return job
 
