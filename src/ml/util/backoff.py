@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Optional, Any
+from typing import Callable
 
 from tenacity import (
     retry,
@@ -39,14 +39,15 @@ class BackoffMixin:
         
         return job
 
-    def completion_with_backoff_and_queue(self, function: Callable, job_id: str, save: bool = True, use_cache: bool = True, **kwargs) -> Job:
+    def completion_with_backoff_and_queue(self, function: Callable, job_id: str, rest_model_name: str, save: bool = True, use_cache: bool = True, **kwargs) -> Job:
 
         """
         This function never fails, it returns a job object with an error message
         """
 
         job = Job(
-            job_id=job_id, 
+            job_id=job_id,
+            rest_model_name=rest_model_name, 
             function=function, 
             request_dict=kwargs,
         )

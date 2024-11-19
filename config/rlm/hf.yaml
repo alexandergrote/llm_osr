@@ -1,0 +1,9 @@
+class: "src.ml.classifier.llm.util.rate_limit.RateLimitManager"
+params:
+  name: "huggingface_pro"
+  rate_limits:
+    num_req_day:
+      limit: 20000
+      increment_level: "frequency"
+      agg_level: "%Y-%m-%d"
+      action: "raise"

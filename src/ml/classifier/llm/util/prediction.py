@@ -32,11 +32,11 @@ class Prediction(BaseModel):
         return label.lower()
     
     @classmethod
-    def from_llm_job(cls, filename: str, class_labels: List[str], output_format_fun: Callable) -> "Prediction":
+    def from_llm_job(cls, filename: str, class_labels: List[str], request_output_fun: Callable) -> "Prediction":
 
         job = Job.from_json_file(filename)
 
-        output: RequestOutput = output_format_fun(job=job)
+        output: RequestOutput = request_output_fun(job.request_output)
         
         PredictionV1.valid_labels = class_labels
         

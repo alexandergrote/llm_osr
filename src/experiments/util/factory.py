@@ -14,7 +14,7 @@ class ExperimentFactory(BaseModel):
         experiments = []
 
         if models is None:
-            models = ["naive", "hyper_simpleshot", "random_llm", "two_stage_llm_llama"]
+            models = ["naive", "hyper_simpleshot", "random_llm", "two_stage_hf_llama_8b"]
 
         if datasets is None:
             datasets = ['banking', 'clinc', 'hwu']

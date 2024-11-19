@@ -30,6 +30,7 @@ class RequestFunction(str, Enum):
 class Job(BaseModel):
 
     job_id: str
+    rest_model_name: str
     request_dict: dict
     request_function: str = RequestFunction.post
     request_output: Optional[Union[dict, List[dict], List]] = None
@@ -45,7 +46,8 @@ class Job(BaseModel):
     @property
     def filepath(self) -> Path:
 
-        job_dir = get_job_dir()
+        job_dir = get_job_dir() / self.rest_model_name
+        job_dir.mkdir(parents=True, exist_ok=True)
 
         return job_dir / f"{self.job_id}.json"
     
@@ -146,8 +148,37 @@ class JobQueue(BaseModel):
 
 if __name__ == "__main__":   
 
-    job_queue = JobQueue.from_json_files()
+    #job_queue = JobQueue.from_json_files()
 
-    job_queue.run_failed_jobs()
+    #job_queue.run_failed_jobs()
+
+    job_dir = get_job_dir() / "llama-8b"
+
+    files = list(job_dir.rglob("*.json"))
+
+    for file in tqdm(files):
+
+        # "rest_model_name": "HFEmbeddingPreprocessor"
+        if '_' in file.name:
+
+            with open(file, "r") as f:
+                json_data = json.load(f)
+
+            file_id = file.name.split("_")[1].split(".")[0]
+
+            print(file_id)
+
+            json_data["job_id"] = file_id
+            json_data["rest_model_name"] = "llama-8b"
+
+            filename_new = f"{file_id}.json"
+            filepath_new = job_dir / filename_new
+
+            with open(filepath_new, "w") as f:
+                json.dump(json_data, f)
+
+            Job.from_json_file(filepath_new)
+
+            file.unlink()
 
     

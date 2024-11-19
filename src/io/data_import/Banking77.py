@@ -56,7 +56,8 @@ class BankingDataset(BaseDataset, BaseModel):
             data = data[mask]
 
         # shuffle data
-        data = data.sample(frac=1).reset_index(drop=True)    
+        random_seed = kwargs.get('random_seed', 42)
+        data = data.sample(frac=1, random_state=random_seed).reset_index(drop=True)    
         
         # filter to only desired categories
         data.to_parquet(filename)

@@ -40,7 +40,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         raise NotImplementedError("Method must be implemented in subclass")
 
     @abstractmethod
-    def _single_predict(self, text: str) -> Tuple[str, float]:
+    def _single_predict(self, text: str, use_cache: bool = False) -> Tuple[str, float]:
         raise NotImplementedError("Method must be implemented in subclass")
     
     def _get_ood_examples(self, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:

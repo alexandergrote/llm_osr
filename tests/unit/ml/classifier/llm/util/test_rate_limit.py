@@ -10,7 +10,7 @@ TMP_DIR = TemporaryDirectory()
 RL_DIR = Path(TMP_DIR.name) / 'rate_limits'
 
 
-class TestOneStage(unittest.TestCase):
+class TestRLM(unittest.TestCase):
 
     def setUp(self):
 
@@ -32,12 +32,17 @@ class TestOneStage(unittest.TestCase):
 
         mock_get_timestamp.return_value = "a"
 
+        rl = self.rlm.rate_limits['num_req_min']
+        rl.limit = 1
+        self.rlm.rate_limits['num_req_min'] = rl
+
         # first check should be allowed
         num_tokens = 5
-        result = self.rlm.check_execution(num_tokens)
-        self.assertIsNone(result)
-        self.rlm.update(tokens=num_tokens)
         
+        result = self.rlm.check_execution(num_tokens)  # prior to execution, all rate limits will be updated, including the ones that refer to the request frequency per time unit
+        self.assertIsNone(result)
+        self.rlm.update(tokens=num_tokens, tokens_only=True)  # after execution, only tokens will be updated
+
         # second check should be blocked
         with self.assertRaises(SystemExit):
             self.rlm.check_execution(num_tokens)

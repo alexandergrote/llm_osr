@@ -73,7 +73,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
        self.classes = np.unique(self.y_train)
 
-    def _detect_unknown_class(self, text: str) -> Optional[LogProbScore]:
+    def _detect_unknown_class(self, text: str, use_cache: bool = False) -> Optional[LogProbScore]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -110,12 +110,13 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             model=self.unknown_detection_model,
             valid_labels=PredictionV1.valid_labels,
             text=prompt, 
-            retries=5
+            retries=5,
+            use_cache=use_cache
         )
         
         return logprob_score
     
-    def _classify_known_classes(self, text: str) -> Optional[LogProbScore]:
+    def _classify_known_classes(self, text: str, use_cache: bool = False) -> Optional[LogProbScore]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -154,12 +155,13 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             model=self.classifier_model,
             valid_labels=PredictionV1.valid_labels,
             text=prompt,
+            use_cache=use_cache,
             retries=5 
         )
 
         return logprob_score
 
-    def _single_predict(self, text: str) -> Tuple[str, float]:
+    def _single_predict(self, text: str, use_cache: bool = False) -> Tuple[str, float]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -169,12 +171,10 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         
         if self.classes is None:
             raise ValueError("Not fitted")
-        
-        unknown_score = 0.0
-        
+
         if not self.skip_unknown_detection:
             
-            unknown_prediction = self._detect_unknown_class(text=text)
+            unknown_prediction = self._detect_unknown_class(text=text, use_cache=use_cache)
 
             if unknown_prediction is None:
                 return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
@@ -182,16 +182,12 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             if unknown_prediction.answer.label == "true":            
                 return UnknownClassLabel.UNKNOWN_STR.value, 1
         
-        known_prediction = self._classify_known_classes(text=text)
+        known_prediction = self._classify_known_classes(text=text, use_cache=use_cache)
 
         if known_prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
-
-        # recalculate the unknown score
-        # if model was confidenct in their prediction and an in distribution example was detected, the anomaly score needs to be low
-        unknown_score = 1 - unknown_score
         
-        return known_prediction.answer.label, unknown_score
+        return known_prediction.answer.label, 0.0
         
 
 

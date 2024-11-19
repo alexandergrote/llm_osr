@@ -3,14 +3,17 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from pydantic import BaseModel
 
+from src.ml.classifier.llm.util.rate_limit import RateLimitManager
 from src.util.constants import DatasetColumn as dfc
 from src.util.logger import console
 
+rlm = RateLimitManager.create_from_config_file(filename="hf.yaml")
 
 class CosineSelector(BaseModel):
 
     _url: str = "https://api-inference.huggingface.co/models/mixedbread-ai/mxbai-embed-large-v1"
     _key: str = 'cosine_score'
+    _rate_limit_manager: RateLimitManager = rlm
 
     def get_n_most_similar_datapoints(self, query: str, data: pd.DataFrame, n: int, include_score: bool = False) -> pd.DataFrame:
 
@@ -19,7 +22,8 @@ class CosineSelector(BaseModel):
 
         embedder: HFEmbeddingPreprocessor = HFEmbeddingPreprocessor(
             url="https://api-inference.huggingface.co/models/mixedbread-ai/mxbai-embed-large-v1",
-            tqdm_disable=True
+            tqdm_disable=True,
+            rate_limit_manager=self._rate_limit_manager
         )
 
         # work on copy

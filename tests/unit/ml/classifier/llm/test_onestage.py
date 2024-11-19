@@ -6,7 +6,7 @@ from unittest.mock import patch
 from tempfile import TemporaryDirectory
 from pathlib import Path
 
-from tests.unit.ml.classifier.llm.util import mock_response, data_train, data_valid
+from tests.unit.ml.classifier.llm.helper import mock_response, data_train, data_valid
 
 
 from src.ml.classifier.llm.fewshot import OneStageLLM
@@ -29,7 +29,6 @@ output_correct = [
         }
     }
 ]
-
 
 output_correct_unknown = [
     {
@@ -69,7 +68,7 @@ class TestOneStage(unittest.TestCase):
 
         config = get_hydra_config(
             overrides=[
-                f"{key}=one_stage_llm_llama",
+                f"{key}=one_stage_hf_llama_8b",
                 f"{key}.params.selector=null"
             ]
         )
@@ -103,10 +102,10 @@ class TestOneStage(unittest.TestCase):
         # should not be saved
         with patch("requests.post") as mock_post:
             mock_post.return_value = mock_response(status_code=200, json_data=output_wrong)
-            llm._single_predict(text="Hello friend")
+            llm._single_predict(text="Hello friend", use_cache=True)
 
-        job_files = list(JOB_DIR.glob("*.json"))
-        error_files = list(LOG_DIR.glob("*.json"))
+        job_files = list(JOB_DIR.rglob("*.json"))
+        error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 0)
         self.assertEqual(len(error_files), 1)
@@ -115,12 +114,12 @@ class TestOneStage(unittest.TestCase):
         # should be saved
         with patch("requests.post") as mock_post:
             mock_post.return_value = mock_response(status_code=200, json_data=output_correct)
-            result = llm._single_predict(text="Hello friend")
+            result = llm._single_predict(text="Hello friend", use_cache=True)
 
         self.assertEqual(result, ("greeting", 0))
 
-        job_files = list(JOB_DIR.glob("*.json"))
-        error_files = list(LOG_DIR.glob("*.json"))
+        job_files = list(JOB_DIR.rglob("*.json"))
+        error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 1)
         self.assertEqual(len(error_files), 0)
@@ -150,10 +149,10 @@ class TestOneStage(unittest.TestCase):
                 mock_response(status_code=200, json_data=output_correct), # firth pydantic retry call, correct format
             ]
 
-            llm._single_predict(text="Hello")
+            llm._single_predict(text="Hello", use_cache=True)
 
-        job_files = list(JOB_DIR.glob("*.json"))
-        error_files = list(LOG_DIR.glob("*.json"))
+        job_files = list(JOB_DIR.rglob("*.json"))
+        error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 1)
         self.assertEqual(len(error_files), 0)
@@ -170,10 +169,10 @@ class TestOneStage(unittest.TestCase):
 
         with patch("requests.post") as mock_post:
             mock_post.return_value = mock_response(status_code=200, json_data=output_correct_unknown)
-            llm._single_predict(text="Hello")
+            llm._single_predict(text="Hello", use_cache=True)
         
-        job_files = list(JOB_DIR.glob("*.json"))
-        error_files = list(LOG_DIR.glob("*.json"))
+        job_files = list(JOB_DIR.rglob("*.json"))
+        error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 1)
         self.assertEqual(len(error_files), 0)
@@ -184,10 +183,10 @@ class TestOneStage(unittest.TestCase):
         # unlink all files in job and log dir
         # cleanup alone does not do the job 
         # todo: find better solution
-        for file in JOB_DIR.glob("*.json"):
+        for file in JOB_DIR.rglob("*.json"):
             file.unlink()
 
-        for file in LOG_DIR.glob("*.json"):
+        for file in LOG_DIR.rglob("*.json"):
             file.unlink()
 
         TMP_DIR.cleanup()

@@ -1,6 +1,7 @@
 import sys
 import json
 import time
+import os
 
 from enum import Enum
 from collections import defaultdict
@@ -12,6 +13,8 @@ from pathlib import Path
 
 from src.util.logger import console
 from src.util.constants import Directory
+from src.util.dynamic_import import DynamicImport
+from src.util.error import RateLimitException as RateLimitError
 
 
 def get_rate_limit_dir() -> Path:
@@ -21,7 +24,7 @@ def get_rate_limit_dir() -> Path:
 class BaseRateLimit(BaseModel):
 
     @abstractmethod
-    def check(self, usage_request: int) -> bool:
+    def check(self) -> bool:
         raise NotImplementedError("This function needs to be implemented")
 
 
@@ -36,6 +39,7 @@ class Action(str, Enum):
     EXIT = "exit"
     WAIT = "wait"
     IGNORE = "ignore"
+    RAISE = "raise"
 
 
 class RateLimit(BaseRateLimit):
@@ -135,6 +139,8 @@ class RateLimitManager(BaseModel):
     @classmethod
     def create_from_name(cls, name: str) -> "RateLimitManager":
 
+        """This function creates a rate limit manager from rate limit files in json format"""
+
         full_filename = get_rate_limit_dir() / name
 
         if not full_filename.exists():
@@ -147,6 +153,29 @@ class RateLimitManager(BaseModel):
         rlm = rlm.load()
 
         return rlm
+
+    @classmethod
+    def create_from_config_file(cls, filename: str, init_from_disk: bool = True) -> "RateLimitManager":
+
+        """This function creates a rate limit manager from a config file"""
+
+        filepath = Directory.CONFIG / os.path.join("rlm", filename)
+
+        if not filepath.exists():
+            raise ValueError(f"Rate limit config file {filepath} does not exist")
+        
+        rlm = DynamicImport.init_class_from_yaml(
+            filename=str(filepath),
+        )
+
+        assert isinstance(rlm, RateLimitManager)
+
+        if init_from_disk:
+            rlm.load()
+            rlm.save()
+
+        return rlm
+
 
     @property
     def directory(self) -> Path:
@@ -204,7 +233,7 @@ class RateLimitManager(BaseModel):
     def check_execution(self, num_request_tokens: int, save: bool = True):
 
         combinations = [(name, rate_limit) for name, rate_limit in self.rate_limits.items()]
-        
+
         for (name, rate_limit) in combinations:
 
             rate_limit.update(
@@ -215,10 +244,11 @@ class RateLimitManager(BaseModel):
                 self._save_rate_limit(name, rate_limit)
             
             if not rate_limit.check():
+                
                 console.log(f"Rate limit exceeded for {name}")
 
                 if rate_limit.action == Action.EXIT:
-                    console.log(f"Exiting...")
+                    console.log("Exiting...")
                     sys.exit(1)
                 
                 if rate_limit.action == Action.WAIT:
@@ -226,4 +256,8 @@ class RateLimitManager(BaseModel):
                     time.sleep(rate_limit.waiting_time)
 
                 if rate_limit.action == Action.IGNORE:
-                    console.log(f"No action taken")
+                    console.log("No action taken")
+
+                if rate_limit.action == Action.RAISE:
+                    console.log("Raising RateLimitError")
+                    raise RateLimitError(f"Rate limit exceeded for {name}")

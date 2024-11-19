@@ -44,6 +44,7 @@ class TestBackoffMixin(unittest.TestCase):
         result = self.dummy_model.completion_with_backoff_and_queue(
             function=self.dummy_model.my_function,
             job_id="my_job_id",
+            rest_model_name="my_rest_model_name",
         )
 
         mock_job_execute.assert_called()

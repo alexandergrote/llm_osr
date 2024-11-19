@@ -5,7 +5,7 @@ from unittest.mock import patch
 from tempfile import TemporaryDirectory
 from pathlib import Path
 
-from tests.unit.ml.classifier.llm.util import mock_response, data_train, data_valid
+from tests.unit.ml.classifier.llm.helper import mock_response, data_train, data_valid
 
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.twostage import TwoStageLLM
@@ -105,7 +105,7 @@ class TestTwoStage(unittest.TestCase):
 
         config = get_hydra_config(
             overrides=[
-                f"{key}=two_stage_llm_llama",
+                f"{key}=two_stage_hf_llama_8b",
                 f"{key}.params.selector=null"
             ]
         )
@@ -139,10 +139,10 @@ class TestTwoStage(unittest.TestCase):
         # should not be saved
         with patch("requests.post") as mock_post:
             mock_post.return_value = mock_response(status_code=200, json_data=output_binary_wrong)
-            llm._single_predict(text="Hello friend")
+            llm._single_predict(text="Hello friend", use_cache=True)
 
-        job_files = list(JOB_DIR.glob("*.json"))
-        error_files = list(LOG_DIR.glob("*.json"))
+        job_files = list(JOB_DIR.rglob("*.json"))
+        error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 0)
         self.assertEqual(len(error_files), 1)
@@ -151,12 +151,12 @@ class TestTwoStage(unittest.TestCase):
         # should be saved
         with patch("requests.post") as mock_post:
             mock_post.return_value = mock_response(status_code=200, json_data=output_binary_correct_true)
-            result = llm._single_predict(text="Hello friend")
+            result = llm._single_predict(text="Hello friend", use_cache=True)
 
         self.assertEqual(result, ("unknown", 1.0))
 
-        job_files = list(JOB_DIR.glob("*.json"))
-        error_files = list(LOG_DIR.glob("*.json"))
+        job_files = list(JOB_DIR.rglob("*.json"))
+        error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 1)
         self.assertEqual(len(error_files), 0)
@@ -184,10 +184,10 @@ class TestTwoStage(unittest.TestCase):
                 mock_response(status_code=200, json_data=output_multiclass_wrong)
             ]
 
-            llm._single_predict(text="Hello friend")
+            llm._single_predict(text="Hello friend", use_cache=True)
 
-        job_files = list(JOB_DIR.glob("*.json"))
-        error_files = list(LOG_DIR.glob("*.json"))
+        job_files = list(JOB_DIR.rglob("*.json"))
+        error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 1)
         self.assertEqual(len(error_files), 1)
@@ -195,7 +195,7 @@ class TestTwoStage(unittest.TestCase):
         prediction = Prediction.from_llm_job(
             filename=job_files[0],
             class_labels=["true", "false"],
-            output_format_fun=llm.classifier_model.format_output
+            request_output_fun=llm.classifier_model.request_output_classmethod
         )
 
         self.assertTrue(prediction.label == "false")
@@ -210,12 +210,12 @@ class TestTwoStage(unittest.TestCase):
                 mock_response(status_code=200, json_data=output_multiclass_correct),
             ]
 
-            result = llm._single_predict(text="Hello friend")
+            result = llm._single_predict(text="Hello friend", use_cache=True)
 
         self.assertEqual(result, ("greeting", 0.0))
 
-        job_files = list(JOB_DIR.glob("*.json"))
-        error_files = list(LOG_DIR.glob("*.json"))
+        job_files = list(JOB_DIR.rglob("*.json"))
+        error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 2)
         self.assertEqual(len(error_files), 0)
@@ -226,10 +226,10 @@ class TestTwoStage(unittest.TestCase):
         # unlink all files in job and log dir
         # cleanup alone does not do the job 
         # todo: find better solution
-        for file in JOB_DIR.glob("*.json"):
+        for file in JOB_DIR.rglob("*.json"):
             file.unlink()
 
-        for file in LOG_DIR.glob("*.json"):
+        for file in LOG_DIR.rglob("*.json"):
             file.unlink()
 
         TMP_DIR.cleanup()

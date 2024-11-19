@@ -3,7 +3,7 @@ import requests  # type: ignore
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Any, Union, Type
 from pydantic import BaseModel, model_validator, field_validator
-from tenacity import retry, stop_after_attempt, wait_random_exponential
+from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type
 from langchain.output_parsers import PydanticOutputParser
 from langchain import pydantic_v1
 
@@ -16,7 +16,7 @@ from src.ml.classifier.llm.util.rate_limit import RateLimitManager
 from src.ml.classifier.llm.util.tokenizer import LlamaTokenizer
 from src.util.dynamic_import import DynamicImport
 from src.util.logger import log_pydantic_error, delete_error_log, console
-from src.util.error import LLMError
+from src.util.error import LLMError, APIException as APIError
 from src.util.constants import Directory
 
 
@@ -37,7 +37,7 @@ class AbstractLLM(ABC):
             raise LLMError(f"File {filepath} does not exist")
         
         obj = DynamicImport.init_class_from_yaml(
-            filename=filepath
+            filename=str(filepath),
         )
 
         return obj
@@ -46,10 +46,11 @@ class AbstractLLM(ABC):
 class StructuredRequestLLM(BaseModel, AbstractLLM):
 
     name: str
+    rest_api_model_name: str
     url: str
     payload: dict = {}
 
-    rate_limit_manager: Optional[RateLimitManager] = None
+    rate_limit_manager: Optional[Union[RateLimitManager, str]] = None
 
     # functions to call formatting options
     request_input_classmethod: Union[Callable, str]
@@ -95,26 +96,33 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         if rate_limit_manager_params is None:
             return values
         
-        # overwrite name if not set in params
-        if "name" not in rate_limit_manager_params:
-            rate_limit_manager_params["params"]["name"] = values['name']
-        
-        obj = DynamicImport.init_class_from_dict(
-            dictionary=rate_limit_manager_params,
-        )
+        is_str = isinstance(rate_limit_manager_params, str)
+        is_rlm = isinstance(rate_limit_manager_params, RateLimitManager)
 
-        # to avoid circular imports
+        if is_str:
+
+            obj = RateLimitManager.create_from_config_file(
+                filename=rate_limit_manager_params,
+                init_from_disk=True
+            )
+
+        elif is_rlm:
+
+            obj = rate_limit_manager_params
+            obj.load()
+            obj.save()
+
+        else:
+            raise ValueError(f"Value of {key} must be a string or a rate limit manager directly")
+
         assert isinstance(obj, RateLimitManager)
-
-        obj.load()
-        obj.save()
         
         values[key] = obj
         
         return values
 
     def _get_hash_id(self, prompt: str) -> str:
-        return f"{self.name}_{Hash.hash_string(prompt)}"
+        return f"{Hash.hash_string(prompt)}"
     
     def _get_log_filename(self, prompt: str) -> str:
         return f"{self._get_hash_id(prompt=prompt)}.json"
@@ -124,6 +132,12 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         if self.rate_limit_manager is None:
             raise ValueError("Rate limit manager not set")
 
+        if not isinstance(self.rate_limit_manager, RateLimitManager):
+            raise ValueError("Rate limit manager is not a RateLimitManager object")
+        
+        if isinstance(self.request_input_data_extraction, str):
+            raise ValueError("Request input class method is not callable")
+        
         self.rate_limit_manager.load()
 
         prompt = self.request_input_data_extraction(request_dict)
@@ -137,7 +151,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             num_request_tokens=num_tokens
         )
     
-    @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(5), reraise=True)
+    @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(5), reraise=True, retry=retry_if_exception_type(APIError))
     def _backoff(self, job: Job, request_fun: Callable, request_dict: dict, **kwargs) -> Job:
 
         """
@@ -155,8 +169,6 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         status_code = response.status_code
 
-        print(f"Status code: {status_code}")
-
         if status_code == 200:
 
             assert hasattr(response, "json"), "Response object does not have a json attribute"
@@ -171,15 +183,17 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
             if hasattr(response, "text"):
                 job.error_description = response.text
-        
-        if job.status == JobStatus.failed:
+
             console.log(f"Job failed: {job.error_description}")
-            raise Exception(job.error_description)
+            raise APIError(job.error_description)
         
         return job
 
     def _pre_request(self, prompt: str, **kwargs) -> RequestInput:
         
+        if isinstance(self.request_input_classmethod, str):
+            raise ValueError("Request input class method is not callable")
+
         output = self.request_input_classmethod(
             prompt=prompt,
             payload=self.payload,
@@ -192,9 +206,13 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
     def _make_request(self, request_input: RequestInput, job_id: str, use_cache: bool = True) -> Job:
 
+        if isinstance(self.request_input_data_extraction, str):
+                raise ValueError("Request input class method is not callable")
+
         # create request job object, which will later store the result of the request
         job = Job(
-            job_id=job_id, 
+            job_id=job_id,
+            rest_model_name=self.rest_api_model_name, 
             function=requests.post, 
             request_dict=request_input.data,
         )
@@ -210,8 +228,6 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         try:
 
             job = self._backoff(job=job, request_fun=requests.post, request_dict=request_input.data)
-
-            return job
 
         except Exception as e:
 
@@ -232,6 +248,8 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             )
 
             raise e
+        
+        return job
 
     def _post_request(self, request_job: Job) -> RequestOutput:
 
@@ -239,11 +257,23 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         This function ensures that the job output can be transformed into a request output object.
         """
 
+        req_output = None
+
         if not request_job.is_success:
             raise Exception(request_job.error_description)
         
+        if isinstance(self.request_input_data_extraction, str):
+                raise ValueError("Request input class method is not callable")
+
+        if isinstance(self.request_output_classmethod, str):
+                raise ValueError("Request output class method is not callable")
+        
+        if not isinstance(self.rate_limit_manager, RateLimitManager):
+            raise ValueError("Rate limit manager is not a RateLimitManager object")
+
         try:
 
+            
             req_output = self.request_output_classmethod(request_job.request_output)
 
             assert isinstance(req_output, RequestOutput)
@@ -256,8 +286,6 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
                     tokens=req_output.num_tokens,
                     tokens_only=True
                 )
-
-            return req_output
 
         except Exception as e:
 
@@ -273,6 +301,10 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
                 filename=self._get_log_filename(prompt=prompt),
                 error=error
             )
+
+            assert isinstance(req_output, RequestOutput)
+
+        return req_output
 
     def _get_parsed_output(self, prompt: str, request_output: RequestOutput, pydantic_model: Type[pydantic_v1.BaseModel]) -> LogProbScore:
 
@@ -357,40 +389,6 @@ if __name__ == '__main__':
     from src.ml.classifier.llm.util.request import RequestOutput
     from src.util.constants import LLMModels, RESTAPI_URLS
 
-    rate_limit_manager = {
-        "class": "src.ml.classifier.llm.util.rate_limit.RateLimitManager",
-        "params": {
-            "rate_limits": {
-                "num_req_minute": {
-                    "limit":30,
-                    "increment_level": "frequency",
-                    "agg_level": "%Y-%m-%d %H:%M",
-                    "action": "wait",
-                    "waiting_time": 60
-                },
-                "num_token_minute": {
-                        "limit":6000,
-                        "increment_level": "token",
-                        "agg_level": "%Y-%m-%d %H:%M",
-                        "action": "wait",
-                        "waiting_time": 60
-                },
-                "num_req_day": {
-                    "limit":14400,
-                    "increment_level": "frequency",
-                    "agg_level": "%Y-%m-%d",
-                    "action": "exit"
-                },
-                "num_token_day": {
-                        "limit":200000,
-                        "increment_level": "token",
-                        "agg_level": "%Y-%m-%d",
-                        "action": "exit"
-                },
-            }
-        }
-    }
-
     prompt_template = """
     Please classify this sentence: {}
 
@@ -404,26 +402,24 @@ if __name__ == '__main__':
 
     PredictionV1.valid_labels = ["question", "answer"]
 
-    
-    print("first")
-
     model = StructuredRequestLLM(
         name="hf-llama-8b",
+        rest_api_model_name="llama-8b",
         url=RESTAPI_URLS[LLMModels.LLAMA_3_8B_Remote_HF],
         request_input_classmethod="create_hf_llama_request_input",
         request_output_classmethod="from_llama_hf_request",
         request_input_data_extraction="get_prompt_from_hf_data",
-        rate_limit_manager=rate_limit_manager
+        rate_limit_manager="hf.yaml"
     )
 
     prompt = prompt_template.format("What is the meaning of life?")
-    result = model(prompt, use_cache=True, pydantic_model=PredictionV1)
-    print(result.answer)
+    result = model(prompt, use_cache=False, pydantic_model=PredictionV1)
 
-    print("second")
+    print(result.answer)
 
     model = StructuredRequestLLM(
         name="groq-llama-8b",
+        rest_api_model_name="llama-8b",
         url="https://api.groq.com/openai/v1/chat/completions",
         payload={
             "model": "llama-3.1-8b-instant",
@@ -432,7 +428,7 @@ if __name__ == '__main__':
         request_input_classmethod="create_groq_request_input",
         request_output_classmethod="from_groq_request",
         request_input_data_extraction="get_prompt_from_openai_data",
-        rate_limit_manager=rate_limit_manager,
+        rate_limit_manager="groq-llama-8b.yaml",
         pydantic_model=PredictionV1,
     )
 

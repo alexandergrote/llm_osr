@@ -10,3 +10,9 @@ class LLMError(Error):
 
 class LogProbError(Error):
     logprobs: List[str]
+
+class APIException(Exception):
+    pass
+
+class RateLimitException(Exception):
+    pass

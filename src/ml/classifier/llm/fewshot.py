@@ -70,7 +70,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
        self.classes = np.unique(self.y_train)
 
-    def _single_predict(self, text: str, **kwargs) -> Tuple[str, float]:
+    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -105,7 +105,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         if not isinstance(self.osr_model, AbstractLLM):
             raise ValueError("Classifier model must be an AbstractLLM")
 
-        prediction = self._get_parsed_output(model=self.osr_model, valid_labels=PredictionV1.valid_labels, text=prompt, retries=5)
+        prediction = self._get_parsed_output(model=self.osr_model, valid_labels=PredictionV1.valid_labels, use_cache=use_cache,  text=prompt, retries=5)
 
         if prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)

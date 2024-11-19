@@ -13,9 +13,9 @@ class TestJobQueue(unittest.TestCase):
     def setUp(self):
 
         self.jobs = [
-            Job(job_id='1', request_dict=dict(url='https://httpbin.org/post', data={'key': 'value'}), request_function=RequestFunction.post),
-            Job(job_id='2', request_dict=dict(url='https://httpbin.org/post2', data={'key': 'value'}), request_function=RequestFunction.post),
-            Job(job_id='3', request_dict=dict(url='https://httpbin.org/post3', data={'key': 'value'}), request_function=RequestFunction.post),
+            Job(job_id='1', rest_model_name="tmp", request_dict=dict(url='https://httpbin.org/post', data={'key': 'value'}), request_function=RequestFunction.post),
+            Job(job_id='2', rest_model_name="tmp", request_dict=dict(url='https://httpbin.org/post2', data={'key': 'value'}), request_function=RequestFunction.post),
+            Job(job_id='3', rest_model_name="tmp", request_dict=dict(url='https://httpbin.org/post3', data={'key': 'value'}), request_function=RequestFunction.post),
         ]
 
         PATCH_JOB_DIR.mkdir(parents=True, exist_ok=True)
