@@ -1,0 +1,9 @@
+class: "src.ml.classifier.llm.util.rate_limit.RateLimitManager"
+params:
+  name: "openrouter"
+  rate_limits:
+    num_req_minute:
+      limit: 300
+      increment_level: "frequency"
+      agg_level: "%Y-%m-%d %H:%M"
+      action: "raise"

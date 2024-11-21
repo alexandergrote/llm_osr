@@ -16,6 +16,8 @@ class PydanticEnvironment(BaseModel):
     _hf_token: Optional[str]
     _openai_key: Optional[str]
     _groq_key: Optional[str]
+    _sambanova_key: Optional[str]
+    _openrouter_key: Optional[str]
 
     model_config = ConfigDict(extra = 'forbid')
 
@@ -55,6 +57,29 @@ class PydanticEnvironment(BaseModel):
     def groq_key(self, value: str):
         self._groq_key = value
 
+    @property
+    def sambanova_key(self) -> str:
+
+        if self._sambanova_key is None:
+            raise ValueError("groq token not set")
+        
+        return self._sambanova_key
+    
+    @sambanova_key.setter
+    def sambanova_key(self, value: str):
+        self._sambanova_key = value
+
+    @property
+    def openrouter_key(self) -> str:
+
+        if self._openrouter_key is None:
+            raise ValueError("groq token not set")
+        
+        return self._openrouter_key
+    
+    @openrouter_key.setter
+    def openrouter_key(self, value: str):
+        self._openrouter_key = value
 
     @property
     def mode(self) -> str:
@@ -81,6 +106,8 @@ class PydanticEnvironment(BaseModel):
         instance.openai_key = os.environ.get("OPENAI_API_KEY")  # type: ignore
         instance.hf_token = os.environ.get('HF')  # type: ignore
         instance.groq_key = os.environ.get('GROQ')  # type: ignore
+        instance.sambanova_key = os.environ.get('SAMBANOVA')  # type: ignore
+        instance.openrouter_key = os.environ.get('OPENROUTER')  # type: ignore
 
         return instance
 

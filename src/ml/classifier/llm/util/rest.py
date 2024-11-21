@@ -122,7 +122,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         return values
 
     def _get_hash_id(self, prompt: str) -> str:
-        return f"{Hash.hash_string(prompt)}"
+        return f"{self.name}_{Hash.hash_string(prompt)}"
     
     def _get_log_filename(self, prompt: str) -> str:
         return f"{self._get_hash_id(prompt=prompt)}.json"
@@ -374,7 +374,12 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         )
 
         if use_cache:
-            request_job.save()
+
+            # avoids calling the same llm with a query twice
+            # and it is useful for debugging
+            # even though this cache is not useful for the inference handler
+            # each job gets formatted depending on the individual llm after the rest api call 
+            request_job.save()  
         
         # delete potential error log file
         delete_error_log(

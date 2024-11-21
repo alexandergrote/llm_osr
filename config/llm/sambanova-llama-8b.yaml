@@ -1,0 +1,13 @@
+class: src.ml.classifier.llm.util.rest.StructuredRequestLLM
+params:
+  name: sambanova-llama-8b
+  rest_api_model_name: llama-8b
+  url: "https://api.sambanova.ai/v1/chat/completions"
+  payload:
+    model: "Meta-Llama-3.1-8B-Instruct"
+    temperature: 0.0
+  request_input_classmethod: "create_sambanova_request_input"
+  request_output_classmethod: "from_sambanova_request"
+  request_input_data_extraction: "get_prompt_from_openai_data"
+  rate_limit_manager: "sambanova-llama-8b.yaml"
+    

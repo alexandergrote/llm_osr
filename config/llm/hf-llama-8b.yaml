@@ -4,7 +4,7 @@ params:
   rest_api_model_name: llama-8b
   url: "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8b-Instruct"
   payload:
-    temperature: 0.0
+    temperature: 0.01
   request_input_classmethod: "create_hf_llama_request_input"
   request_output_classmethod: "from_llama_hf_request"
   request_input_data_extraction: "get_prompt_from_hf_data"
