@@ -1,4 +1,4 @@
-from .fewshot import OneStageLLM
+from .onestage import OneStageLLM
 from .naive import RandomLLM 
 from .twostage import TwoStageLLM 
 

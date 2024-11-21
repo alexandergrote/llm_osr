@@ -9,7 +9,7 @@ from pathlib import Path
 from tests.unit.ml.classifier.llm.helper import mock_response, data_train, data_valid
 
 
-from src.ml.classifier.llm.fewshot import OneStageLLM
+from src.ml.classifier.llm.onestage import OneStageLLM
 from src.util.load_hydra import get_hydra_config
 from src.util.constants import DatasetColumn
 from src.util.dynamic_import import DynamicImport
@@ -68,8 +68,9 @@ class TestOneStage(unittest.TestCase):
 
         config = get_hydra_config(
             overrides=[
-                f"{key}=one_stage_hf_llama_8b",
-                f"{key}.params.selector=null"
+                f"{key}=one_stage_llama_8",
+                f"{key}.params.selector=null",
+                f"{key}.params.osr_model=[hf-llama-8b.yaml]"
             ]
         )
 

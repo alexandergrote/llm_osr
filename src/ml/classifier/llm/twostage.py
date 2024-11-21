@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, List
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
 
@@ -10,17 +10,18 @@ from src.ml.classifier.llm.util.prediction import PredictionV1
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
-from src.ml.classifier.llm.util.rest import AbstractLLM
+from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
+from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import ErrorValues
 from src.ml.classifier.llm.base import LLMClassifierMixin
 
 
 class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
-    unknown_detection_model: Union[AbstractLLM, dict]
+    unknown_detection_model: Union[InferenceHandler, List[str]]
     unknown_detection_prompt: str = "ood.txt"
 
-    classifier_model: Union[AbstractLLM, dict]
+    classifier_model: Union[InferenceHandler, List[str]]
     classifier_prompt: str = "multiclass.txt"
 
     # skip unknown detection
@@ -34,7 +35,18 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         model_keys = ["unknown_detection_model", "classifier_model"]
 
         for model in model_keys:
-            data[model] = AbstractLLM.create_from_yaml_file(data[model])
+            
+            llms = []
+
+            for llm in data[model]:
+
+                llms.append(
+                    StructuredRequestLLM.create_from_yaml_file(llm)
+                )
+
+            data[model] = InferenceHandler(
+                llms=llms,
+            )
             
         data_selector = data.get('selector')
 

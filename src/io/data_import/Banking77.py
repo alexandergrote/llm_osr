@@ -31,11 +31,11 @@ class BankingDataset(BaseDataset, BaseModel):
         filename = self.data_home / "banking77.parquet"
 
         # to speed up the process, we "cache" the data in a parquet file
-        #if filename.exists():
+        # if filename.exists():
         #    data = pd.read_parquet(filename)
         #    return data
 
-        dataset = load_dataset("banking77")
+        dataset = load_dataset("PolyAI/banking77")
         train_data = dataset["train"].to_pandas()
         test_data = dataset["test"].to_pandas()
         data = pd.concat([train_data, test_data], ignore_index=True)

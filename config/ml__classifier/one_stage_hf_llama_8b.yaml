@@ -1,7 +1,0 @@
-class: src.OneStageLLM
-params:
-  selector:
-    class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
-    params:
-  osr_model: hf-llama-8b.yaml
-    

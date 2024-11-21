@@ -9,6 +9,7 @@ from tests.unit.ml.classifier.llm.helper import mock_response, data_train, data_
 
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.twostage import TwoStageLLM
+from src.ml.classifier.llm.util.rest import StructuredRequestLLM
 from src.util.load_hydra import get_hydra_config
 from src.util.constants import DatasetColumn
 from src.util.dynamic_import import DynamicImport
@@ -66,7 +67,6 @@ output_binary_wrong = [
     }
 ]
 
-
 output_multiclass_correct = [
     {
         'generated_text': '{"label": "greeting", "reasoning": "trivial"}',
@@ -77,7 +77,6 @@ output_multiclass_correct = [
         }
     }
 ]
-
 
 output_multiclass_wrong = [
     {
@@ -105,8 +104,10 @@ class TestTwoStage(unittest.TestCase):
 
         config = get_hydra_config(
             overrides=[
-                f"{key}=two_stage_hf_llama_8b",
-                f"{key}.params.selector=null"
+                f"{key}=two_stage_llama_8",
+                f"{key}.params.selector=null",
+                f"{key}.params.unknown_detection_model=[hf-llama-8b.yaml]",
+                f"{key}.params.classifier_model=[hf-llama-8b.yaml]",
             ]
         )
 
@@ -192,10 +193,14 @@ class TestTwoStage(unittest.TestCase):
         self.assertEqual(len(job_files), 1)
         self.assertEqual(len(error_files), 1)
 
+        rest_llm = llm.classifier_model.llms[0]
+
+        assert isinstance(rest_llm, StructuredRequestLLM)
+
         prediction = Prediction.from_llm_job(
             filename=job_files[0],
             class_labels=["true", "false"],
-            request_output_fun=llm.classifier_model.request_output_classmethod
+            request_output_fun=rest_llm.request_output_classmethod
         )
 
         self.assertTrue(prediction.label == "false")

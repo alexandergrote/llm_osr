@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, List
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
 
@@ -10,13 +10,14 @@ from src.ml.classifier.llm.util.cosine_selector import CosineSelector
 from src.ml.classifier.llm.util.prediction import PredictionV1
 from src.ml.classifier.llm.base import AbstractClassifierLLM, LLMClassifierMixin
 from src.util.constants import UnknownClassLabel
-from src.ml.classifier.llm.util.rest import AbstractLLM
+from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
+from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import Directory, ErrorValues, DatasetColumn
 
 
 class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
-    osr_model: Union[AbstractLLM, str]
+    osr_model: Union[InferenceHandler, List[str]]
     osr_prompt: str = "osr.txt"
 
     # fewshot selection of data points
@@ -32,7 +33,18 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         model_keys = ["osr_model"]
 
         for model in model_keys:
-            data[model] = AbstractLLM.create_from_yaml_file(data[model])
+            
+            llms = []
+
+            for llm in data[model]:
+
+                llms.append(
+                    StructuredRequestLLM.create_from_yaml_file(llm)
+                )
+
+            data[model] = InferenceHandler(
+                llms=llms,
+            )
         
         data_selector = data.get('selector')
 
@@ -156,7 +168,7 @@ if __name__ == '__main__':
         y_valid=data_valid[DatasetColumn.LABEL].values,
     )
 
-    result = llm._single_predict(text="Hello")
+    result = llm._single_predict(text="Hello", use_cache=False)
 
     print(result)
 
