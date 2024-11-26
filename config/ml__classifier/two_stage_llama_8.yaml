@@ -4,6 +4,9 @@ params:
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:
+      mode: "random_class"
+      n_classes: 3
+      n_datapoints: 5 
   unknown_detection_model: 
     - groq-llama-8b.yaml
     - hf-llama-8b.yaml

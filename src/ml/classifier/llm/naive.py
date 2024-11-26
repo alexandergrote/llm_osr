@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Tuple
 
 from src.ml.classifier.llm.base import AbstractClassifierLLM
-from src.util.constants import DatasetColumn, LLMModels
+from src.util.constants import DatasetColumn
 from src.ml.classifier.llm.util.logprob import LogProbScore, LogProb
 from src.ml.classifier.llm.util.prediction import Prediction
 
@@ -49,7 +49,7 @@ class RandomLLM(AbstractClassifierLLM):
         if logprob_score is None:
             return None
         
-        return logprob_score, score
+        return logprob_score.answer.label, score
 
 
 if __name__ == '__main__':
@@ -61,9 +61,7 @@ if __name__ == '__main__':
         DatasetColumn.LABEL: ['Greeting', 'Goodbye', "Greeting"]
     })
 
-    llm = RandomLLM(
-        clf_str=LLMModels.LLAMA_3_8B_Remote_HF.value
-    )
+    llm = RandomLLM()
 
     llm.fit(
         x_train=data[DatasetColumn.FEATURES].values,

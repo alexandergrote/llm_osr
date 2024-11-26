@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 from abc import abstractmethod
 from tqdm import tqdm
@@ -15,7 +14,6 @@ from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.util.constants import ErrorValues
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
-from src.util.constants import DatasetColumn
 
 
 class AbstractClassifierLLM(BaseModel, BaseClassifier):
@@ -28,10 +26,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
     classes: Optional[np.ndarray] = None
 
     # fewshot selection of data points
-    selector: Optional[Union[dict, CosineSelector]] = None
-    n_classes: Optional[int] = 3
-    n_datapoints_per_class: Optional[int] = 5
-
+    selector: Union[CosineSelector, dict]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -42,8 +37,9 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
     @abstractmethod
     def _single_predict(self, text: str, use_cache: bool = False) -> Tuple[str, float]:
         raise NotImplementedError("Method must be implemented in subclass")
-    
-    def _get_ood_examples(self, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:
+
+
+    def _get_examples(self, text_to_classify: str) -> List[Dict[str, str]]:
 
         if self.y_train is None:
             raise ValueError("Model is not fitted")
@@ -51,104 +47,14 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         if self.y_valid is None:
             raise ValueError("Model is not fitted")
         
-        if self.x_train is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.x_valid is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.classes is None:
-            raise ValueError("Model is not fitted")
-        
-        # draw a random example from each known class
-        examples = []
+        if isinstance(self.selector, dict):
+            raise ValueError("Selector not set")
 
-        rng = np.random.default_rng(42)
-
-        for unique_class in self.classes:
-             
-            y_mask = self.y_train == unique_class
-
-            x_sub = self.x_train[y_mask]
-
-            x_chosen = rng.choice(x_sub)
-
-            examples.append({query: x_chosen, answer: "false"})
-
-        # draw example of unknown class
-        unkwown_classes = np.setdiff1d(self.y_valid, self.y_train)
-
-        for unkwown_class in unkwown_classes:
-            
-            y_mask = self.y_valid == unkwown_class
-            x_sub = self.x_valid[y_mask]
-            x_chosen = rng.choice(x_sub)
-
-            examples.append({query: x_chosen, answer: "true"})
-
-        return examples
-
-
-    def _get_examples(self, text_to_classify: str, query: str = 'input', answer: str = 'output') -> List[Dict[str, str]]:
-
-        if self.y_train is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.y_valid is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.x_train is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.x_valid is None:
-            raise ValueError("Model is not fitted")
-        
-        if self.classes is None:
-            raise ValueError("Model is not fitted")
-
-        # draw a random example from each class
-        examples = []
-
-        if self.selector is None:
-
-            rng = np.random.default_rng(42)
-
-            for selected_class in self.classes:
-
-                y_mask = self.y_train == selected_class
-
-                x_sub = self.x_train[y_mask]
-
-                x_chosen = rng.choice(x_sub)
-
-                examples.append({query: x_chosen, answer: selected_class})
-
-        else:
-
-            data = pd.DataFrame({
-                DatasetColumn.LABEL: self.y_train,
-                DatasetColumn.TEXT: self.x_train.reshape(-1,)
-            })
-
-            n_classes = len(self.classes) if self.n_classes is None else self.n_classes
-            n_datapoints_per_class = 1 if self.n_datapoints_per_class is None else self.n_datapoints_per_class
-
-            if not isinstance(self.selector, CosineSelector):
-                raise ValueError("Selector must be of type CosineSelector")
-
-            dataframe = self.selector.get_most_similar_datapoints_for_n_classes(
-                query=text_to_classify,
-                data=data,
-                n_classes=n_classes,
-                n=n_datapoints_per_class
-            )
-
-            for _, row in dataframe.iterrows():
-                examples.append({
-                    query: row[DatasetColumn.TEXT], 
-                    answer: row[DatasetColumn.LABEL]
-                })
-
+        examples = self.selector.get_examples(
+            text=text_to_classify,
+            x_train=self.x_train,
+            y_train=self.y_train
+        )
 
         return examples
 

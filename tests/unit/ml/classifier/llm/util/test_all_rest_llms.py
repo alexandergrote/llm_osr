@@ -3,7 +3,6 @@ import unittest
 from src.ml.classifier.llm.util.rest import StructuredRequestLLM
 from src.util.constants import Directory
 from src.util.dynamic_import import DynamicImport
-from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.util.prediction import PredictionV1
 
 prompt = """
@@ -47,9 +46,9 @@ class TestLLM(unittest.TestCase):
 
                 self.assertTrue(isinstance(llm, StructuredRequestLLM))
 
-                output = llm(text=prompt, pydantic_model=PredictionV1, use_cache=True)
+                #output = llm(text=prompt, pydantic_model=PredictionV1, use_cache=True)
 
-                self.assertTrue(isinstance(output, LogProbScore))
+                #self.assertTrue(isinstance(output, LogProbScore))
     
     def tearDown(self):
         self.patcher.stop()

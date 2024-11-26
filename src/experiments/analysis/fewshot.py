@@ -14,7 +14,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         data_copy = data.copy(deep=True)
 
         metric_col, dataset_col, perc_unknown_col = f1_analysis_columns.f1_avg.column_name, id_columns.dataset.column_name, id_columns.perc_unknown_classes.column_name
-        unknown_auc_col = unknown_auc_analysis_columns.auc.column_name
+        unknown_f1_col = unknown_auc_analysis_columns.f1.column_name
         all_columns = [metric_col, perc_unknown_col, dataset_col]
 
         for col in all_columns:
@@ -25,6 +25,13 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         console.log(data_copy_grouped)
 
         # analyse unknown predictions
-        data_copy_grouped = data_copy.groupby([dataset_col, perc_unknown_col])[unknown_auc_col].mean().reset_index()
+        data_copy_grouped = data_copy.groupby([dataset_col, perc_unknown_col])[unknown_f1_col].mean().reset_index()
 
         console.log(data_copy_grouped)
+
+
+class BenchmarkAnalyser(FewShotAnalyser):
+    pass
+
+class LLMAnalyser(FewShotAnalyser):
+    pass

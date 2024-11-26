@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
 
-from typing import Optional, Union, Tuple, List
+from typing import Union, Tuple, List
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
+from omegaconf.dictconfig import DictConfig
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
@@ -21,9 +22,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
     osr_prompt: str = "osr.txt"
 
     # fewshot selection of data points
-    selector: Optional[Union[dict, CosineSelector]] = None
-    n_classes: Optional[int] = 3
-    n_datapoints_per_class: Optional[int] = 5
+    selector: Union[CosineSelector, dict]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -48,6 +47,12 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         
         data_selector = data.get('selector')
 
+        if data_selector is None:
+            raise ValueError("No selector specified")
+        
+        if isinstance(data_selector, DictConfig):
+            data_selector = dict(data_selector)
+        
         if isinstance(data_selector, dict):
             data['selector'] = DynamicImport.init_class_from_dict(data_selector)
 

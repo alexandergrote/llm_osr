@@ -101,6 +101,8 @@ class HFEmbeddingPreprocessor(BaseModel, BasePreprocessor):
 
         if job.filepath.exists() and use_cache:
 
+            job = Job.from_json_file(job.filepath)
+
             if job.is_success:
                 return job
             

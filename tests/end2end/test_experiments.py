@@ -15,10 +15,16 @@ class TestExperimentYamls(unittest.TestCase):
     
     def test_experiment_yaml(self) -> None:
 
-        experiments = ExperimentFactory.create_fewshot_experiments(
+        experiments = ExperimentFactory.create_benchmark_experiments(
             random_seeds=[0],
             unknown_classes=[0, 0.6],
         )
+
+        experiments += ExperimentFactory.create_llm_fewshot_experiments(
+            random_seeds=[0],
+            unknown_classes=[0, 0.6],
+        )
+
 
         for experiment in experiments:
             with self.subTest(msg=f"Testing experiment: {experiment.name}"):

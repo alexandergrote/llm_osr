@@ -10,7 +10,7 @@ from typing import Optional, List
 
 from src.util.logger import console
 from src.experiments.analysis.base import BaseAnalyser
-from src.experiments.analysis.fewshot import FewShotAnalyser
+from src.experiments.analysis.fewshot import BenchmarkAnalyser, LLMAnalyser
 from src.io.data_import.mlflow_engine import QueryEngine
 from src.experiments.util.factory import ExperimentFactory
 from src.experiments.util.types import Experiment
@@ -53,9 +53,6 @@ class ExperimentRunner(BaseModel):
 
             else:
                 print(f"Error: {e.stderr}")
-
-        
-        
 
 
     @staticmethod
@@ -129,7 +126,8 @@ class ExperimentRunner(BaseModel):
         executeable_list = []
 
         combinations = [
-            (ExperimentFactory.create_fewshot_experiments(), FewShotAnalyser()),
+            (ExperimentFactory.create_benchmark_experiments(), BenchmarkAnalyser()),
+            (ExperimentFactory.create_llm_fewshot_experiments(), LLMAnalyser())
         ]
 
         for experiments, analyser in combinations:

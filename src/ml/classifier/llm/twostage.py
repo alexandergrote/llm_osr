@@ -4,6 +4,7 @@ import pandas as pd
 from typing import Optional, Union, Tuple, List
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
+from omegaconf.dictconfig import DictConfig
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.prediction import PredictionV1
@@ -50,6 +51,12 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             
         data_selector = data.get('selector')
 
+        if data_selector is None:
+            raise ValueError("No selector specified")
+        
+        if isinstance(data_selector, DictConfig):
+            data_selector = dict(data_selector)
+        
         if isinstance(data_selector, dict):
             data['selector'] = DynamicImport.init_class_from_dict(data_selector)
 

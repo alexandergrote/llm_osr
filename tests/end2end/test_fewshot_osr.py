@@ -28,10 +28,10 @@ class TestFewShotOSR(unittest.TestCase):
     def setUp(self):
         pass       
         
-    @patch("src.experiments.cli.ExperimentFactory.create_fewshot_experiments", return_value=experiments)
+    @patch("src.experiments.cli.ExperimentFactory.create_benchmark_experiments", return_value=experiments)
     @patch("src.main.get_hydra_output_dir", return_value=Path(temp_dir.name))
     def test_main(self, mock_create_experiments_from_yaml, mock_get_hydra_output_dir):
-        self.assertIsNone(execute("fewshot*", filter_name='tmp'))
+        self.assertIsNone(execute("bench*", filter_name='tmp'))
 
     def tearDown(self):
 
@@ -40,7 +40,8 @@ class TestFewShotOSR(unittest.TestCase):
         for exp in experiments:
 
             experiment_id = mlflow.get_experiment_by_name(exp.name)
-            mlflow.delete_experiment(experiment_id.experiment_id)
+            if experiment_id is not None:
+                mlflow.delete_experiment(experiment_id.experiment_id)
 
 if __name__ == '__main__':
     unittest.main()
