@@ -27,6 +27,14 @@ class TestLLM(unittest.TestCase):
         yaml_dir = Directory.CONFIG / 'llm'
         self.yaml_files = yaml_dir.glob("*.yaml")
 
+        self.patcher = unittest.mock.patch.multiple(
+            'src.util.caching.JsonCache',
+            read=lambda x: None,
+            write=lambda x, obj: None
+        )
+        
+        self.mocks = self.patcher.start()
+
     def test_llm(self):
 
         for yaml_file in self.yaml_files:
@@ -39,12 +47,12 @@ class TestLLM(unittest.TestCase):
 
                 self.assertTrue(isinstance(llm, StructuredRequestLLM))
 
-                print(yaml_file)
-
                 output = llm(text=prompt, pydantic_model=PredictionV1, use_cache=True)
 
                 self.assertTrue(isinstance(output, LogProbScore))
-
+    
+    def tearDown(self):
+        self.patcher.stop()
 
 
 if __name__ == '__main__':

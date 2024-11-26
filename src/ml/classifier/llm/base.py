@@ -165,6 +165,8 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
             el_str = el[0]
 
+            tqdm.write(f"processing text: {el_str}")
+
             result_text = ErrorValues.PARSING_STR.value
             result_score = float(ErrorValues.PARSING_NUM.value)
 
@@ -173,10 +175,10 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
             try:
 
                 result = self._single_predict(text=el_str)
+                tqdm.write(f"Sucess: {result[0]}")
+
 
             except Exception as e:
-
-                tqdm.write(f"Error processing text: {el_str}")
                 tqdm.write(f"Error: {e}")
 
                 pass

@@ -98,6 +98,14 @@ class TestTwoStage(unittest.TestCase):
         JOB_DIR.mkdir(parents=True, exist_ok=True)
         LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+        self.patcher = patch.multiple(
+            'src.util.caching.JsonCache',
+            read=lambda x: None,
+            write=lambda x, obj: None
+        )
+        
+        self.mocks = self.patcher.start()
+
     def _get_fitted_llm(self) -> TwoStageLLM:
 
         key = "ml__classifier"
@@ -239,6 +247,7 @@ class TestTwoStage(unittest.TestCase):
 
         TMP_DIR.cleanup()
 
+        self.patcher.stop()
         
         
 

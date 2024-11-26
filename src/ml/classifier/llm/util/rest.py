@@ -6,6 +6,7 @@ from pydantic import BaseModel, model_validator, field_validator
 from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type
 from langchain.output_parsers import PydanticOutputParser
 from langchain import pydantic_v1
+from pathlib import Path
 
 from src.util.hashing import Hash
 from src.ml.classifier.llm.util.request import RequestOutput, RequestInput
@@ -16,8 +17,9 @@ from src.ml.classifier.llm.util.rate_limit import RateLimitManager
 from src.ml.classifier.llm.util.tokenizer import LlamaTokenizer
 from src.util.dynamic_import import DynamicImport
 from src.util.logger import log_pydantic_error, delete_error_log, console
-from src.util.error import LLMError, APIException as APIError
+from src.util.error import LLMError, RateLimitException, UnknownAPIException
 from src.util.constants import Directory
+from src.util.caching import JsonCache
 
 
 class AbstractLLM(ABC):
@@ -151,7 +153,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             num_request_tokens=num_tokens
         )
     
-    @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(5), reraise=True, retry=retry_if_exception_type(APIError))
+    @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(5), reraise=True, retry=retry_if_exception_type(UnknownAPIException))
     def _backoff(self, job: Job, request_fun: Callable, request_dict: dict, **kwargs) -> Job:
 
         """
@@ -165,7 +167,8 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         request_dict_copy['data'] = json.dumps(request_dict_copy['data'])
 
-        response = request_fun(**request_dict_copy)
+        # see more info on timeouts: https://requests.readthedocs.io/en/latest/user/advanced/#timeouts
+        response = request_fun(timeout=(3.05 ,5), **request_dict_copy)
 
         status_code = response.status_code
 
@@ -176,7 +179,15 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             job.status = JobStatus.success
             job.request_output = response.json()
             job.error_description = None
-            
+
+        elif status_code == 429:
+
+            job.status = JobStatus.failed
+            job.error_description = f"{self.name} - Rate Limit reached"
+            console.log(f"{job.error_description}")
+
+            raise RateLimitException(job.error_description)
+
         else:
 
             job.status = JobStatus.failed
@@ -184,8 +195,8 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             if hasattr(response, "text"):
                 job.error_description = response.text
 
-            console.log(f"Job failed: {job.error_description}")
-            raise APIError(job.error_description)
+            console.log(f"{self.name} - unknown failure: {job.error_description}")
+            raise UnknownAPIException(job.error_description)
         
         return job
 
@@ -228,6 +239,9 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         try:
 
             job = self._backoff(job=job, request_fun=requests.post, request_dict=request_input.data)
+
+        except RateLimitException as e:
+            raise e
 
         except Exception as e:
 
@@ -273,7 +287,6 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         try:
 
-            
             req_output = self.request_output_classmethod(request_job.request_output)
 
             assert isinstance(req_output, RequestOutput)
@@ -343,6 +356,24 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
     def __call__(self, text: str, pydantic_model: Type[pydantic_v1.BaseModel], use_cache: bool = False, **kwargs) -> LogProbScore:
         
+        cache = JsonCache(
+            filepath=Path(self.rest_api_model_name) / f"{Hash.hash(text)}.json"
+        )
+
+        result = None
+
+        # check if cache is enabled
+        if use_cache:
+            result = cache.read()
+
+        if result is not None:
+
+            assert isinstance(result, dict)
+
+            result = LogProbScore(**result)
+
+            return result
+
         # verify pydantic model
         key = "valid_labels"
 
@@ -354,7 +385,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         assert isinstance(labels, list)
         assert all([isinstance(el, str) for el in labels])
 
-        # set id for request
+        # set id for request and cache
         hash_filename = self._get_hash_id(text)
 
         # get standardized input data
@@ -379,8 +410,12 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             # and it is useful for debugging
             # even though this cache is not useful for the inference handler
             # each job gets formatted depending on the individual llm after the rest api call 
-            request_job.save()  
-        
+            request_job.save() 
+
+            cache.write(
+                obj=logprobscore.model_dump()
+            ) 
+
         # delete potential error log file
         delete_error_log(
             filename=self._get_log_filename(prompt=text)

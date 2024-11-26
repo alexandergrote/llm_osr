@@ -139,7 +139,7 @@ if __name__ == '__main__':
 
     config = get_hydra_config(
         overrides=[
-            f"{key}=one_stage_groq_llama_8"
+            f"{key}=one_stage_llama_8"
         ]
     )
 

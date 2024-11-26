@@ -53,7 +53,6 @@ output_wrong = [
     }
 ]
 
-
 class TestOneStage(unittest.TestCase):
 
     def setUp(self):
@@ -61,6 +60,13 @@ class TestOneStage(unittest.TestCase):
         # create directories
         JOB_DIR.mkdir(parents=True, exist_ok=True)
         LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+        self.patcher = patch.multiple(
+            'src.util.caching.JsonCache',
+            read=lambda x: None,
+            write=lambda x, obj: None
+        )
+        self.mocks = self.patcher.start()        
 
     def _get_fitted_llm(self) -> OneStageLLM:
 
@@ -90,6 +96,7 @@ class TestOneStage(unittest.TestCase):
 
         return llm
 
+    
     @patch("src.util.logger.get_log_dir")
     @patch("src.ml.util.job_queue.get_job_dir")
     def test_error_messages(self, mock_job_dir, mock_log_dir):
@@ -136,7 +143,7 @@ class TestOneStage(unittest.TestCase):
 
         with patch("requests.post") as mock_post:
 
-            os.environ["MAX_RANDOM_WAIT"] = str(1)  # todo: add to config
+            os.environ["MAX_RANDOM_WAIT"] = str(0.5)  # todo: add to config
 
             mock_post.side_effect = [
                 mock_response(status_code=400, json_data=output_wrong),  # first pydantic and tenacity call, api not available
@@ -191,6 +198,8 @@ class TestOneStage(unittest.TestCase):
             file.unlink()
 
         TMP_DIR.cleanup()
+
+        self.patcher.stop()
 
         
         

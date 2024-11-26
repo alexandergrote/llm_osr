@@ -14,5 +14,9 @@ class LogProbError(Error):
 class APIException(Exception):
     pass
 
+class UnknownAPIException(Exception):
+    pass
+
+
 class RateLimitException(Exception):
     pass

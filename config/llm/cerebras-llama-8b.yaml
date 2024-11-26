@@ -1,0 +1,13 @@
+class: src.ml.classifier.llm.util.rest.StructuredRequestLLM
+params:
+  name: cerebras-llama-8b
+  rest_api_model_name: llama-8b
+  url: "https://api.cerebras.ai/v1/chat/completions"
+  payload:
+    model: "llama3.1-8b"
+    temperature: 0.0
+  request_input_classmethod: "create_cerebras_request_input"
+  request_output_classmethod: "from_cerebras_request"
+  request_input_data_extraction: "get_prompt_from_openai_data"
+  rate_limit_manager: "cerebras-llama-8b.yaml"
+    

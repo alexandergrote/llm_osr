@@ -1,0 +1,37 @@
+class: "src.ml.classifier.llm.util.rate_limit.RateLimitManager"
+params:
+  name: "cerebras-llama-8b"
+  rate_limits:
+    num_req_minute:
+      limit: 30
+      increment_level: "frequency"
+      agg_level: "%Y-%m-%d %H:%M"
+      action: "raise"
+      waiting_time: 60
+    num_req_hour:
+      limit: 900
+      increment_level: "frequency"
+      agg_level: "%Y-%m-%d %H"
+      action: "raise"
+      waiting_time: 60
+    num_req_day:
+      limit: 14400
+      increment_level: "frequency"
+      agg_level: "%Y-%m-%d"
+      action: "raise"
+    num_token_minute:
+      limit: 60000
+      increment_level: "token"
+      agg_level: "%Y-%m-%d %H:%M"
+      action: "raise"
+      waiting_time: 60
+    num_token_hour:
+      limit: 1000000
+      increment_level: "token"
+      agg_level: "%Y-%m-%d %H"
+      action: "raise"
+    num_token_day:
+      limit: 1000000
+      increment_level: "token"
+      agg_level: "%Y-%m-%d"
+      action: "raise"

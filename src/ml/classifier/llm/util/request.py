@@ -1,4 +1,4 @@
-from typing import List, Callable
+from typing import List, Callable, Optional
 from pydantic import BaseModel
 
 from src.util.types import LogProb
@@ -58,7 +58,10 @@ class RequestInput(BaseModel):
         return request_dict
 
     @classmethod
-    def create_openai_request_input(cls, prompt: str, url: str = "https://api.openai.com/v1/chat/completions", payload: dict = {}) -> "RequestInput":
+    def create_openai_request_input(cls, prompt: str, url: str = "https://api.openai.com/v1/chat/completions", payload: Optional[dict] = None ) -> "RequestInput":
+        
+        if payload is None:
+            payload = {}
         
         assert 'name' in payload, "Payload must contain a 'name' key"
 
@@ -92,7 +95,10 @@ class RequestInput(BaseModel):
         )
         
     @classmethod
-    def create_hf_llama_request_input(cls, prompt: str, url, payload: dict = {}) -> "RequestInput":
+    def create_hf_llama_request_input(cls, prompt: str, url, payload: Optional[dict] = None) -> "RequestInput":
+
+        if payload is None:
+            payload = {}
 
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {env.hf_token}"}
 
@@ -120,8 +126,11 @@ class RequestInput(BaseModel):
         )
 
     @classmethod
-    def create_groq_request_input(cls, prompt: str, url: str = 'https://api.groq.com/openai/v1/chat/completions', payload: dict = {}) -> "RequestInput":
+    def create_groq_request_input(cls, prompt: str, url: str = 'https://api.groq.com/openai/v1/chat/completions', payload: Optional[dict] = None) -> "RequestInput":
 
+        if payload is None:
+            payload = {}
+            
         assert 'model' in payload, "Payload must contain a 'name' key"
 
         headers={
@@ -150,8 +159,11 @@ class RequestInput(BaseModel):
         )
 
     @classmethod
-    def create_sambanova_request_input(cls, prompt: str, url: str = 'https://api.sambanova.ai/v1/chat/completions', payload: dict = {}) -> "RequestInput":
+    def create_sambanova_request_input(cls, prompt: str, url: str = 'https://api.sambanova.ai/v1/chat/completions', payload: Optional[dict] = None) -> "RequestInput":
 
+        if payload is None:
+            payload = {}
+            
         assert 'model' in payload, "Payload must contain a 'model' key"
 
         headers={
@@ -180,7 +192,11 @@ class RequestInput(BaseModel):
         )
     
     @classmethod
-    def create_openrouter_request_input(cls, prompt: str, url: str = 'https://openrouter.ai/api/v1/chat/completions', payload: dict = {}) -> "RequestInput":
+    def create_openrouter_request_input(cls, prompt: str, url: str = 'https://openrouter.ai/api/v1/chat/completions', payload: Optional[dict] = None) -> "RequestInput":
+
+        if payload is None:
+            payload = {}
+
 
         assert 'model' in payload, "Payload must contain a 'model' key"
 
@@ -192,6 +208,38 @@ class RequestInput(BaseModel):
         final_payload = {
             "temperature": 0,
             "max_tokens": 1000,
+        }
+
+        for k, v in payload.items():
+            final_payload[k] = v    
+
+        request_dict = RequestInput.get_request_dict(
+            url=url,
+            headers=headers,
+            prompt=prompt,
+            data=final_payload,
+            data_modifying_function=add_prompt_to_data_openai
+        )    
+
+        return RequestInput(
+            data=request_dict
+        )
+
+    @classmethod
+    def create_cerebras_request_input(cls, prompt: str, url: str = 'https://api.cerebras.ai/v1/chat/completions', payload: Optional[dict] = None) -> "RequestInput":
+
+        if payload is None:
+            payload = {}
+
+        assert 'model' in payload, "Payload must contain a 'model' key"
+
+        headers={
+            "Content-Type": "application/json", 
+            "Authorization": f"Bearer {env.cerebras_key}"
+        }
+
+        final_payload = {
+            "temperature": 0,
         }
 
         for k, v in payload.items():
@@ -338,4 +386,21 @@ class RequestOutput(BaseModel):
             text=text,
             logprobas=logprob_list,
             num_tokens=-1
+        )
+    
+    @classmethod
+    def from_cerebras_request(cls, x: dict, **kwargs) -> "RequestOutput":
+
+        assert 'choices' in x, 'Completion does not have choices'
+        assert len(x['choices']) == 1, 'Completion does not have one choice'
+        assert 'message' in x['choices'][0], 'Completion choice does not have message'
+        assert 'content' in x['choices'][0]['message'] , 'Completion choice message does not have content'
+
+        text = x['choices'][0]['message']['content']
+        logprob_list = [LogProb(text='{"label": "LogProb not supported by Cerebras"}', logprob=0)]
+
+        return cls(
+            text=text,
+            logprobas=logprob_list,
+            num_tokens=x["usage"]["completion_tokens"]
         )
