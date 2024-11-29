@@ -240,6 +240,7 @@ class RequestInput(BaseModel):
 
         final_payload = {
             "temperature": 0,
+            "max_tokens": 1000,
         }
 
         for k, v in payload.items():

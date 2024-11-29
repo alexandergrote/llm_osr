@@ -46,7 +46,8 @@ class TestLLM(unittest.TestCase):
 
                 self.assertTrue(isinstance(llm, StructuredRequestLLM))
 
-                #output = llm(text=prompt, pydantic_model=PredictionV1, use_cache=True)
+                #from src.ml.classifier.llm.util.logprob import LogProbScore
+                #output = llm(text=prompt, pydantic_model=PredictionV1, use_cache=False)
 
                 #self.assertTrue(isinstance(output, LogProbScore))
     

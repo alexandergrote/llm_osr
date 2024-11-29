@@ -1,0 +1,13 @@
+class: src.ml.classifier.llm.util.rest.StructuredRequestLLM
+params:
+  name: groq-llama-70b
+  rest_api_model_name: llama-70b
+  url: "https://api.groq.com/openai/v1/chat/completions"
+  payload:
+    model: "llama-3.1-70b-versatile"
+    temperature: 0.0
+  request_input_classmethod: "create_groq_request_input"
+  request_output_classmethod: "from_groq_request"
+  request_input_data_extraction: "get_prompt_from_openai_data"
+  rate_limit_manager: "groq-llama-70b.yaml"
+    

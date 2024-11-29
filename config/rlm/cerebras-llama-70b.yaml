@@ -1,6 +1,6 @@
 class: "src.ml.classifier.llm.util.rate_limit.RateLimitManager"
 params:
-  name: groq-llama-8b
+  name: "cerebras-llama-70b"
   rate_limits:
     num_req_minute:
       limit: 30
@@ -8,10 +8,10 @@ params:
       agg_level: "%Y-%m-%d %H:%M"
       action: "raise"
       waiting_time: 60
-    num_token_minute:
-      limit: 20000
-      increment_level: "token"
-      agg_level: "%Y-%m-%d %H:%M"
+    num_req_hour:
+      limit: 900
+      increment_level: "frequency"
+      agg_level: "%Y-%m-%d %H"
       action: "raise"
       waiting_time: 60
     num_req_day:
@@ -19,8 +19,19 @@ params:
       increment_level: "frequency"
       agg_level: "%Y-%m-%d"
       action: "raise"
+    num_token_minute:
+      limit: 60000
+      increment_level: "token"
+      agg_level: "%Y-%m-%d %H:%M"
+      action: "raise"
+      waiting_time: 60
+    num_token_hour:
+      limit: 1000000
+      increment_level: "token"
+      agg_level: "%Y-%m-%d %H"
+      action: "raise"
     num_token_day:
-      limit: 500000
+      limit: 1000000
       increment_level: "token"
       agg_level: "%Y-%m-%d"
       action: "raise"

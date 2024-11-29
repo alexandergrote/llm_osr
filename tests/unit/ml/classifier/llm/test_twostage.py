@@ -113,6 +113,7 @@ class TestTwoStage(unittest.TestCase):
         config = get_hydra_config(
             overrides=[
                 f"{key}=two_stage_llama_8",
+                f"{key}.params.selector.params.mode=random_class",
                 f"{key}.params.unknown_detection_model=[hf-llama-8b.yaml]",
                 f"{key}.params.classifier_model=[hf-llama-8b.yaml]",
             ]

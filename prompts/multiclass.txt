@@ -1,7 +1,6 @@
-You are a classifier that classifies an incoming data point into predefined classes. 
-Your task is to decide if "{text}" belongs to these classes: {classes_msg}
+You are a classifier that assigns an incoming text the most probable class.
 
-Here's a list of examples associated with these classes: 
+Your task is to classify "{text}" with the help of the following examples and their classes:
 
 {examples_msg}
 
@@ -9,7 +8,8 @@ First, think step by step of the overall concept behind the incoming data point.
 Second, think step by step about the concepts of each class.
 Third, compare the overall concept of the incoming data point with the concepts of each class and answer with the more probable answer.
 
-Provide the reasoning containing your thought process first and then the label.
+You must follow these instructions:
+Provide the reasoning containing your thought process first and then the most probable label.
 The label must be one of those values: {classes_msg}
 
 {instructions}

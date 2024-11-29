@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import requests  # type: ignore
 from tqdm import tqdm
-from typing import Optional, Any
+from typing import Union, Any
 from pydantic import BaseModel, model_validator
 from pydantic.config import ConfigDict
 from tenacity import (
@@ -25,10 +25,10 @@ env = PydanticEnvironment.from_environment()
 class HFEmbeddingPreprocessor(BaseModel, BasePreprocessor):
 
     url: str
+    rate_limit_manager: Union[RateLimitManager, str] 
     tqdm_disable: bool = False
     use_cache: bool = True
     save: bool = True
-    rate_limit_manager: Optional[RateLimitManager] = None 
     _rest_model_name: str = "HFEmbeddingPreprocessor"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -42,26 +42,20 @@ class HFEmbeddingPreprocessor(BaseModel, BasePreprocessor):
 
         key = "rate_limit_manager"
         rate_limit_manager_str = values.get(key)
-
-        if rate_limit_manager_str is None:
-            return values
         
-        is_str = isinstance(rate_limit_manager_str, str)
-        is_rlm = isinstance(rate_limit_manager_str, RateLimitManager)
-
-        if not (is_str or is_rlm):
-            raise ValueError(f"{key} must be a string or RateLimitManager")
-        
-        if is_str:
+        if isinstance(rate_limit_manager_str, str):
         
             obj = RateLimitManager.create_from_config_file(
                 rate_limit_manager_str
             )
-        else:
+        elif isinstance(rate_limit_manager_str, RateLimitManager):
 
             obj = rate_limit_manager_str
             obj.load()
             obj.save()
+
+        else:
+            raise ValueError(f"{key} must be a string or RateLimitManager")
 
         assert isinstance(obj, RateLimitManager)
         
@@ -98,7 +92,7 @@ class HFEmbeddingPreprocessor(BaseModel, BasePreprocessor):
 
         if self.rate_limit_manager is None:
             raise ValueError("RateLimitManager not set")
-
+        
         if job.filepath.exists() and use_cache:
 
             job = Job.from_json_file(job.filepath)
@@ -142,6 +136,7 @@ class HFEmbeddingPreprocessor(BaseModel, BasePreprocessor):
         except Exception as e:
             job.status = JobStatus.failed
             job.error_description = str(e)
+            tqdm.write(f"Error processing this text: {text} --- error: {e}")            
 
         output = job.request_output
 

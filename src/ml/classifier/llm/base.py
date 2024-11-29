@@ -25,6 +25,9 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
     y_valid: Optional[np.ndarray] = None
     classes: Optional[np.ndarray] = None
 
+    # use cache
+    use_cache: bool = False
+
     # fewshot selection of data points
     selector: Union[CosineSelector, dict]
 
@@ -80,7 +83,8 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
             try:
 
-                result = self._single_predict(text=el_str)
+                result = self._single_predict(text=el_str, use_cache=self.use_cache)
+
                 tqdm.write(f"Sucess: {result[0]}")
 
 

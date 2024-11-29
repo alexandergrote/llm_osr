@@ -1,5 +1,6 @@
-You are an Out-Of-Distribution detector for an open set recognition problem. 
-Your task is to decide if "{text}" is similar in meaning to these examples and their corresponding classes:
+You are an Out-Of-Distribution detector.
+
+Your task is to decide if "{text}" is similar in meaning to the supplied examples and their classes:
 
 {examples_msg} 
 
@@ -7,7 +8,9 @@ First, think step by step about why the abstract concept behind the incoming dat
 Second, think step by step about why the the abstract concept the incoming data point might differ significantly from the examples.
 Third, compare the two scenarios and answer with the more probable answer.
 
+You must follow these additional instructions:
 Provide the reasoning containing your thought process first and then the label.
-The label must be 'true' if the overall concept of the incoming data point is significantly different to the examples and 'false' if the concept is similar.
+The label must be 'true' if the overall concept of the incoming data point is significantly different to the examples.
+It must be 'false' if the concept is similar.
 
 {instructions}

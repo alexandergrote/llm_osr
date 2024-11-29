@@ -1,12 +1,15 @@
 class: src.OneStageLLM
 params:
+  use_cache: true
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:
-      mode: "random_class"
+      mode: "knn"
       n_classes: 3
       n_datapoints: 5
   osr_model:
     - groq-llama-8b.yaml
-    - hf-llama-8b.yaml
+    - cerebras-llama-8b.yaml
+    - sambanova-llama-8b.yaml
+    - openrouter-llama-8b.yaml
     

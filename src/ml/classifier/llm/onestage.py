@@ -173,7 +173,7 @@ if __name__ == '__main__':
         y_valid=data_valid[DatasetColumn.LABEL].values,
     )
 
-    result = llm._single_predict(text="Hello", use_cache=False)
+    result = llm._single_predict(text="Hello", use_cache=True)
 
     print(result)
 

@@ -1,16 +1,17 @@
-You are an Open Set Recognition Classifier. Your goal is to 1) reject unknown classes and 2) classify known classes into their corresponding classes.
-Your task is to decide if "{text}" belongs to these classes: {classes_msg}
-If the query does not belong to any of these classes, answer with "{unknown_label}"
+You are an Open Set Recognition Classifier. 
+You reject data points as "{unknown_label}" if the incoming text is significantly different from the provided examples. 
+Otherwise, you assign it the most probable class.
 
-Here's a list of examples associated with these classes: 
+Your task is to classify "{text}" with the help of the following examples and their classes:
 
 {examples_msg}
 
 First, think step by step of the overall concept behind the incoming data point.
 Second, think step by step about the concepts of each class.
-Third, compare the overall concept of the incoming data point with the concepts of each class and answer with the more probable answer.
+Third, compare the overall concept of the incoming data point with the concepts of each class.
 
-Provide the reasoning containing your thought process first and then the label.
-The label must be one of those values: {classes_msg}
+You must follow these instructions:
+Provide the reasoning containing your thought process first and then the most probable label.
+The label must be one of those values {classes_msg} \n"{unknown_label}" if the query is different from the examples
 
 {instructions}

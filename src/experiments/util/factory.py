@@ -19,7 +19,7 @@ def get_default_overrides(dataset: str, model: str, unknown_class: float, random
         f'io__import={dataset}',
         f'ml__classifier={model}',
         'ml__datasplit=fewshot_osr',
-        'ml__datasplit.params.subset_test=100',
+        #'ml__datasplit.params.subset_test=100',
         f'ml__datasplit.params.percentage_unknown_classes={unknown_class}',
         f'random_seed={",".join(map(str, random_seeds))}',
         'ml__evaluation=osr',
