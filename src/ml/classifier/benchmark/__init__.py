@@ -5,6 +5,7 @@ from .oslo import Oslo
 from .hyperopt import HyperTuner
 from .setfit import SetFit
 from .simpleshot import SimpleShot
+from .fastfitwrapper import FastFitWrapper
 
 __all__ = [
     "DOC",
@@ -13,5 +14,6 @@ __all__ = [
     "Oslo",
     "HyperTuner",
     "SetFit",
-    "SimpleShot"
+    "SimpleShot",
+    "FastFitWrapper"
 ]

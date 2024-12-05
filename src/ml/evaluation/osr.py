@@ -146,6 +146,10 @@ class Evaluator(BaseModel, BaseEvaluator):
 
         truth = np.where(~mask_kkc, -1, truth)
 
+        if predictions.dtype == "object":
+            predictions = predictions.astype(int)
+
+
         data[f"f1_{name_tag}"] = f1_score(
             y_true=truth, y_pred=predictions, average="micro"
         )
