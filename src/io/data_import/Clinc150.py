@@ -15,6 +15,8 @@ class Clinc150Dataset(BaseDataset, BaseModel):
 
     integer_mapping: Dict[int, str]
     domain_mapping: Dict[str, List[str]]
+
+    exclude_oos: bool = True
     
     data_home: Path = Directory.INPUT_DIR / "Clinic150"
     kind: Literal['imbalanced', 'small', 'plus'] = 'plus'
@@ -31,6 +33,10 @@ class Clinc150Dataset(BaseDataset, BaseModel):
 
         if filename.exists():
             data = pd.read_parquet(filename)
+            if self.exclude_oos:
+                data = data[data[DatasetColumn.LABEL]!= "domain_unknown__subcategory_oos"]
+            data.reset_index(drop=True, inplace=True)
+
             return data
         
 
@@ -58,5 +64,9 @@ class Clinc150Dataset(BaseDataset, BaseModel):
         assert len(data[DatasetColumn.LABEL].unique()) == 151
 
         data.to_parquet(filename)
+
+        if self.exclude_oos:
+            data = data[data[DatasetColumn.LABEL]!= "domain_unknown__subcategory_oos"]
+            data.reset_index(drop=True, inplace=True)
 
         return data
