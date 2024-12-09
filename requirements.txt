@@ -22,3 +22,4 @@ setfit
 tenacity
 typer
 huggingface_hub==0.23
+fastfit

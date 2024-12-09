@@ -26,7 +26,7 @@ class TestClinic150Dataset(unittest.TestCase):
 
         self.additional_params = {
             'domain_mapping': domain_mapping,
-            'integer_mapping': integer_mapping
+            'integer_mapping': integer_mapping,
         }
     
     def test_load(self):
@@ -47,7 +47,7 @@ class TestClinic150Dataset(unittest.TestCase):
 
     def test_number_of_rows(self):
         for kind, expected_rows in self.kind_info.items():
-            dataset = Clinc150Dataset(kind=kind, **self.additional_params)
+            dataset = Clinc150Dataset(kind=kind, exclude_oos=False, **self.additional_params)
             output = dataset._load(random_seed=42, n_samples=None)
             self.assertEqual(len(output), expected_rows)
 
