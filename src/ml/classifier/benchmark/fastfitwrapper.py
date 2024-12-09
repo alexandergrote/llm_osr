@@ -37,6 +37,7 @@ class FastFitWrapper(BaseModel, BaseBenchmark):
 
     unknown_threshold: float = -0.05
     model: Optional[Any] = None  # will be set after fit
+    in_memory_cache: Optional[Any] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -115,12 +116,21 @@ class FastFitWrapper(BaseModel, BaseBenchmark):
 
         assert len(x.shape) == 1, "Input data must be 1D"
 
-        tokenizer = AutoTokenizer.from_pretrained(self.embedding_model_name)
-        classifier = pipeline("text-classification", model=self.model, tokenizer=tokenizer)
+        if self.in_memory_cache is None:
 
-        y_pred_raw = classifier(x.tolist())
-        y_pred = np.array([el["label"] for el in y_pred_raw])
-        y_pred_proba = np.array([el["score"] for el in y_pred_raw])
+            tokenizer = AutoTokenizer.from_pretrained(self.embedding_model_name)
+            classifier = pipeline("text-classification", model=self.model, tokenizer=tokenizer)
+
+            y_pred_raw = classifier(x.tolist())
+            y_pred = np.array([el["label"] for el in y_pred_raw])
+            y_pred_proba = np.array([el["score"] for el in y_pred_raw])
+
+            self.in_memory_cache = (y_pred, y_pred_proba)
+
+        else:
+
+            y_pred, y_pred_proba = self.in_memory_cache
+
 
         outlier_scores = -y_pred_proba
         y_pred[outlier_scores > self.unknown_threshold] = UnknownClassLabel.UNKNOWN_NUM.value
