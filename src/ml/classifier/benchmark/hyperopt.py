@@ -187,3 +187,179 @@ class HyperTuner(BaseModel, BaseClassifier):
             raise ValueError("Model is not an instance of BaseBenchmark")
 
         return self.model.predict_proba(x, **kwargs)
+    
+
+
+class HyperTunerUnknownThreshold(BaseModel, BaseClassifier):
+
+    n_trials: int 
+    timeout: int = 600
+
+    model: Union[dict, Type[BaseBenchmark]]
+    evaluator: Union[dict, Type[Evaluator]]
+
+    @model_validator(mode="before")
+    def init_params(data: dict) -> dict:
+        
+        if 'model' not in data:
+            raise ValueError("model is required")
+        
+        model = data['model']
+
+        if isinstance(model, str):
+
+            yaml_path = Directory.CONFIG / os.path.join("ml__classifier", model)
+
+            with open(yaml_path, 'r') as f:
+                model_dict = yaml.safe_load(f)
+
+            data['model'] = model_dict
+
+        return data
+
+
+    @field_validator('evaluator')
+    def _set_model(cls, v):
+        return DynamicImport.init_class_from_dict(dictionary=v)
+    
+    @staticmethod
+    def init_model_from_params(model: dict, params: dict) -> Type[BaseBenchmark]:
+
+        # update model with new params
+        model = deep_update(model, params)
+
+        # create model
+        return DynamicImport.init_class_from_dict(dictionary=model) 
+    
+
+    def _update_model_params(self, model: BaseBenchmark, trial: optuna.Trial) -> BaseBenchmark:
+
+        params = model.get_hyperparameters(trial)
+
+        if "params" not in params:
+            raise ValueError("Dict must contain 'params' key")
+        
+        params_values = params['params']
+
+        for k, v in params_values.items():
+
+            if not hasattr(model, k):
+                raise ValueError(f"Model does not have attribute '{k}'")
+            
+            setattr(model, k, v)
+
+        return model
+
+    def _objective(self, trial: optuna.Trial, model: BaseBenchmark, x_valid: pd.DataFrame, y_train: pd.Series, y_valid: pd.Series, **kwargs):
+        
+        if not isinstance(self.evaluator, Evaluator):
+            raise ValueError("Evaluator is not an instance of Evaluator")
+        
+        model = self._update_model_params(model, trial)
+
+        y_pred = model.predict(x=x_valid)
+
+        prediction = MLPrediction(
+            y_pred=pd.Series(y_pred), 
+            y_test=pd.Series(y_valid),
+            classes_in_training=set(list(np.unique(y_train)))
+        )
+
+
+        result = self.evaluator.execute(
+            prediction=prediction,
+            **kwargs
+        )
+
+        return result['metrics']['f1_avg']
+
+    def _run_hyperparameter_search(
+        self,
+        model: BaseBenchmark,
+        y_train: np.ndarray,
+        x_valid: np.ndarray,
+        y_valid: np.ndarray,
+        **kwargs
+    ) -> optuna.study.Study:
+
+        study = optuna.create_study(
+            direction="maximize",
+            study_name="Hyperparameter Tuning",
+        )
+
+        study.optimize(
+            lambda trial: self._objective(
+                trial, 
+                model,
+                x_valid,
+                y_train,
+                y_valid,
+                **kwargs
+            ),
+
+            n_trials=self.n_trials,
+            timeout=self.timeout
+        )
+
+        
+        return study
+    
+    def fit(
+        self,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        x_valid: np.ndarray,
+        y_valid: np.ndarray,
+        **kwargs
+    ):
+        
+        if not isinstance(self.model, dict):
+            raise ValueError("Model needs to be a dictionary")
+        
+        model = self.init_model_from_params(self.model, self.model)
+
+        if not isinstance(model, BaseBenchmark):
+            raise ValueError("Model is not of type Basebenchmark")
+
+        model.fit(
+            x_train=x_train,
+            y_train=y_train,
+            x_valid=x_valid,
+            y_valid=y_valid
+        )
+
+        study = self._run_hyperparameter_search(
+            model=model,
+            y_train=y_train,
+            x_valid=x_valid,
+            y_valid=y_valid,
+            **kwargs
+        )
+
+
+        model = self._update_model_params(model, study.best_trial)
+
+        # get best params
+        params = model.get_hyperparameters(study.best_trial)
+
+        # set final model
+        self.model = model
+
+        # store best params in kwargs
+        kwargs['best_params'] = params
+
+        return kwargs
+
+    def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+
+        if not isinstance(self.model, BaseBenchmark):
+            raise ValueError("Model is not an instance of BaseBenchmark")
+        
+        return self.model.predict(x, include_outlierscore=include_outlierscore, **kwargs)
+    
+    def predict_proba(self, x: np.ndarray, **kwargs) -> np.ndarray:
+
+        if not isinstance(self.model, BaseBenchmark):
+            raise ValueError("Model is not an instance of BaseBenchmark")
+
+        return self.model.predict_proba(x, **kwargs)

@@ -42,7 +42,6 @@ class TestHyperFastFit(unittest.TestCase):
         self.assertIsNone(main(self.cfg))
 
     def tearDown(self):
-
         temp_dir.cleanup()
 
 

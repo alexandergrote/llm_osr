@@ -8,12 +8,12 @@ params:
       n_classes: 3
       n_datapoints: 5 
   unknown_detection_model: 
-    - groq-llama-8b.yaml
-    - cerebras-llama-8b.yaml
-    - sambanova-llama-8b.yaml
-    - openrouter-llama-8b.yaml
+    - groq-llama-70b.yaml
+    - cerebras-llama-70b.yaml
+    - sambanova-llama-70b.yaml
+    - openrouter-llama-70b.yaml
   classifier_model: 
-    - groq-llama-8b.yaml
-    - cerebras-llama-8b.yaml
-    - sambanova-llama-8b.yaml
-    - openrouter-llama-8b.yaml
+    - groq-llama-70b.yaml
+    - cerebras-llama-70b.yaml
+    - sambanova-llama-70b.yaml
+    - openrouter-llama-70b.yaml
