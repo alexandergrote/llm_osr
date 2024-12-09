@@ -6,7 +6,7 @@ from typing import List, Optional
 from src.experiments.util.types import Experiment
 
 
-BENCHMARK_MODELS = ["naive", "hyper_simpleshot"]
+BENCHMARK_MODELS = ["naive", "hyper_simpleshot", "hyper_fastfit"]
 LLM_MODELS = ["random_llm", "two_stage_llama_8"]
 DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
@@ -68,7 +68,7 @@ class ExperimentFactory(BaseModel):
                     # all the benchmark models need
                     # 1) encoding of text features
                     # 2) hyper parameter tuning
-                    if model.startswith('hyper_'):
+                    if model in ["hyper_simpleshot"]:
                         overrides.append('ml__preprocessing=rest_embedding')
 
                     experiments.append(Experiment(name=exp_name, overrides=overrides))

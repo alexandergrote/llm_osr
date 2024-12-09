@@ -1,4 +1,4 @@
-class: src.HyperTuner
+class: src.HyperTunerUnknownThreshold
 params:
   n_trials: 100
   model:
