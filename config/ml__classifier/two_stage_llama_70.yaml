@@ -4,7 +4,7 @@ params:
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:
-      mode: "random_class"
+      mode: "knn"
       n_classes: 3
       n_datapoints: 5 
   unknown_detection_model: 
