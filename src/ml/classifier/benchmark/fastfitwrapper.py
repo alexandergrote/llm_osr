@@ -7,11 +7,14 @@ from typing import Any
 from typing import Optional, Union, Tuple
 from datasets import Dataset, DatasetDict
 from fastfit.train import FastFitTrainer
+from pathlib import Path
 from typing import Dict
 from types import MethodType
 from transformers import AutoTokenizer, pipeline
 from transformers.modeling_outputs import SequenceClassifierOutput
 
+from src.util.hashing import Hash
+from src.util.caching import PickleCacheHandler
 from src.util.constants import UnknownClassLabel
 from src.ml.classifier.benchmark.base import BaseBenchmark
 
@@ -37,7 +40,7 @@ class FastFitWrapper(BaseModel, BaseBenchmark):
 
     unknown_threshold: float = -0.05
     model: Optional[Any] = None  # will be set after fit
-    in_memory_cache: Optional[Any] = None
+    use_cache: bool = True
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -105,6 +108,16 @@ class FastFitWrapper(BaseModel, BaseBenchmark):
         self.model = model
 
         return None
+    
+    def _predict(self, x: np.ndarray,) -> Tuple[np.ndarray, np.ndarray]:
+        tokenizer = AutoTokenizer.from_pretrained(self.embedding_model_name)
+        classifier = pipeline("text-classification", model=self.model, tokenizer=tokenizer)
+
+        y_pred_raw = classifier(x.tolist())
+        y_pred = np.array([el["label"] for el in y_pred_raw])
+        y_pred_proba = np.array([el["score"] for el in y_pred_raw])
+
+        return y_pred, y_pred_proba
 
     def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
@@ -114,23 +127,39 @@ class FastFitWrapper(BaseModel, BaseBenchmark):
         if len(x.shape) == 2:
             x = x.reshape(-1)
 
-        assert len(x.shape) == 1, "Input data must be 1D"
+        assert len(x.shape) == 1, "Input data must be 1D" 
 
-        if self.in_memory_cache is None:
+        y_pred, y_pred_proba = None, None
 
-            tokenizer = AutoTokenizer.from_pretrained(self.embedding_model_name)
-            classifier = pipeline("text-classification", model=self.model, tokenizer=tokenizer)
+        if not self.use_cache:
 
-            y_pred_raw = classifier(x.tolist())
-            y_pred = np.array([el["label"] for el in y_pred_raw])
-            y_pred_proba = np.array([el["score"] for el in y_pred_raw])
-
-            self.in_memory_cache = (y_pred, y_pred_proba)
+            y_pred, y_pred_proba = self._predict(x)
+            assert isinstance(y_pred, np.ndarray)
+            assert isinstance(y_pred_proba, np.ndarray)
 
         else:
 
-            y_pred, y_pred_proba = self.in_memory_cache
 
+            filename = Hash.hash_list(x.tolist()) + '.pkl'
+            filepath = Path(self.__class__.__name__) / filename
+
+            cache_handler = PickleCacheHandler(
+                filepath=filepath
+            )
+
+            # load cache
+            cache: Optional[np.ndarray] = cache_handler.read()
+
+            if cache is not None:
+                y_pred, y_pred_proba = cache
+            else:
+                y_pred, y_pred_proba = self._predict(x)
+
+                # save cache
+                cache_handler.write((y_pred, y_pred_proba))
+
+        assert y_pred is not None
+        assert y_pred_proba is not None
 
         outlier_scores = -y_pred_proba
         y_pred[outlier_scores > self.unknown_threshold] = UnknownClassLabel.UNKNOWN_NUM.value
