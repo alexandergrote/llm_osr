@@ -1,8 +1,10 @@
 import sys
+import random
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import List, Type, Union
 from langchain import pydantic_v1
+from typing import Optional
 
 from src.util.logger import console
 from src.ml.classifier.llm.util.rate_limit import Action
@@ -10,9 +12,15 @@ from src.util.error import RateLimitException
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.util.rest import StructuredRequestLLM, AbstractLLM
 
+
 class InferenceHandler(BaseModel, AbstractLLM):
 
-    llms: List[Union[StructuredRequestLLM, str]]
+    free_llms: Optional[List[Union[StructuredRequestLLM, str]]] = None
+    paid_llms: Optional[List[Union[StructuredRequestLLM, str]]] = None
+
+    shuffle_free_llms: bool = False
+    shuffle_paid_llms: bool = False
+
     action: Action = Action.EXIT
 
     @field_validator("action")
@@ -24,10 +32,22 @@ class InferenceHandler(BaseModel, AbstractLLM):
 
         return v
 
+    @model_validator(mode="after")
+    def _check_llms(self):
 
-    @field_validator("llms")
+        # check if both are None
+        if (self.free_llms is None) and (self.paid_llms is None):
+            raise ValueError("At least one llm must be provided")
+
+        return self
+
+
+    @field_validator("free_llms", "paid_llms")
     @classmethod
     def _init_llms(cls, v):
+
+        if v is None:
+            return None
 
         if not isinstance(v, list):
             raise ValueError("llms must be a list")
@@ -48,18 +68,44 @@ class InferenceHandler(BaseModel, AbstractLLM):
 
         result = None  # placeholder
 
-        for idx, llm in enumerate(self.llms):
+        # shuffle list
+        llms = []
+
+        if self.free_llms is not None:
+            llms = self.free_llms.copy()
+
+            if self.shuffle_free_llms:
+                random.shuffle(llms)
+        
+        if self.paid_llms is not None:
+            paid_llms_copy = self.paid_llms.copy()
+
+            if self.shuffle_paid_llms:
+                random.shuffle(paid_llms_copy)
+
+            llms += paid_llms_copy
+
+         # check if both are None
+        if (self.free_llms is None) and (self.paid_llms is None):
+            raise ValueError("At least one llm must be provided")
+
+
+        for idx, llm in enumerate(llms):
 
             if not isinstance(llm, StructuredRequestLLM):
                 raise ValueError("llms must be a list of StructuredRequestLLM")
             
             try:
+                
+                kwargs["llm_name"] = llm.name
 
                 result = llm(text, pydantic_model, use_cache, **kwargs)
+                assert isinstance(result, LogProbScore)
+                break
 
             except RateLimitException:
 
-                if idx != len(self.llms) - 1:
+                if idx != len(llms) - 1:
                     continue
                     
                 console.log("All rate limit restrictions have been used. Exiting...")
@@ -69,4 +115,5 @@ class InferenceHandler(BaseModel, AbstractLLM):
                 raise e
             
         assert isinstance(result, LogProbScore)
+
         return result

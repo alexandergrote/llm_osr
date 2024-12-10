@@ -68,7 +68,7 @@ class TestRestInference(unittest.TestCase):
         ]
 
         inference_handler = InferenceHandler(
-            llms=llms
+            free_llms=llms
         )
 
         result = inference_handler(
@@ -95,7 +95,7 @@ class TestRestInference(unittest.TestCase):
             ]
         
         inference_handler = InferenceHandler(
-            llms=llms
+            free_llms=llms
         )
 
         # assert that the rate limit error is raised in first request

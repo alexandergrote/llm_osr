@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, Tuple, List, Dict
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
 from omegaconf.dictconfig import DictConfig
@@ -19,10 +19,10 @@ from src.ml.classifier.llm.base import LLMClassifierMixin
 
 class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
-    unknown_detection_model: Union[InferenceHandler, List[str]]
+    unknown_detection_model: Union[InferenceHandler, Dict[str, List[str]]]
     unknown_detection_prompt: str = "ood.txt"
 
-    classifier_model: Union[InferenceHandler, List[str]]
+    classifier_model: Union[InferenceHandler, Dict[str, List[str]]]
     classifier_prompt: str = "multiclass.txt"
 
     # skip unknown detection
@@ -36,17 +36,27 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         model_keys = ["unknown_detection_model", "classifier_model"]
 
         for model in model_keys:
-            
-            llms = []
 
-            for llm in data[model]:
+            free_llms = []
+            paid_llms = []
 
-                llms.append(
-                    StructuredRequestLLM.create_from_yaml_file(llm)
-                )
+            for llm_category, llm_str_list in data[model].items():
+
+                for llm_str in llm_str_list:
+
+                    llm = StructuredRequestLLM.create_from_yaml_file(llm_str)
+
+                    if llm_category == 'free_llms':
+                        free_llms.append(llm)
+                    elif llm_category == 'paid_llms':
+                        paid_llms.append(llm)
+                    else:
+                        raise ValueError(f"Unrecognized llm_category {llm_category}")
+                    
 
             data[model] = InferenceHandler(
-                llms=llms,
+                free_llms=free_llms,
+                paid_llms=paid_llms
             )
             
         data_selector = data.get('selector')
@@ -180,7 +190,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         return logprob_score
 
-    def _single_predict(self, text: str, use_cache: bool = False) -> Tuple[str, float]:
+    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")

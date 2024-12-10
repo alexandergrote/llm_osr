@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Dict
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
 from omegaconf.dictconfig import DictConfig
@@ -18,7 +18,7 @@ from src.util.constants import Directory, ErrorValues, DatasetColumn
 
 class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
-    osr_model: Union[InferenceHandler, List[str]]
+    osr_model: Union[InferenceHandler, Dict[str, List[str]]]
     osr_prompt: str = "osr.txt"
 
     # fewshot selection of data points
@@ -32,17 +32,27 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         model_keys = ["osr_model"]
 
         for model in model_keys:
-            
-            llms = []
 
-            for llm in data[model]:
+            free_llms = []
+            paid_llms = []
 
-                llms.append(
-                    StructuredRequestLLM.create_from_yaml_file(llm)
-                )
+            for llm_category, llm_str_list in data[model].items():
+
+                for llm_str in llm_str_list:
+
+                    llm = StructuredRequestLLM.create_from_yaml_file(llm_str)
+
+                    if llm_category == 'free_llms':
+                        free_llms.append(llm)
+                    elif llm_category == 'paid_llms':
+                        paid_llms.append(llm)
+                    else:
+                        raise ValueError(f"Unrecognized llm_category {llm_category}")
+                    
 
             data[model] = InferenceHandler(
-                llms=llms,
+                free_llms=free_llms,
+                paid_llms=paid_llms
             )
         
         data_selector = data.get('selector')
@@ -122,7 +132,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         if not isinstance(self.osr_model, AbstractLLM):
             raise ValueError("Classifier model must be an AbstractLLM")
 
-        prediction = self._get_parsed_output(model=self.osr_model, valid_labels=PredictionV1.valid_labels, use_cache=use_cache,  text=prompt, retries=5)
+        prediction = self._get_parsed_output(model=self.osr_model, valid_labels=PredictionV1.valid_labels, use_cache=use_cache,  text=prompt, retries=5, **kwargs)
 
         if prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)

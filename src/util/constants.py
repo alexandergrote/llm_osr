@@ -85,6 +85,7 @@ class LLMModels(BaseEnum):
 class UnknownClassLabel(BaseEnum):
     UNKNOWN_STR = 'unknown'
     UNKNOWN_NUM = -1
+    
 
 class ErrorValues(BaseEnum):
     PARSING_STR = 'parse_error'

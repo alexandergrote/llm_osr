@@ -6,6 +6,7 @@ params:
   payload:
     model: "llama-3.1-70b-versatile"
     temperature: 0.0
+    top_p: 1.0
   request_input_classmethod: "create_groq_request_input"
   request_output_classmethod: "from_groq_request"
   request_input_data_extraction: "get_prompt_from_openai_data"

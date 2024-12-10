@@ -385,6 +385,15 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         assert isinstance(labels, list)
         assert all([isinstance(el, str) for el in labels])
 
+        if 'pbar' in kwargs:
+            pbar = kwargs['pbar']
+        else:
+            pbar = None
+
+        if hasattr(pbar, 'write'):
+            pbar.write(f"Using {self.name}")
+
+
         # set id for request and cache
         hash_filename = self._get_hash_id(text)
 

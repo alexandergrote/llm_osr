@@ -114,8 +114,8 @@ class TestTwoStage(unittest.TestCase):
             overrides=[
                 f"{key}=two_stage_llama_8",
                 f"{key}.params.selector.params.mode=random_class",
-                f"{key}.params.unknown_detection_model=[hf-llama-8b.yaml]",
-                f"{key}.params.classifier_model=[hf-llama-8b.yaml]",
+                f"{key}.params.unknown_detection_model.free_llms=[hf-llama-8b.yaml]",
+                f"{key}.params.classifier_model.free_llms=[hf-llama-8b.yaml]",
             ]
         )
 
@@ -201,7 +201,7 @@ class TestTwoStage(unittest.TestCase):
         self.assertEqual(len(job_files), 1)
         self.assertEqual(len(error_files), 1)
 
-        rest_llm = llm.classifier_model.llms[0]
+        rest_llm = llm.classifier_model.free_llms[0]
 
         assert isinstance(rest_llm, StructuredRequestLLM)
 

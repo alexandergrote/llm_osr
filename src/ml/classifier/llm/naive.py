@@ -21,7 +21,7 @@ class RandomLLM(AbstractClassifierLLM):
         self.classes = np.unique(self.y_train)
 
 
-    def _single_predict(self, text: str, use_cache: bool = False) -> Tuple[str, float]:
+    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")

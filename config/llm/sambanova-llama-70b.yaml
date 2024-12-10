@@ -6,6 +6,7 @@ params:
   payload:
     model: "Meta-Llama-3.1-70B-Instruct"
     temperature: 0.0
+    top_p: 1.0
   request_input_classmethod: "create_sambanova_request_input"
   request_output_classmethod: "from_sambanova_request"
   request_input_data_extraction: "get_prompt_from_openai_data"

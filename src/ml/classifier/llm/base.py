@@ -38,7 +38,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         raise NotImplementedError("Method must be implemented in subclass")
 
     @abstractmethod
-    def _single_predict(self, text: str, use_cache: bool = False) -> Tuple[str, float]:
+    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
         raise NotImplementedError("Method must be implemented in subclass")
 
 
@@ -70,11 +70,14 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         result_text_list= []
         result_score_list = []    
 
-        for el in tqdm(x, desc="LLM Prediction"):
+        pbar = tqdm(x, desc="LLM Prediction")
+
+        for el in pbar:
 
             el_str = el[0]
 
-            tqdm.write(f"processing text: {el_str}")
+            pbar.write("-"*20)
+            pbar.write(f"processing text: {el_str}")
 
             result_text = ErrorValues.PARSING_STR.value
             result_score = float(ErrorValues.PARSING_NUM.value)
@@ -83,14 +86,13 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
             try:
 
-                result = self._single_predict(text=el_str, use_cache=self.use_cache)
+                result = self._single_predict(text=el_str, use_cache=self.use_cache, pbar=pbar)
 
-                tqdm.write(f"Sucess: {result[0]}")
+                pbar.write(f"Sucess: {result[0]}")
 
 
             except Exception as e:
-                tqdm.write(f"Error: {e}")
-
+                pbar.write(f"Error: {e}")
                 pass
 
             if result is not None:

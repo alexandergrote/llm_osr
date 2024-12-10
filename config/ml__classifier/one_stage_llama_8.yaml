@@ -8,8 +8,10 @@ params:
       n_classes: 3
       n_datapoints: 5
   osr_model:
-    - groq-llama-8b.yaml
-    - cerebras-llama-8b.yaml
-    - sambanova-llama-8b.yaml
-    - openrouter-llama-8b.yaml
+    free_llms:
+      - groq-llama-8b.yaml
+      - cerebras-llama-8b.yaml
+      - sambanova-llama-8b.yaml
+    paid_llms:
+      - openrouter-llama-8b.yaml
     
