@@ -1,6 +1,8 @@
 class: src.TwoStageLLM
 params:
+  use_cache: true
   skip_unknown_detection: false
+  shuffle_free_llms: false
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:
@@ -13,6 +15,7 @@ params:
       - cerebras-llama-8b.yaml
       - sambanova-llama-8b.yaml
     paid_llms:
+      - hf-llama-8b.yaml
       - openrouter-llama-8b.yaml
   classifier_model: 
     free_llms: 
@@ -20,4 +23,5 @@ params:
       - cerebras-llama-8b.yaml
       - sambanova-llama-8b.yaml
     paid_llms:
+      - hf-llama-8b.yaml
       - openrouter-llama-8b.yaml

@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, model_validator, field_validator
 from typing import Dict, Any
 from pathlib import Path
 
-from src.util.logger import console
+from src.util.logger import get_logging_fun, console
 from src.util.constants import Directory
 from src.util.dynamic_import import DynamicImport
 from src.util.error import RateLimitException as RateLimitError
@@ -230,9 +230,11 @@ class RateLimitManager(BaseModel):
         for name, rate_limit in self.rate_limits.items():
             self._save_rate_limit(name, rate_limit)
     
-    def check_execution(self, num_request_tokens: int, save: bool = True):
+    def check_execution(self, num_request_tokens: int, save: bool = True, **kwargs):
 
         combinations = [(name, rate_limit) for name, rate_limit in self.rate_limits.items()]
+
+        logging_fun = get_logging_fun(**kwargs)
 
         for (name, rate_limit) in combinations:
 
@@ -245,19 +247,19 @@ class RateLimitManager(BaseModel):
             
             if not rate_limit.check():
                 
-                console.log(f"Rate limit exceeded for {name}")
+                logging_fun(f"Rate limit exceeded for {name}")
 
                 if rate_limit.action == Action.EXIT:
-                    console.log("Exiting...")
+                    logging_fun("Exiting...")
                     sys.exit(1)
                 
                 if rate_limit.action == Action.WAIT:
-                    console.log(f"Waiting {rate_limit.waiting_time} seconds...")
+                    logging_fun(f"Waiting {rate_limit.waiting_time} seconds...")
                     time.sleep(rate_limit.waiting_time)
 
                 if rate_limit.action == Action.IGNORE:
-                    console.log("No action taken")
+                    logging_fun("No action taken")
 
                 if rate_limit.action == Action.RAISE:
-                    console.log("Raising RateLimitError")
+                    logging_fun("Raising RateLimitError")
                     raise RateLimitError(f"Rate limit exceeded for {name}")

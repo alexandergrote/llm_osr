@@ -1,6 +1,7 @@
 class: src.OneStageLLM
 params:
   use_cache: true
+  shuffle_free_llms: false
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:
@@ -13,5 +14,6 @@ params:
       - cerebras-llama-8b.yaml
       - sambanova-llama-8b.yaml
     paid_llms:
+      - hf-llama-8b.yaml
       - openrouter-llama-8b.yaml
     

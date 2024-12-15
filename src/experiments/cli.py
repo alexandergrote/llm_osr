@@ -18,7 +18,7 @@ from src.util.caching import environ_pickle_cache
 
 mlflow_engine = QueryEngine()
 
-os.environ["src.experiments.cli.py.ExperimentRunner.get_experiment_data_from_mlflow"] = "cached"
+#os.environ["src.experiments.cli.py.ExperimentRunner.get_experiment_data_from_mlflow"] = "cached"
 
 
 class ExperimentRunner(BaseModel):

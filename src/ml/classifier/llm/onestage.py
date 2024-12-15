@@ -20,6 +20,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
     osr_model: Union[InferenceHandler, Dict[str, List[str]]]
     osr_prompt: str = "osr.txt"
+    shuffle_free_llms: bool = False
 
     # fewshot selection of data points
     selector: Union[CosineSelector, dict]
@@ -48,11 +49,15 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
                         paid_llms.append(llm)
                     else:
                         raise ValueError(f"Unrecognized llm_category {llm_category}")
-                    
+
+            shuffle_free_llms = data.get("shuffle_free_llms", False)
+
+            assert isinstance(shuffle_free_llms, bool)
 
             data[model] = InferenceHandler(
                 free_llms=free_llms,
-                paid_llms=paid_llms
+                paid_llms=paid_llms,
+                shuffle_free_llms=shuffle_free_llms
             )
         
         data_selector = data.get('selector')
@@ -118,7 +123,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             text_to_classify=text,
         )
 
-        classes_msg = '\n'.join(valid_labels)
+        classes_msg = '\n'.join([el["output"] for el in examples])
         examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
 
         prompt = self.osr_prompt.format(

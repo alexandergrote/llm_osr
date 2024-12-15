@@ -74,11 +74,16 @@ class InferenceHandler(BaseModel, AbstractLLM):
         if self.free_llms is not None:
             llms = self.free_llms.copy()
 
+            llms = [el for el in llms if el.check_rate_limit()]
+            llms = [el for el in llms if not "samba" in el.name]
+
             if self.shuffle_free_llms:
                 random.shuffle(llms)
         
         if self.paid_llms is not None:
             paid_llms_copy = self.paid_llms.copy()
+
+            paid_llms_copy = [el for el in paid_llms_copy if el.check_rate_limit()]
 
             if self.shuffle_paid_llms:
                 random.shuffle(paid_llms_copy)

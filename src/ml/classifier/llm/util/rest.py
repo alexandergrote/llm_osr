@@ -16,7 +16,7 @@ from src.ml.util.job_queue import Job, JobStatus
 from src.ml.classifier.llm.util.rate_limit import RateLimitManager
 from src.ml.classifier.llm.util.tokenizer import LlamaTokenizer
 from src.util.dynamic_import import DynamicImport
-from src.util.logger import log_pydantic_error, delete_error_log, console
+from src.util.logger import log_pydantic_error, delete_error_log, console, get_logging_fun
 from src.util.error import LLMError, RateLimitException, UnknownAPIException
 from src.util.constants import Directory
 from src.util.caching import JsonCache
@@ -129,7 +129,29 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
     def _get_log_filename(self, prompt: str) -> str:
         return f"{self._get_hash_id(prompt=prompt)}.json"
 
-    def _check_rate_limit(self, request_dict: dict):
+    def check_rate_limit(self) -> bool:
+
+        if self.rate_limit_manager is None:
+            raise ValueError("Rate limit manager not set")
+        
+        if isinstance(self.request_input_data_extraction, str):
+            raise ValueError("Request input class method is not callable")
+
+        if not isinstance(self.rate_limit_manager, RateLimitManager):
+            raise ValueError("Rate limit manager is not a RateLimitManager object")
+
+        self.rate_limit_manager.load()
+
+        rate_limits = self.rate_limit_manager.rate_limits
+
+        for (name, rate_limit) in rate_limits.items():
+
+            if not rate_limit.check():
+                return False
+
+        return True 
+
+    def _check_rate_limit_based_on_request(self, request_dict: dict, **kwargs):
 
         if self.rate_limit_manager is None:
             raise ValueError("Rate limit manager not set")
@@ -150,7 +172,8 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         num_tokens = len(tokenizer.encode(prompt)) + 20
 
         self.rate_limit_manager.check_execution(
-            num_request_tokens=num_tokens
+            num_request_tokens=num_tokens,
+            **kwargs
         )
     
     @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(5), reraise=True, retry=retry_if_exception_type(UnknownAPIException))
@@ -161,14 +184,14 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         The output parsing will take place later
         """
 
-        self._check_rate_limit(request_dict)
+        self._check_rate_limit_based_on_request(request_dict, **kwargs)
 
         request_dict_copy = request_dict.copy()
 
         request_dict_copy['data'] = json.dumps(request_dict_copy['data'])
 
         # see more info on timeouts: https://requests.readthedocs.io/en/latest/user/advanced/#timeouts
-        response = request_fun(timeout=(3.05 ,5), **request_dict_copy)
+        response = request_fun(timeout=(3.05 ,10), **request_dict_copy)
 
         status_code = response.status_code
 
@@ -184,7 +207,8 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
             job.status = JobStatus.failed
             job.error_description = f"{self.name} - Rate Limit reached"
-            console.log(f"{job.error_description}")
+            logging_fun = get_logging_fun(**kwargs)
+            logging_fun(f"{job.error_description}")
 
             raise RateLimitException(job.error_description)
 
@@ -215,7 +239,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         return output
 
-    def _make_request(self, request_input: RequestInput, job_id: str, use_cache: bool = True) -> Job:
+    def _make_request(self, request_input: RequestInput, job_id: str, use_cache: bool = True, **kwargs) -> Job:
 
         if isinstance(self.request_input_data_extraction, str):
                 raise ValueError("Request input class method is not callable")
@@ -238,7 +262,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         try:
 
-            job = self._backoff(job=job, request_fun=requests.post, request_dict=request_input.data)
+            job = self._backoff(job=job, request_fun=requests.post, request_dict=request_input.data, **kwargs)
 
         except RateLimitException as e:
             raise e
@@ -258,14 +282,15 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
             log_pydantic_error(
                 filename=self._get_log_filename(prompt=prompt),
-                error=error
+                error=error,
+                **kwargs
             )
 
             raise e
         
         return job
 
-    def _post_request(self, request_job: Job) -> RequestOutput:
+    def _post_request(self, request_job: Job, **kwargs) -> RequestOutput:
 
         """
         This function ensures that the job output can be transformed into a request output object.
@@ -312,14 +337,15 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
             log_pydantic_error(
                 filename=self._get_log_filename(prompt=prompt),
-                error=error
+                error=error,
+                **kwargs
             )
 
             assert isinstance(req_output, RequestOutput)
 
         return req_output
 
-    def _get_parsed_output(self, prompt: str, request_output: RequestOutput, pydantic_model: Type[pydantic_v1.BaseModel]) -> LogProbScore:
+    def _get_parsed_output(self, prompt: str, request_output: RequestOutput, pydantic_model: Type[pydantic_v1.BaseModel], **kwargs) -> LogProbScore:
 
         try:
 
@@ -349,7 +375,8 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
                 
             log_pydantic_error(
                 filename=self._get_log_filename(prompt=prompt),
-                error=error
+                error=error,
+                **kwargs
             )
 
             raise e
@@ -387,30 +414,29 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         if 'pbar' in kwargs:
             pbar = kwargs['pbar']
-        else:
-            pbar = None
 
-        if hasattr(pbar, 'write'):
-            pbar.write(f"Using {self.name}")
+            if hasattr(pbar, 'write'):
+                pbar.write(f"Using {self.name}")
 
 
         # set id for request and cache
         hash_filename = self._get_hash_id(text)
 
         # get standardized input data
-        request_input = self._pre_request(prompt=text)
+        request_input = self._pre_request(prompt=text, **kwargs)
 
         # carry out request
-        request_job = self._make_request(job_id=hash_filename, request_input=request_input, use_cache=use_cache)
+        request_job = self._make_request(job_id=hash_filename, request_input=request_input, use_cache=use_cache, **kwargs)
 
         # reformat output of request
-        request_output = self._post_request(request_job=request_job)
+        request_output = self._post_request(request_job=request_job, **kwargs)
         
         # parse output based on standardized request output
         logprobscore = self._get_parsed_output(
             request_output=request_output,
             pydantic_model=pydantic_model,
-            prompt=text
+            prompt=text,
+            **kwargs
         )
 
         if use_cache:

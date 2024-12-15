@@ -28,6 +28,9 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
     # skip unknown detection
     skip_unknown_detection: bool = False
 
+    # shuffle free llm apis to equal use
+    shuffle_free_llms: bool = False
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode='before')
@@ -52,11 +55,17 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
                         paid_llms.append(llm)
                     else:
                         raise ValueError(f"Unrecognized llm_category {llm_category}")
-                    
+            
+
+            shuffle_free_llms = data.get("shuffle_free_llms", False)
+
+            assert isinstance(shuffle_free_llms, bool)
+
 
             data[model] = InferenceHandler(
                 free_llms=free_llms,
-                paid_llms=paid_llms
+                paid_llms=paid_llms,
+                shuffle_free_llms=shuffle_free_llms,
             )
             
         data_selector = data.get('selector')
@@ -102,7 +111,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
        self.classes = np.unique(self.y_train)
 
-    def _detect_unknown_class(self, text: str, use_cache: bool = False) -> Optional[LogProbScore]:
+    def _detect_unknown_class(self, text: str, use_cache: bool = False, **kwargs) -> Optional[LogProbScore]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -112,6 +121,13 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         
         if self.classes is None:
             raise ValueError("Not fitted")
+
+        if 'pbar' in kwargs:
+            pbar = kwargs['pbar']
+
+            if hasattr(pbar, 'write'):
+                pbar.write(f"Unknown Detection")
+
 
         # Example usage
         valid_labels = ["true", "false"]
@@ -140,12 +156,13 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             valid_labels=PredictionV1.valid_labels,
             text=prompt, 
             retries=5,
-            use_cache=use_cache
+            use_cache=use_cache,
+            **kwargs
         )
         
         return logprob_score
     
-    def _classify_known_classes(self, text: str, use_cache: bool = False) -> Optional[LogProbScore]:
+    def _classify_known_classes(self, text: str, use_cache: bool = False, **kwargs) -> Optional[LogProbScore]:
 
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -155,6 +172,12 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         
         if self.classes is None:
             raise ValueError("Not fitted")
+
+        if 'pbar' in kwargs:
+            pbar = kwargs['pbar']
+
+            if hasattr(pbar, 'write'):
+                pbar.write(f"Unknown Detection")
         
         # Example usage
         valid_labels = list(self.classes)
@@ -185,7 +208,8 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             valid_labels=PredictionV1.valid_labels,
             text=prompt,
             use_cache=use_cache,
-            retries=5 
+            retries=5,
+            **kwargs 
         )
 
         return logprob_score
@@ -203,7 +227,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         if not self.skip_unknown_detection:
             
-            unknown_prediction = self._detect_unknown_class(text=text, use_cache=use_cache)
+            unknown_prediction = self._detect_unknown_class(text=text, use_cache=use_cache, **kwargs)
 
             if unknown_prediction is None:
                 return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
@@ -211,7 +235,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             if unknown_prediction.answer.label == "true":            
                 return UnknownClassLabel.UNKNOWN_STR.value, 1
         
-        known_prediction = self._classify_known_classes(text=text, use_cache=use_cache)
+        known_prediction = self._classify_known_classes(text=text, use_cache=use_cache, **kwargs)
 
         if known_prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
