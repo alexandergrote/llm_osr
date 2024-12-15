@@ -162,7 +162,7 @@ class FastFitWrapper(BaseModel, BaseBenchmark):
         assert y_pred_proba is not None
 
         outlier_scores = -y_pred_proba
-        y_pred[outlier_scores > self.unknown_threshold] = UnknownClassLabel.UNKNOWN_NUM.value
+        y_pred[outlier_scores > self.unknown_threshold] = UnknownClassLabel.UNKNOWN_STR.value
 
         if include_outlierscore:
             return y_pred, outlier_scores

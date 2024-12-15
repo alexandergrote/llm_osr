@@ -19,7 +19,6 @@ def get_default_overrides(dataset: str, model: str, unknown_class: float, random
         f'io__import={dataset}',
         f'ml__classifier={model}',
         'ml__datasplit=fewshot_osr',
-        'ml__datasplit.params.subset_test=100',
         f'ml__datasplit.params.percentage_unknown_classes={unknown_class}',
         f'random_seed={",".join(map(str, random_seeds))}',
         'ml__evaluation=osr',
@@ -111,6 +110,9 @@ class ExperimentFactory(BaseModel):
                     if ('one_stage' in model) or ('two_stage' in model):
                         overrides.append('ml__classifier.params.shuffle_free_llms=true')
 
+                    overrides += [
+                        'ml__datasplit.params.subset_test=100',
+                    ]
 
                     experiments.append(Experiment(name=exp_name, overrides=overrides))
 
