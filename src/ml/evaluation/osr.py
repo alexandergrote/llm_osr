@@ -17,7 +17,7 @@ from sklearn.metrics import (
 from sklearn.metrics._classification import UndefinedMetricWarning
 
 from src.ml.evaluation.base import BaseEvaluator
-from src.util.constants import ErrorValues
+from src.util.constants import ErrorValues, UnknownClassLabel
 
 
 class Evaluator(BaseModel, BaseEvaluator):
@@ -94,7 +94,7 @@ class Evaluator(BaseModel, BaseEvaluator):
             unknown_classes,
         )
 
-        class_instance = -1
+        class_instance = UnknownClassLabel.UNKNOWN_STR.value if np.issubdtype(truth.dtype, np.str_) else UnknownClassLabel.UNKNOWN_NUM.value
         truth = np.where(mask_uuc, class_instance, truth)
 
         # reduce problem to a binary setting
@@ -184,9 +184,21 @@ class Evaluator(BaseModel, BaseEvaluator):
             (f"ratio_{ErrorValues.LOGPROB_STR.value}", ErrorValues.LOGPROB_NUM.value)
         ]"""
 
+        # check if both arrays contain numbers
+        are_numbers = all([np.issubdtype(y_pred.dtype, np.number), np.issubdtype(y_true.dtype, np.number)])
+        are_str = all([np.issubdtype(y_pred.dtype, np.str_), np.issubdtype(y_true.dtype, np.str_)])
+
+        if not are_numbers and not are_str:
+            raise ValueError("y_pred and y_true must be of type number or string")
+
+        
         if self.remove_errors:
 
-            mask_parsing = y_pred != ErrorValues.PARSING_NUM.value
+            mask_parsing = np.isin(
+                y_pred.reshape(-1),
+                [ErrorValues.PARSING_NUM.value, ErrorValues.PARSING_STR.value, str(ErrorValues.LOGPROB_NUM.value)],
+            ) == False
+
             y_pred = y_pred[mask_parsing]
             y_true = y_true[mask_parsing]
 

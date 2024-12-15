@@ -15,8 +15,42 @@ class TestEvaluator(unittest.TestCase):
 
         # Set up evaluator
         self.evaluator = Evaluator()
-    
 
+    def test_evaluate_mixed(self):
+
+        y_pred = np.array(["yes", "no", "yes", "no", "yes", "unknown", "unknown"])
+        y_true = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+        outlier_score = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+        classes_in_training = {"yes", "no"}
+
+        with self.assertRaises(ValueError):
+           
+            self.evaluator.evaluate(
+                y_pred=y_pred,
+                y_true=y_true,
+                classes_in_training=classes_in_training,
+                unknown_scores=outlier_score
+            )
+            
+
+    def test_evaluate_str(self):
+
+        y_pred = np.array(["yes", "no", "yes", "no", "yes", "unknown", "unknown"])
+        y_true = np.array(["yes", "no", "yes", "yes", "yes", "maybe", "yes"])
+        outlier_score = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+        classes_in_training = {"yes", "no"}
+
+        final_result = self.evaluator.evaluate(
+            y_pred=y_pred,
+            y_true=y_true,
+            classes_in_training=classes_in_training,
+            unknown_scores=outlier_score
+        )['metrics']
+
+        self.assertEqual(final_result['f1_known_class_yes'], 0.75)
+        self.assertTrue(final_result['recall_unknown_class_unknown'] == 1)
+    
+        
     def test_evaluate(self):
         
         final_result = self.evaluator.evaluate(
@@ -25,8 +59,6 @@ class TestEvaluator(unittest.TestCase):
             classes_in_training=self.classes_in_training,
             unknown_scores=self.outlier_score
         )['metrics']
-
-        print(final_result)
 
         test_options = [
             ('precision_known_class_0', 2/3),

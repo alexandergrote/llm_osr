@@ -10,7 +10,7 @@ BENCHMARK_MODELS = ["naive", "hyper_simpleshot", "hyper_fastfit"]
 LLM_MODELS = ["random_llm", "two_stage_llama_8", "one_stage_llama_8", "two_stage_llama_70", "one_stage_llama_70"]
 DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
-RANDOM_SEEDS = [0]
+RANDOM_SEEDS = [0, 1, 2, 3, 4]
 
 
 def get_default_overrides(dataset: str, model: str, unknown_class: float, random_seeds: List[int], exp_name: str) -> List[str]:
@@ -19,7 +19,6 @@ def get_default_overrides(dataset: str, model: str, unknown_class: float, random
         f'io__import={dataset}',
         f'ml__classifier={model}',
         'ml__datasplit=fewshot_osr',
-        'ml__datasplit.params.subset_test=100',
         f'ml__datasplit.params.percentage_unknown_classes={unknown_class}',
         f'random_seed={",".join(map(str, random_seeds))}',
         'ml__evaluation=osr',
@@ -107,6 +106,10 @@ class ExperimentFactory(BaseModel):
                         random_seeds=random_seeds,
                         exp_name=exp_name
                     )
+
+                    overrides += [
+                        'ml__datasplit.params.subset_test=100',
+                    ]
 
                     experiments.append(Experiment(name=exp_name, overrides=overrides))
 

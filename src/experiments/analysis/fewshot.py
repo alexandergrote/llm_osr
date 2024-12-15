@@ -25,7 +25,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         console.log(data_copy_grouped)
 
         # analyse unknown predictions
-        data_copy_grouped = data_copy.groupby([dataset_col, perc_unknown_col])[unknown_f1_col].mean().reset_index()
+        data_copy_grouped = data_copy.groupby([dataset_col, perc_unknown_col])[unknown_f1_col].agg(["mean", "std"]).reset_index()
 
         console.log(data_copy_grouped)
 
