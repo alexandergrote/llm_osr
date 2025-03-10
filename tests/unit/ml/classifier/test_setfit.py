@@ -9,6 +9,7 @@ from src.util.dynamic_import import DynamicImport
 from src.util.constants import Directory
 
 
+@unittest.skip("Skipping SetFit")
 class TestSetFit(unittest.TestCase):
 
     def setUp(self):

@@ -8,7 +8,7 @@ from omegaconf.dictconfig import DictConfig
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
-from src.ml.classifier.llm.util.prediction import PredictionV1
+from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.base import AbstractClassifierLLM, LLMClassifierMixin
 from src.util.constants import UnknownClassLabel
 from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
@@ -114,9 +114,9 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             raise ValueError("Not fitted")
         
         valid_labels = list(self.classes)
-        PredictionV1.valid_labels = valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
+        Prediction.valid_labels = valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
         
-        parser = PydanticOutputParser(pydantic_object=PredictionV1)
+        parser = PydanticOutputParser(pydantic_object=Prediction)
         instructions = parser.get_format_instructions()
 
         examples = self._get_examples(
@@ -137,7 +137,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         if not isinstance(self.osr_model, AbstractLLM):
             raise ValueError("Classifier model must be an AbstractLLM")
 
-        prediction = self._get_parsed_output(model=self.osr_model, valid_labels=PredictionV1.valid_labels, use_cache=use_cache,  text=prompt, retries=5, **kwargs)
+        prediction = self._get_parsed_output(model=self.osr_model, valid_labels=Prediction.valid_labels, use_cache=use_cache,  text=prompt, retries=5, **kwargs)
 
         if prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)

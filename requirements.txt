@@ -4,7 +4,7 @@ pydantic
 scikit-learn
 pandas
 numpy
-datasets
+datasets==2.16
 langchain
 python-dotenv
 langchain-openai
@@ -22,4 +22,5 @@ setfit
 tenacity
 typer
 huggingface_hub==0.23
-fastfit
+fast-fit>=1.2.1
+.coverage.*

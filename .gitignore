@@ -6,6 +6,8 @@
 *.db
 .vscode
 .coverage
+.coverage.*
+build
 
 *.egg-info
 *.ipynb

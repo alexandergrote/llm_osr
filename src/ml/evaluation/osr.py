@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from pydantic import BaseModel
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set, Optional, Union
 from sklearn.metrics import (
     f1_score,
     precision_score,
@@ -20,6 +20,10 @@ from src.ml.evaluation.base import BaseEvaluator
 from src.util.constants import ErrorValues, UnknownClassLabel
 
 
+def check_numpy_object_dtype(array: np.ndarray) -> bool:
+    return np.issubdtype(array.dtype, np.object_) or np.issubdtype(array.dtype, np.str_)
+
+
 class Evaluator(BaseModel, BaseEvaluator):
 
     remove_errors: bool = True
@@ -29,7 +33,7 @@ class Evaluator(BaseModel, BaseEvaluator):
         data: dict,
         y_true: np.ndarray,
         y_pred: np.ndarray,
-        class_instance: int,
+        class_instance: Union[int, str],
         name_tag: str,
     ):
 
@@ -101,6 +105,8 @@ class Evaluator(BaseModel, BaseEvaluator):
         binary_test = truth == class_instance
         binary_pred = prediction == class_instance
 
+        assert (isinstance(class_instance, str) or (isinstance(class_instance, int)))
+
         data = self._add_binary_result(
             data=data,
             y_true=binary_test,
@@ -144,11 +150,28 @@ class Evaluator(BaseModel, BaseEvaluator):
             classes_in_training,
         )
 
-        truth = np.where(~mask_kkc, -1, truth)
+        truth = np.where(~mask_kkc, -1, truth.astype(object))
 
-        if predictions.dtype == "object":
-            predictions = predictions.astype(int)
+        # create mapping
+        mapping = dict(
+            zip(classes_in_training, range(len(classes_in_training)))
+        )
 
+        # convert predictions to int if necessary
+        if check_numpy_object_dtype(predictions):
+
+            # apply mapping
+            predictions = np.array([mapping.get(p, UnknownClassLabel.UNKNOWN_NUM.value) for p in predictions])
+
+        
+        # convert truth to int if necessary
+        if check_numpy_object_dtype(truth):
+            # apply mapping
+            truth = np.array([mapping.get(t, UnknownClassLabel.UNKNOWN_NUM.value) for t in truth])
+
+        # just in case, normalize predictions and ground truth to int
+        predictions = predictions.astype(int)
+        truth = truth.astype(int)    
 
         data[f"f1_{name_tag}"] = f1_score(
             y_true=truth, y_pred=predictions, average="micro"
@@ -189,15 +212,21 @@ class Evaluator(BaseModel, BaseEvaluator):
         are_str = all([np.issubdtype(y_pred.dtype, np.str_), np.issubdtype(y_true.dtype, np.str_)])
 
         if not are_numbers and not are_str:
-            raise ValueError("y_pred and y_true must be of type number or string")
+
+            msg: str = """
+            Both, y_pred and y_true, must be consistently typed. 
+            They must be either of type number or string
+            """.strip()
+
+            raise ValueError(msg)
 
         
         if self.remove_errors:
 
-            mask_parsing = np.isin(
+            mask_parsing = ~np.isin(
                 y_pred.reshape(-1),
                 [ErrorValues.PARSING_NUM.value, ErrorValues.PARSING_STR.value, str(ErrorValues.LOGPROB_NUM.value)],
-            ) == False
+            )
 
             y_pred = y_pred[mask_parsing]
             y_true = y_true[mask_parsing]
@@ -205,7 +234,7 @@ class Evaluator(BaseModel, BaseEvaluator):
             if unknown_scores is not None:
                 unknown_scores = unknown_scores[mask_parsing]
 
-            ratio_parsing_error = 1 - sum(mask_parsing) / len(mask_parsing)
+            ratio_parsing_error = 1 - np.sum(mask_parsing) / mask_parsing.shape[0]
 
         with warnings.catch_warnings():
             

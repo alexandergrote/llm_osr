@@ -3,7 +3,6 @@ import random
 
 from pydantic import BaseModel, field_validator, model_validator
 from typing import List, Type, Union
-from langchain import pydantic_v1
 from typing import Optional
 
 from src.util.logger import console
@@ -64,7 +63,7 @@ class InferenceHandler(BaseModel, AbstractLLM):
 
         return result
 
-    def __call__(self, text: str, pydantic_model: Type[pydantic_v1.BaseModel], use_cache: bool = False, **kwargs) -> LogProbScore:
+    def __call__(self, text: str, pydantic_model: Type[BaseModel], use_cache: bool = False, **kwargs) -> LogProbScore:
 
         result = None  # placeholder
 
@@ -74,16 +73,15 @@ class InferenceHandler(BaseModel, AbstractLLM):
         if self.free_llms is not None:
             llms = self.free_llms.copy()
 
-            llms = [el for el in llms if el.check_rate_limit()]
-            llms = [el for el in llms if not "samba" in el.name]
-
+            llms = [el for el in llms if isinstance(el, StructuredRequestLLM) and el.check_rate_limit()]
+            
             if self.shuffle_free_llms:
                 random.shuffle(llms)
         
         if self.paid_llms is not None:
             paid_llms_copy = self.paid_llms.copy()
 
-            paid_llms_copy = [el for el in paid_llms_copy if el.check_rate_limit()]
+            paid_llms_copy = [el for el in paid_llms_copy if isinstance(el, StructuredRequestLLM) and el.check_rate_limit()]
 
             if self.shuffle_paid_llms:
                 random.shuffle(paid_llms_copy)

@@ -8,7 +8,7 @@ from pydantic.config import ConfigDict
 from numpy import ndarray
 from typing import Optional, Union, Tuple, List, Dict
 
-from src.ml.classifier.llm.util.prediction import PredictionV1
+from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.rest import AbstractLLM
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.util.constants import ErrorValues
@@ -118,7 +118,7 @@ class LLMClassifierMixin:
         # work on copy
         prompt_copy = copy(text)
         
-        PredictionV1.valid_labels = valid_labels
+        Prediction.valid_labels = valid_labels
         
         for _ in range(retries):
 
@@ -126,7 +126,7 @@ class LLMClassifierMixin:
 
                 result: LogProbScore = model(
                     text=prompt_copy,
-                    pydantic_model=PredictionV1, 
+                    pydantic_model=Prediction, 
                     use_cache=use_cache, 
                     **kwargs
                 )

@@ -1,7 +1,6 @@
 from pydantic import BaseModel, field_validator
 from pydantic.config import ConfigDict
 from typing import Any, List, Dict
-from langchain.output_parsers import PydanticOutputParser
 from langchain_core.prompts.few_shot import FewShotPromptTemplate, PromptTemplate
         
         
@@ -82,31 +81,3 @@ class FewshotPromptCreator(BaseModel):
         )
 
         return prompt.format(**{FewshotPromptCreator.get_chain_input_field_name(): self.text_to_classify}) 
-
-
-
-if __name__ == '__main__':
-
-    from langchain_core import pydantic_v1
-
-    class Greeting(pydantic_v1.BaseModel):
-        text: str = pydantic_v1.Field(description="Text")
-        label: str = pydantic_v1.Field(description="Label")
-
-    parser = PydanticOutputParser(pydantic_object=Greeting)
-
-    examples = [
-        {"input": "Hello", "output": "Greeting"},
-        {"input": "Goodbye", "output": "Farewell"}
-    ]
-
-    prompt_creator = FewshotPromptCreator(
-        examples=examples,
-        text_to_classify="Hola",
-        prefix_prompt=f"You are a classifier. {{{FewshotPromptCreator.get_chain_input_field_name()}}} -> <your response>",
-        suffix_prompt=f"Use this format for your response: {{{FewshotPromptCreator.get_format_instruction_field()}}}",
-        parser=parser
-    )
-
-    prompt = prompt_creator.create()
-    print(prompt)

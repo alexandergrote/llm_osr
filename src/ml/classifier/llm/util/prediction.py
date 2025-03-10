@@ -1,8 +1,7 @@
 import warnings
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic.warnings import PydanticDeprecatedSince20
-from langchain import pydantic_v1
 from langchain_core.output_parsers import PydanticOutputParser
 from typing import List, Callable
 
@@ -17,6 +16,28 @@ class Prediction(BaseModel):
 
     reasoning: str = Field(description="The reasoning behind the prediction")
     label: str = Field(description="The predicted label")
+
+    @model_validator(mode="before")
+    @classmethod
+    def label_must_be_valid(cls, values: dict) -> dict:
+        
+        if not hasattr(cls, 'valid_labels'):
+            raise Exception("No class labels supplied")
+        
+        valid_labels = cls.valid_labels
+
+        label = values.get("label")
+
+        if label is None:
+            raise ValueError("Label must be provided")
+
+        if label.lower() not in [valid_label.lower() for valid_label in valid_labels]:
+            raise ValueError(f"Label must be one of {valid_labels}")
+
+        # just to be sure, overwrite label to be lower case
+        values["label"] = label.lower()
+        
+        return values
     
     @classmethod
     def from_llm_job(cls, filename: str, class_labels: List[str], request_output_fun: Callable) -> "Prediction":
@@ -25,32 +46,14 @@ class Prediction(BaseModel):
 
         output: RequestOutput = request_output_fun(job.request_output)
         
-        PredictionV1.valid_labels = class_labels
+        Prediction.valid_labels = class_labels
         
-        parser = PydanticOutputParser(pydantic_object=PredictionV1)
-        prediction: PredictionV1 = parser.parse(output.text)
+        parser = PydanticOutputParser(pydantic_object=Prediction)
+        prediction: Prediction = parser.parse(output.text)
 
         return Prediction(**prediction.dict())
 
 
-class PredictionV1(pydantic_v1.BaseModel):
-    
-    reasoning: str = pydantic_v1.Field(description="The reasoning behind the prediction")
-    label: str = pydantic_v1.Field(description="The predicted label")
-
-    @pydantic_v1.validator("label")
-    def label_must_be_valid(cls, label: str):
-
-        if not hasattr(cls, 'valid_labels'):
-            raise Exception("No class labels supplied")
-        
-        valid_labels = cls.valid_labels
-
-        if label.lower() not in [valid_label.lower() for valid_label in valid_labels]:
-            raise ValueError(f"Label must be one of {valid_labels}")
-        
-        return label.lower()
-    
 if __name__ == '__main__':
 
     Prediction.valid_labels = ["label1", "label2", "label3"]

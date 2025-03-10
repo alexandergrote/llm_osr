@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 
 from src.util.constants import LLMModels, RESTAPI_URLS
-from src.ml.classifier.llm.util.prediction import PredictionV1
+from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.rest import StructuredRequestLLM
 from src.ml.classifier.llm.util.rate_limit import RateLimit, RateLimitError, RateLimitManager
 from tests.unit.ml.classifier.llm.helper import mock_response
@@ -72,10 +72,10 @@ class TestStructuredRestLLM(unittest.TestCase):
         # first query
         with patch("requests.post") as mock_post:
 
-            PredictionV1.valid_labels = ["greeting"]
+            Prediction.valid_labels = ["greeting"]
             mock_post.return_value = mock_response(status_code=200, json_data=output_correct_groq)
             
-            llm(text=query, pydantic_model=PredictionV1, use_cache=False)
+            llm(text=query, pydantic_model=Prediction, use_cache=False)
 
             assert isinstance(llm, StructuredRequestLLM)
 
@@ -92,10 +92,10 @@ class TestStructuredRestLLM(unittest.TestCase):
         # second query
         with patch("requests.post") as mock_post:
 
-            PredictionV1.valid_labels = ["greeting"]
+            Prediction.valid_labels = ["greeting"]
             mock_post.return_value = mock_response(status_code=200, json_data=output_correct_groq)
             
-            llm(text=query, pydantic_model=PredictionV1, use_cache=False)
+            llm(text=query, pydantic_model=Prediction, use_cache=False)
 
             assert isinstance(llm, StructuredRequestLLM)
 
@@ -131,7 +131,7 @@ class TestStructuredRestLLM(unittest.TestCase):
             }
         )
 
-        PredictionV1.valid_labels = ["greeting"]
+        Prediction.valid_labels = ["greeting"]
 
         llm = StructuredRequestLLM(
             name="hf-llama-8b",
@@ -149,11 +149,11 @@ class TestStructuredRestLLM(unittest.TestCase):
         # first query
         with patch("requests.post") as mock_post:
 
-            PredictionV1.valid_labels = ["greeting"]
+            Prediction.valid_labels = ["greeting"]
             mock_post.return_value = mock_response(status_code=200, json_data=output_correct_hf)
             
             with self.assertRaises(RateLimitError):
-                llm(text=query, pydantic_model=PredictionV1, use_cache=False)
+                llm(text=query, pydantic_model=Prediction, use_cache=False)
             
 
     def tearDown(self):
