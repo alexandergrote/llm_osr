@@ -4,7 +4,7 @@ params:
   rest_api_model_name: llama-70b
   url: "https://api.cerebras.ai/v1/chat/completions"
   payload:
-    model: "llama3.1-70b"
+    model: "llama-3.3-70b"
     temperature: 0.0
     top_p: 1.0
   request_input_classmethod: "create_cerebras_request_input"

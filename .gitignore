@@ -15,6 +15,7 @@ build
 *.pdf
 *.parquet
 __pycache__
+*.aider.*
 
 cache
 jobs
@@ -28,3 +29,4 @@ venv
 notebooks
 checkpoints
 rate_limits
+.aider*
