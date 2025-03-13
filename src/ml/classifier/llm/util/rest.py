@@ -153,7 +153,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
     def _check_rate_limit_based_on_request(self, request_dict: dict, **kwargs):
 
         if self.rate_limit_manager is None:
-            raise ValueError("Rate limit manager not set")
+            return 
 
         if not isinstance(self.rate_limit_manager, RateLimitManager):
             raise ValueError("Rate limit manager is not a RateLimitManager object")
@@ -305,15 +305,18 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         if isinstance(self.request_output_classmethod, str):
                 raise ValueError("Request output class method is not callable")
-        
-        if not isinstance(self.rate_limit_manager, RateLimitManager):
-            raise ValueError("Rate limit manager is not a RateLimitManager object")
 
         try:
 
             req_output = self.request_output_classmethod(request_job.request_output)
 
             assert isinstance(req_output, RequestOutput)
+
+            if self.rate_limit_manager is None:
+                return req_output
+        
+            if not isinstance(self.rate_limit_manager, RateLimitManager):
+                raise ValueError("Rate limit manager is not a RateLimitManager object")
 
             # if job has already been saved, it means that the request was successful and the output was cached
             # no need to update the rate limit
@@ -475,6 +478,24 @@ if __name__ == '__main__':
     """
 
     Prediction.valid_labels = ["question", "answer"]
+
+    model = StructuredRequestLLM(
+        name="ollama-phi4-14b",
+        rest_api_model_name="phi4-14b",
+        url='http://localhost:11434/api/chat',
+        payload={
+            "model": "phi4:latest",
+        },
+        request_input_classmethod="create_ollama_request_input",
+        request_output_classmethod="from_ollama_request",
+        request_input_data_extraction="get_prompt_from_ollama_data",
+        rate_limit_manager=None
+    )
+
+    prompt = prompt_template.format("What is the meaning of life?")
+    result = model(prompt, use_cache=False, pydantic_model=Prediction)
+
+    print(result.answer)
 
     model = StructuredRequestLLM(
         name="hf-llama-8b",

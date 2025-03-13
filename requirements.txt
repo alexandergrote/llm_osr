@@ -24,3 +24,4 @@ typer
 huggingface_hub==0.23
 fast-fit>=1.2.1
 transformers
+pyyaml
