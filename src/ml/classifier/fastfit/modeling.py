@@ -44,7 +44,7 @@ class SupConLoss(nn.Module):
         Returns:
             A loss scalar.
         """
-        device = torch.device("cuda") if features.is_cuda else torch.device("cpu")
+        device = torch.device("mps") # if features.is_cuda else torch.device("cpu")
 
         if len(features.shape) < 3:
             raise ValueError(
@@ -289,7 +289,7 @@ class FastFitTrainable(PreTrainedModel):
                 "Either a configuration or an encoder and a decoder has to be provided."
             )
         if config is None:
-            config = FastFitConfig.from_encoder_config(encoder.config)
+            config = FastFitConfig.from_encoder_config(encoder.config)  # type: ignore
         else:
             if not isinstance(config, self.config_class):
                 raise ValueError(
@@ -327,7 +327,7 @@ class FastFitTrainable(PreTrainedModel):
         if config.encoder_dropout is not None:
             set_dropout(self.encoder, config.encoder_dropout)
 
-        self.skiplist = {}
+        self.skiplist = {}  # type: ignore
 
         if config.mask_prob > 0.0:
             self.tokenizer = AutoTokenizer.from_pretrained(config.encoder._name_or_path)
@@ -373,7 +373,7 @@ class FastFitTrainable(PreTrainedModel):
 
     @classmethod
     def from_encoder_pretrained(
-        cls, encoder_pretrained_model_name_or_path: str = None, *model_args, **kwargs
+        cls, encoder_pretrained_model_name_or_path: str = None, *model_args, **kwargs  # type: ignore
     ) -> PreTrainedModel:
         kwargs_encoder = {
             argument[len("encoder_") :]: value
@@ -625,7 +625,7 @@ class FastFitTrainable(PreTrainedModel):
                 a, b = Q[:bs, :, :], Q[bs:, :, :]
 
         else:
-            lbls = Variable(labels.type(torch.DoubleTensor), requires_grad=True)
+            lbls = Variable(labels.type(torch.Tensor), requires_grad=True)
             if self.config.rep_tokens == "all":
                 sim_mat = self.query_doc_similarity_matrix(
                     Q, D, query_attention_mask, doc_attention_mask,
