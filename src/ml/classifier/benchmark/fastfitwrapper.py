@@ -12,7 +12,7 @@ from types import MethodType
 from transformers import AutoTokenizer, pipeline
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-from src.ml.classifier.fastfit.train import FastFitTrainer
+from src.ml.classifier.benchmark.fastfit.train import FastFitTrainer
 from src.util.hashing import Hash
 from src.util.caching import PickleCacheHandler
 from src.util.constants import UnknownClassLabel
