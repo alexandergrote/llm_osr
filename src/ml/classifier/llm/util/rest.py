@@ -312,7 +312,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         try:
 
-            req_output = self.request_output_classmethod(request_job.request_output)
+            req_output = self.request_output_classmethod(request_job.request_output, is_prefilled=True)
 
             assert isinstance(req_output, RequestOutput)
 
@@ -350,7 +350,6 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         try:
 
             parser = PydanticOutputParser(pydantic_object=pydantic_model)
-
             parsed_response: PredictionV1 = parser.parse(text=request_output.text)
 
             if not hasattr(parsed_response, "valid_labels"):
