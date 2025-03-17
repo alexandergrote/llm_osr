@@ -5,13 +5,12 @@ from typing import Callable, Optional, Any, Union, Type
 from pydantic import BaseModel, model_validator, field_validator
 from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type
 from langchain.output_parsers import PydanticOutputParser
-from langchain import pydantic_v1
 from pathlib import Path
 
 from src.util.hashing import Hash
 from src.ml.classifier.llm.util.request import RequestOutput, RequestInput
 from src.ml.classifier.llm.util.logprob import LogProbScore
-from src.ml.classifier.llm.util.prediction import Prediction, PredictionV1
+from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.util.job_queue import Job, JobStatus
 from src.ml.classifier.llm.util.rate_limit import RateLimitManager
 from src.ml.classifier.llm.util.tokenizer import LlamaTokenizer
@@ -25,7 +24,7 @@ from src.util.caching import JsonCache
 class AbstractLLM(ABC):
     
     @abstractmethod
-    def __call__(self, text: str, pydantic_model: Type[pydantic_v1.BaseModel], use_cache: bool = False, **kwargs) -> LogProbScore:
+    def __call__(self, text: str, pydantic_model: Type[BaseModel], use_cache: bool = False, **kwargs) -> LogProbScore:
 
         raise NotImplementedError()
     
@@ -144,7 +143,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         rate_limits = self.rate_limit_manager.rate_limits
 
-        for (name, rate_limit) in rate_limits.items():
+        for (_, rate_limit) in rate_limits.items():
 
             if not rate_limit.check():
                 return False
@@ -154,7 +153,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
     def _check_rate_limit_based_on_request(self, request_dict: dict, **kwargs):
 
         if self.rate_limit_manager is None:
-            raise ValueError("Rate limit manager not set")
+            return 
 
         if not isinstance(self.rate_limit_manager, RateLimitManager):
             raise ValueError("Rate limit manager is not a RateLimitManager object")
@@ -306,15 +305,18 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         if isinstance(self.request_output_classmethod, str):
                 raise ValueError("Request output class method is not callable")
-        
-        if not isinstance(self.rate_limit_manager, RateLimitManager):
-            raise ValueError("Rate limit manager is not a RateLimitManager object")
 
         try:
 
             req_output = self.request_output_classmethod(request_job.request_output, is_prefilled=True)
 
             assert isinstance(req_output, RequestOutput)
+
+            if self.rate_limit_manager is None:
+                return req_output
+        
+            if not isinstance(self.rate_limit_manager, RateLimitManager):
+                raise ValueError("Rate limit manager is not a RateLimitManager object")
 
             # if job has already been saved, it means that the request was successful and the output was cached
             # no need to update the rate limit
@@ -345,12 +347,13 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         return req_output
 
-    def _get_parsed_output(self, prompt: str, request_output: RequestOutput, pydantic_model: Type[pydantic_v1.BaseModel], **kwargs) -> LogProbScore:
+    def _get_parsed_output(self, prompt: str, request_output: RequestOutput, pydantic_model: Type[BaseModel], **kwargs) -> LogProbScore:
 
         try:
 
             parser = PydanticOutputParser(pydantic_object=pydantic_model)
-            parsed_response: PredictionV1 = parser.parse(text=request_output.text)
+
+            parsed_response: Prediction = parser.parse(text=request_output.text)
 
             if not hasattr(parsed_response, "valid_labels"):
                 raise Exception("Response does not have a valid_labels attribute")
@@ -380,7 +383,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
             raise e
 
-    def __call__(self, text: str, pydantic_model: Type[pydantic_v1.BaseModel], use_cache: bool = False, **kwargs) -> LogProbScore:
+    def __call__(self, text: str, pydantic_model: Type[BaseModel], use_cache: bool = False, **kwargs) -> LogProbScore:
         
         cache = JsonCache(
             filepath=Path(self.rest_api_model_name) / f"{Hash.hash(text)}.json"
@@ -474,7 +477,25 @@ if __name__ == '__main__':
     - Reply only with valid json
     """
 
-    PredictionV1.valid_labels = ["question", "answer"]
+    Prediction.valid_labels = ["question", "answer"]
+
+    model = StructuredRequestLLM(
+        name="ollama-phi4-14b",
+        rest_api_model_name="phi4-14b",
+        url='http://localhost:11434/api/chat',
+        payload={
+            "model": "phi4:latest",
+        },
+        request_input_classmethod="create_ollama_request_input",
+        request_output_classmethod="from_ollama_request",
+        request_input_data_extraction="get_prompt_from_ollama_data",
+        rate_limit_manager=None
+    )
+
+    prompt = prompt_template.format("What is the meaning of life?")
+    result = model(prompt, use_cache=False, pydantic_model=Prediction)
+
+    print(result.answer)
 
     model = StructuredRequestLLM(
         name="hf-llama-8b",
@@ -487,7 +508,7 @@ if __name__ == '__main__':
     )
 
     prompt = prompt_template.format("What is the meaning of life?")
-    result = model(prompt, use_cache=False, pydantic_model=PredictionV1)
+    result = model(prompt, use_cache=False, pydantic_model=Prediction)
 
     print(result.answer)
 
@@ -503,9 +524,9 @@ if __name__ == '__main__':
         request_output_classmethod="from_groq_request",
         request_input_data_extraction="get_prompt_from_openai_data",
         rate_limit_manager="groq-llama-8b.yaml",
-        pydantic_model=PredictionV1,
+        pydantic_model=Prediction,
     )
 
     prompt = prompt_template.format("I am good, what about you?")
-    result = model(prompt, use_cache=False, pydantic_model=PredictionV1)
+    result = model(prompt, use_cache=False, pydantic_model=Prediction)
     print(result.answer)

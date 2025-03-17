@@ -36,7 +36,7 @@ class FastFitWrapper(BaseModel, BaseBenchmark):
     num_repeats: int = 4
     optim: str = "adafactor"
     clf_loss_factor: float = 0.1
-    fp16: bool = True
+    fp16: bool = False
 
     unknown_threshold: float = -0.05
     model: Optional[Any] = None  # will be set after fit
@@ -100,7 +100,7 @@ class FastFitWrapper(BaseModel, BaseBenchmark):
             optim=self.optim,
             clf_loss_factor=self.clf_loss_factor,
             fp16=self.fp16,
-            dataset=dataset,
+            dataset=dataset
         )
 
         model = trainer.train()

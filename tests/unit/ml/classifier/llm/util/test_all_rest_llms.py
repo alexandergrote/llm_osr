@@ -3,7 +3,7 @@ import unittest
 from src.ml.classifier.llm.util.rest import StructuredRequestLLM
 from src.util.constants import Directory
 from src.util.dynamic_import import DynamicImport
-from src.ml.classifier.llm.util.prediction import PredictionV1
+from src.ml.classifier.llm.util.prediction import Prediction
 
 prompt = """
     Please classify this sentence: "What is the meaning of life?"
@@ -16,7 +16,7 @@ prompt = """
     - Reply only with valid json
     """
 
-PredictionV1.valid_labels = ["question", "answer"]
+Prediction.valid_labels = ["question", "answer"]
 
 
 class TestLLM(unittest.TestCase):
@@ -47,10 +47,6 @@ class TestLLM(unittest.TestCase):
 
                 self.assertTrue(isinstance(llm, StructuredRequestLLM))
 
-                #from src.ml.classifier.llm.util.logprob import LogProbScore
-                #output = llm(text=prompt, pydantic_model=PredictionV1, use_cache=False)
-
-                #self.assertTrue(isinstance(output, LogProbScore))
     
     def tearDown(self):
         self.patcher.stop()

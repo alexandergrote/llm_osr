@@ -2,7 +2,7 @@ class: src.ml.classifier.llm.util.rest.StructuredRequestLLM
 params:
   name: hf-llama-70b
   rest_api_model_name: llama-70b
-  url: "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-70b-Instruct"
+  url: "https://api-inference.huggingface.co/models/meta-llama/Llama-3.3-70B-Instruct"
   payload:
     temperature: 0.01
     top_p: 0.99

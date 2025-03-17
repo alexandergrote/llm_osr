@@ -4,7 +4,7 @@ params:
   rest_api_model_name: llama-70b
   url: "https://api.groq.com/openai/v1/chat/completions"
   payload:
-    model: "llama-3.1-70b-versatile"
+    model: "llama-3.3-70b-versatile"
     temperature: 0.0
     top_p: 1.0
   request_input_classmethod: "create_groq_request_input"

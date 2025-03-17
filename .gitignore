@@ -6,6 +6,8 @@
 *.db
 .vscode
 .coverage
+.coverage.*
+build
 
 *.egg-info
 *.ipynb
@@ -13,6 +15,7 @@
 *.pdf
 *.parquet
 __pycache__
+*.aider.*
 
 cache
 jobs
@@ -26,3 +29,4 @@ venv
 notebooks
 checkpoints
 rate_limits
+.aider*

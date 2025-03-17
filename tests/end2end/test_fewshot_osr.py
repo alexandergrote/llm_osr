@@ -1,5 +1,6 @@
 import unittest
 import mlflow
+import os
 from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -40,8 +41,19 @@ class TestFewShotOSR(unittest.TestCase):
         for exp in experiments:
 
             experiment_id = mlflow.get_experiment_by_name(exp.name)
+            
             if experiment_id is not None:
-                mlflow.delete_experiment(experiment_id.experiment_id)
+
+                try:
+                    
+                    mlflow.delete_experiment(experiment_id.experiment_id)
+                
+                except Exception as e:
+                    print(e)
+                    
+                # apply garbage cleaner of mlflow to permanently delete experiment data
+                os.environ['MLFLOW_TRACKING_URI'] = mlflow.get_tracking_uri()
+                os.system(f"mlflow gc --experiment-ids {experiment_id.experiment_id}")
 
 if __name__ == '__main__':
     unittest.main()

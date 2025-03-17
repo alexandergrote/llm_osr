@@ -4,7 +4,7 @@ from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from src.ml.classifier.llm.util.prediction import Prediction, PredictionV1
+from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.logprob import LogProbScore, LogProb
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.ml.classifier.llm.util.rate_limit import RateLimitError
@@ -49,7 +49,6 @@ class TestRestInference(unittest.TestCase):
     @patch("src.ml.classifier.llm.util.rest.StructuredRequestLLM.__call__")
     def test_rate_limit_error(self, mock_call):
         
-        PredictionV1.valid_labels = ["label"]
         Prediction.valid_labels = ["label"]
 
         logprob_score = LogProbScore(
@@ -73,7 +72,7 @@ class TestRestInference(unittest.TestCase):
 
         result = inference_handler(
             text="what is the meaning of life?",
-            pydantic_model=PredictionV1,
+            pydantic_model=Prediction,
             use_cache=False
         )
 
@@ -81,7 +80,6 @@ class TestRestInference(unittest.TestCase):
 
     def test_rate_limit_error_from_request(self):
 
-        PredictionV1.valid_labels = ["greeting"]
         Prediction.valid_labels = ["greeting"]
 
         logprob_score = LogProbScore(
@@ -108,7 +106,7 @@ class TestRestInference(unittest.TestCase):
 
             result = inference_handler(
                 text="what is the meaning of life?",
-                pydantic_model=PredictionV1,
+                pydantic_model=Prediction,
                 use_cache=False
             )
 
@@ -129,7 +127,7 @@ class TestRestInference(unittest.TestCase):
 
                 inference_handler(
                     text="what is the meaning of life?",
-                    pydantic_model=PredictionV1,
+                    pydantic_model=Prediction,
                     use_cache=False
                 )
 

@@ -4,7 +4,7 @@ params:
   rest_api_model_name: llama-70b
   url: "https://api.sambanova.ai/v1/chat/completions"
   payload:
-    model: "Meta-Llama-3.1-70B-Instruct"
+    model: "Meta-Llama-3.3-70B-Instruct"
     temperature: 0.0
     top_p: 1.0
   request_input_classmethod: "create_sambanova_request_input"

@@ -7,7 +7,7 @@ from pydantic import model_validator, ConfigDict
 from omegaconf.dictconfig import DictConfig
 
 from src.util.dynamic_import import DynamicImport
-from src.ml.classifier.llm.util.prediction import PredictionV1
+from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
@@ -126,14 +126,14 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             pbar = kwargs['pbar']
 
             if hasattr(pbar, 'write'):
-                pbar.write(f"Unknown Detection")
+                pbar.write("Unknown Detection")
 
 
         # Example usage
         valid_labels = ["true", "false"]
-        PredictionV1.valid_labels = valid_labels
+        Prediction.valid_labels = valid_labels
         
-        parser = PydanticOutputParser(pydantic_object=PredictionV1)
+        parser = PydanticOutputParser(pydantic_object=Prediction)
         instructions = parser.get_format_instructions()
 
         examples = self._get_examples(
@@ -153,7 +153,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
     
         logprob_score = self._get_parsed_output(
             model=self.unknown_detection_model,
-            valid_labels=PredictionV1.valid_labels,
+            valid_labels=Prediction.valid_labels,
             text=prompt, 
             retries=5,
             use_cache=use_cache,
@@ -177,13 +177,13 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             pbar = kwargs['pbar']
 
             if hasattr(pbar, 'write'):
-                pbar.write(f"Unknown Detection")
+                pbar.write("Unknown Detection")
         
         # Example usage
         valid_labels = list(self.classes)
-        PredictionV1.valid_labels = valid_labels
+        Prediction.valid_labels = valid_labels
         
-        parser = PydanticOutputParser(pydantic_object=PredictionV1)
+        parser = PydanticOutputParser(pydantic_object=Prediction)
         instructions = parser.get_format_instructions()
 
         examples = self._get_examples(
@@ -205,7 +205,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         logprob_score = self._get_parsed_output(
             model=self.classifier_model,
-            valid_labels=PredictionV1.valid_labels,
+            valid_labels=Prediction.valid_labels,
             text=prompt,
             use_cache=use_cache,
             retries=5,

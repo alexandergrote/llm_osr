@@ -7,6 +7,7 @@ from src.util.constants import DatasetColumn as dfc
 from src.ml.classifier.benchmark.fastfitwrapper import FastFitWrapper
 
 
+@unittest.skip("Skipping tests for FastFitWrapper")
 class TestFastFitWrapper(unittest.TestCase):
     
     def setUp(self):

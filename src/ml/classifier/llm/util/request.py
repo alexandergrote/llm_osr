@@ -1,4 +1,4 @@
-from typing import List, Callable, Optional
+from typing import List, Callable, Optional, Any, Dict
 from pydantic import BaseModel
 
 from src.util.types import LogProb
@@ -36,6 +36,9 @@ def get_prompt_from_data_hf(*, data: dict, **kwargs) -> str:
 def get_prompt_from_data_openai(*, data: dict, **kwargs) -> str:
 
     return data["data"]['messages'][0]['content']
+
+def get_prompt_from_ollama(*, data: dict, **kwargs) -> str:
+    return 'Not possible with ollama rest api'
 
 
 class RequestInput(BaseModel):
@@ -258,6 +261,39 @@ class RequestInput(BaseModel):
             data=request_dict
         )
 
+    @classmethod
+    def create_ollama_request_input(cls, prompt: str, url: str = 'http://localhost:11434/api/chat', payload: Optional[dict] = None) -> "RequestInput":
+
+        if payload is None:
+            payload = {}
+
+        assert 'model' in payload, "Payload must contain a 'model' key"
+
+        model = payload.pop('model')
+        headers: Dict[str, Any] = {}
+
+        final_payload = {
+            'model': model,
+            'format': 'json', 
+            'stream': False,
+            'options': {
+                "temperature": 0,
+            }
+        }
+
+        for k, v in payload.items():
+            final_payload['options'][k] = v    
+
+        request_dict = RequestInput.get_request_dict(
+            url=url,
+            headers=headers,
+            prompt=prompt,
+            data=final_payload,
+            data_modifying_function=add_prompt_to_data_openai
+        )    
+
+        return RequestInput(data=request_dict)
+
     @staticmethod
     def get_prompt_from_hf_data(dictionary):
 
@@ -269,6 +305,12 @@ class RequestInput(BaseModel):
     def get_prompt_from_openai_data(dictionary):
 
         return get_prompt_from_data_openai(
+            data=dictionary
+        )
+
+    @staticmethod
+    def get_prompt_from_ollama_data(dictionary):
+        return get_prompt_from_ollama(
             data=dictionary
         )
 
@@ -410,4 +452,17 @@ class RequestOutput(BaseModel):
             text=text,
             logprobas=logprob_list,
             num_tokens=x["usage"]["completion_tokens"]
+        )
+
+    @classmethod
+    def from_ollama_request(cls, x: dict, **kwargs) -> "RequestOutput":
+
+        text = x['message']['content']
+        total_tokens = x["prompt_eval_count"] + x['eval_count']
+        logprob_list = [LogProb(text='{"label": "LogProb not supported by Ollama"}', logprob=0)]
+
+        return cls(
+            text=text,
+            logprobas=logprob_list,
+            num_tokens=total_tokens
         )
