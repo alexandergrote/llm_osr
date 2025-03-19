@@ -308,7 +308,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         try:
 
-            req_output = self.request_output_classmethod(request_job.request_output)
+            req_output = self.request_output_classmethod(request_job.request_output, is_prefilled=True)
 
             assert isinstance(req_output, RequestOutput)
 

@@ -23,7 +23,7 @@ def add_prompt_to_data_openai(*, data: dict, prompt_value: str, **kwargs) -> dic
     Add the prompt to the data dictionary
     """
 
-    data['messages'] = [{"role": "user", "content": prompt_value}]
+    data['messages'] = [{"role": "user", "content": prompt_value}, {"role": "assistant","content": "```json"}]
 
     return data
 
@@ -391,6 +391,9 @@ class RequestOutput(BaseModel):
         text = x['choices'][0]['message']['content']
         logprob_list = [LogProb(text='{"label": "LogProb not supported by Groq"}', logprob=0)]
 
+        if kwargs["is_prefilled"]:
+            text = "```" + text
+
         return cls(
             text=text,
             logprobas=logprob_list,
@@ -424,6 +427,9 @@ class RequestOutput(BaseModel):
 
         text = x['choices'][0]['message']['content']
         logprob_list = [LogProb(text='{"label": "LogProb not supported by OpenRouter"}', logprob=0)]
+
+        if kwargs["is_prefilled"]:
+            text = "```" + text
 
         return cls(
             text=text,
