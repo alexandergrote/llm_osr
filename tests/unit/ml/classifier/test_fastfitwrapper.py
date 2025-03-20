@@ -7,7 +7,6 @@ from src.util.constants import DatasetColumn as dfc
 from src.ml.classifier.benchmark.fastfitwrapper import FastFitWrapper
 
 
-@unittest.skip("Skipping tests for FastFitWrapper")
 class TestFastFitWrapper(unittest.TestCase):
     
     def setUp(self):
@@ -34,7 +33,6 @@ class TestFastFitWrapper(unittest.TestCase):
         self.clf.fit(self.x_train, self.y_train, self.x_valid, self.y_valid)
 
         y_pred = self.clf.predict(self.x_test)
-        print(y_pred)
         self.assertEqual(len(y_pred), len(self.x_test))
 
 if __name__ == '__main__':
