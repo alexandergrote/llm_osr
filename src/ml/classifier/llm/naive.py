@@ -12,6 +12,8 @@ from src.ml.classifier.llm.util.prediction import Prediction
 
 class RandomLLM(AbstractClassifierLLM):
 
+    fixed_random_seed: bool = True
+
     def fit(self, x_train: np.ndarray, y_train: np.ndarray, x_valid: np.ndarray, y_valid: np.ndarray, **kwargs):
         
         self.y_train = np.concatenate([
@@ -31,7 +33,10 @@ class RandomLLM(AbstractClassifierLLM):
             raise ValueError("Not fitted")
         
         # set rng generator
-        rng = np.random.default_rng(42)
+        if self.fixed_random_seed:
+            rng = np.random.default_rng(42)
+        else:
+            rng = np.random.default_rng()
         
         # select random answer from y_train
         answer = rng.choice(self.y_train)
@@ -50,6 +55,9 @@ class RandomLLM(AbstractClassifierLLM):
             return None
         
         return logprob_score.answer.label, score
+
+    def single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
+        return self._single_predict(text=text, use_cache=use_cache, **kwargs)
 
 
 if __name__ == '__main__':
