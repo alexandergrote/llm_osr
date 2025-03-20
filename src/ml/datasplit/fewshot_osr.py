@@ -52,12 +52,7 @@ class FewShotDataSplitter(DataSplitter):
             data=valid.data, n=self.n, random_seed=random_seed, replace=self.replace
         )
 
-        # add data points that are not train and validaton subsets to test set
-        train_df_sub_disjunct = train.data.drop(train_df.index)
-        valid_df_sub_disjunct = valid.data.drop(valid_df.index)
-        test_df = pd.concat([train_df_sub_disjunct, valid_df_sub_disjunct, test.data])
-        
-        assert len(data) == len(train_df) + len(valid_df) + len(test_df)
+        test_df = test.data
 
         # enable subset for development purposes
         if self.subset_test is not None:
