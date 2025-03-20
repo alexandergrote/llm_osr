@@ -267,9 +267,11 @@ class RequestInput(BaseModel):
         if payload is None:
             payload = {}
 
-        assert 'model' in payload, "Payload must contain a 'model' key"
+        payload_copy = payload.copy()
 
-        model = payload.pop('model')
+        assert 'model' in payload_copy, "Payload must contain a 'model' key"
+
+        model = payload_copy.pop('model')
         headers: Dict[str, Any] = {}
 
         final_payload = {
@@ -281,7 +283,7 @@ class RequestInput(BaseModel):
             }
         }
 
-        for k, v in payload.items():
+        for k, v in payload_copy.items():
             final_payload['options'][k] = v    
 
         request_dict = RequestInput.get_request_dict(
@@ -458,7 +460,7 @@ class RequestOutput(BaseModel):
     def from_ollama_request(cls, x: dict, **kwargs) -> "RequestOutput":
 
         text = x['message']['content']
-        total_tokens = x["prompt_eval_count"] + x['eval_count']
+        total_tokens = x.get("prompt_eval_count", 0) + x.get('eval_count', 0)
         logprob_list = [LogProb(text='{"label": "LogProb not supported by Ollama"}', logprob=0)]
 
         return cls(

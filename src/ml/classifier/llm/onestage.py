@@ -115,7 +115,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         
         valid_labels = list(self.classes)
         Prediction.valid_labels = valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
-        
+
         parser = PydanticOutputParser(pydantic_object=Prediction)
         instructions = parser.get_format_instructions()
 
@@ -167,6 +167,8 @@ if __name__ == '__main__':
         dictionary=config[key],
     )
 
+    llm.use_cache = False
+
     # Explicitly cast llm to TwoStageLLM
     llm = cast(OneStageLLM, llm)
 
@@ -188,13 +190,13 @@ if __name__ == '__main__':
         y_valid=data_valid[DatasetColumn.LABEL].values,
     )
 
-    result = llm._single_predict(text="Hello", use_cache=True)
+    result = llm._single_predict(text="Hello", use_cache=False)
 
     print(result)
 
     result2 = llm.predict(
         x=np.array([["Hola"], ["Hallo du"], ["Ich möchte einen Tee bestellen"], ['Ich wohne in Bayern'], ["I like trains"]], dtype=np.object_),
-        include_outlierscore=True
+        include_outlierscore=True,
     )
 
     print(result2)

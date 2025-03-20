@@ -21,6 +21,10 @@ from src.util.constants import Directory
 from src.util.caching import JsonCache
 
 
+def traced_request(*args, **kwargs):
+    return requests.post(*args, **kwargs)
+
+
 class AbstractLLM(ABC):
     
     @abstractmethod
@@ -131,7 +135,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
     def check_rate_limit(self) -> bool:
 
         if self.rate_limit_manager is None:
-            raise ValueError("Rate limit manager not set")
+            return True
         
         if isinstance(self.request_input_data_extraction, str):
             raise ValueError("Request input class method is not callable")
@@ -182,7 +186,6 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         This function ensures that the api request is successful.
         The output parsing will take place later
         """
-
         self._check_rate_limit_based_on_request(request_dict, **kwargs)
 
         request_dict_copy = request_dict.copy()
@@ -190,7 +193,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         request_dict_copy['data'] = json.dumps(request_dict_copy['data'])
 
         # see more info on timeouts: https://requests.readthedocs.io/en/latest/user/advanced/#timeouts
-        response = request_fun(timeout=(3.05 ,10), **request_dict_copy)
+        response = request_fun(timeout=(3.05, 20), **request_dict_copy)
 
         status_code = response.status_code
 
@@ -261,7 +264,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         try:
 
-            job = self._backoff(job=job, request_fun=requests.post, request_dict=request_input.data, **kwargs)
+            job = self._backoff(job=job, request_fun=traced_request, request_dict=request_input.data, **kwargs)
 
         except RateLimitException as e:
             raise e
@@ -394,7 +397,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
         # check if cache is enabled
         if use_cache:
             result = cache.read()
-
+            
         if result is not None:
 
             assert isinstance(result, dict)
@@ -495,38 +498,4 @@ if __name__ == '__main__':
     prompt = prompt_template.format("What is the meaning of life?")
     result = model(prompt, use_cache=False, pydantic_model=Prediction)
 
-    print(result.answer)
-
-    model = StructuredRequestLLM(
-        name="hf-llama-8b",
-        rest_api_model_name="llama-8b",
-        url=RESTAPI_URLS[LLMModels.LLAMA_3_8B_Remote_HF],
-        request_input_classmethod="create_hf_llama_request_input",
-        request_output_classmethod="from_llama_hf_request",
-        request_input_data_extraction="get_prompt_from_hf_data",
-        rate_limit_manager="hf.yaml"
-    )
-
-    prompt = prompt_template.format("What is the meaning of life?")
-    result = model(prompt, use_cache=False, pydantic_model=Prediction)
-
-    print(result.answer)
-
-    model = StructuredRequestLLM(
-        name="groq-llama-8b",
-        rest_api_model_name="llama-8b",
-        url="https://api.groq.com/openai/v1/chat/completions",
-        payload={
-            "model": "llama-3.1-8b-instant",
-            "temperature": 0.0
-        },
-        request_input_classmethod="create_groq_request_input",
-        request_output_classmethod="from_groq_request",
-        request_input_data_extraction="get_prompt_from_openai_data",
-        rate_limit_manager="groq-llama-8b.yaml",
-        pydantic_model=Prediction,
-    )
-
-    prompt = prompt_template.format("I am good, what about you?")
-    result = model(prompt, use_cache=False, pydantic_model=Prediction)
     print(result.answer)
