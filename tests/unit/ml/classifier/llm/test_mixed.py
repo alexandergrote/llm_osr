@@ -7,10 +7,7 @@ from pathlib import Path
 
 from tests.unit.ml.classifier.llm.helper import mock_response, data_train, data_valid
 
-from src.ml.classifier.llm.util.prediction import Prediction
-from src.ml.classifier.llm.twostage import TwoStageLLM
-from src.ml.classifier.llm.util.rest import StructuredRequestLLM
-from src.ml.classifier.llm.util.outlier import OutlierValue
+from src.ml.classifier.llm.mixed import PromptFirstRandomSecond
 from src.util.load_hydra import get_hydra_config
 from src.util.constants import DatasetColumn
 from src.util.dynamic_import import DynamicImport
@@ -68,28 +65,6 @@ output_binary_wrong = [
     }
 ]
 
-output_multiclass_correct = [
-    {
-        'generated_text': '{"label": "greeting", "reasoning": "trivial"}',
-        'details': {
-            'tokens': [
-                {'text': '{', 'logprob': 0}
-            ]
-        }
-    }
-]
-
-output_multiclass_wrong = [
-    {
-        'generated_text': '{"label": "another greeting", "reasoning": "trivial"}',
-        'details': {
-            'tokens': [
-                {'text': '{', 'logprob': 0}
-            ]
-        }
-    }
-]
-
 
 class TestTwoStage(unittest.TestCase):
 
@@ -107,16 +82,15 @@ class TestTwoStage(unittest.TestCase):
         
         self.mocks = self.patcher.start()
 
-    def _get_fitted_llm(self) -> TwoStageLLM:
+    def _get_fitted_llm(self) -> PromptFirstRandomSecond:
 
         key = "ml__classifier"
 
         config = get_hydra_config(
             overrides=[
-                f"{key}=two_stage_llama_8",
+                f"{key}=mixed_llama_8",
                 f"{key}.params.selector.params.mode=random_class",
                 f"{key}.params.unknown_detection_model.free_llms=[hf-llama-8b.yaml]",
-                f"{key}.params.classifier_model.free_llms=[hf-llama-8b.yaml]",
             ]
         )
 
@@ -125,7 +99,7 @@ class TestTwoStage(unittest.TestCase):
         )
 
         # Explicitly cast llm to TwoStageLLM
-        llm = cast(TwoStageLLM, llm)
+        llm = cast(PromptFirstRandomSecond, llm)
 
         llm.fit(
             x_train=data_train[DatasetColumn.FEATURES].values,
@@ -171,7 +145,6 @@ class TestTwoStage(unittest.TestCase):
         self.assertEqual(len(job_files), 1)
         self.assertEqual(len(error_files), 0)
 
-    
     @patch("src.util.logger.get_log_dir")
     @patch("src.ml.util.job_queue.get_job_dir")
     def test_classification(self, mock_job_dir, mock_log_dir):
@@ -181,17 +154,12 @@ class TestTwoStage(unittest.TestCase):
 
         llm = self._get_fitted_llm()
 
-        # case: wrongly formatted request
+        # case: llm considers it an inlier
         # should not be saved
         with patch("requests.post") as mock_post:
             
             mock_post.side_effect = [
-                mock_response(status_code=200, json_data=output_binary_correct_false),
-                mock_response(status_code=200, json_data=output_multiclass_wrong),
-                mock_response(status_code=200, json_data=output_multiclass_wrong),
-                mock_response(status_code=200, json_data=output_multiclass_wrong),
-                mock_response(status_code=200, json_data=output_multiclass_wrong),
-                mock_response(status_code=200, json_data=output_multiclass_wrong)
+                mock_response(status_code=200, json_data=output_binary_correct_false)
             ]
 
             llm._single_predict(text="Hello friend", use_cache=True)
@@ -200,38 +168,6 @@ class TestTwoStage(unittest.TestCase):
         error_files = list(LOG_DIR.rglob("*.json"))
 
         self.assertEqual(len(job_files), 1)
-        self.assertEqual(len(error_files), 1)
-
-        rest_llm = llm.classifier_model.free_llms[0]
-
-        assert isinstance(rest_llm, StructuredRequestLLM)
-
-        prediction = Prediction.from_llm_job(
-            filename=job_files[0],
-            class_labels=OutlierValue.list(),
-            request_output_fun=rest_llm.request_output_classmethod
-        )
-
-        self.assertTrue(prediction.label == OutlierValue.INLIER.value)
-
-
-        # case: corrected request
-        # should be saved
-        with patch("requests.post") as mock_post:
-            
-            mock_post.side_effect = [
-                mock_response(status_code=200, json_data=output_binary_correct_false),
-                mock_response(status_code=200, json_data=output_multiclass_correct),
-            ]
-
-            result = llm._single_predict(text="Hello friend", use_cache=True)
-
-        self.assertEqual(result, ("greeting", 0.0))
-
-        job_files = list(JOB_DIR.rglob("*.json"))
-        error_files = list(LOG_DIR.rglob("*.json"))
-
-        self.assertEqual(len(job_files), 2)
         self.assertEqual(len(error_files), 0)
 
 

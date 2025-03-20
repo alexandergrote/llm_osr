@@ -11,6 +11,7 @@ from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
+from src.ml.classifier.llm.util.outlier import OutlierValue
 from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import ErrorValues
@@ -130,8 +131,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
 
         # Example usage
-        valid_labels = ["true", "false"]
-        Prediction.valid_labels = valid_labels
+        Prediction.valid_labels = OutlierValue.list()
         
         parser = PydanticOutputParser(pydantic_object=Prediction)
         instructions = parser.get_format_instructions()
@@ -177,7 +177,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             pbar = kwargs['pbar']
 
             if hasattr(pbar, 'write'):
-                pbar.write("Unknown Detection")
+                pbar.write("Classifying Known Class")
         
         # Example usage
         valid_labels = list(self.classes)
@@ -232,7 +232,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             if unknown_prediction is None:
                 return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
 
-            if unknown_prediction.answer.label == "true":            
+            if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:            
                 return UnknownClassLabel.UNKNOWN_STR.value, 1
         
         known_prediction = self._classify_known_classes(text=text, use_cache=use_cache, **kwargs)
@@ -254,7 +254,7 @@ if __name__ == '__main__':
 
     config = get_hydra_config(
         overrides=[
-            f"{key}=two_stage_groq_llama_8"
+            f"{key}=two_stage_llama_8"
         ]
     )
 

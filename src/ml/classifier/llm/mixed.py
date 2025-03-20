@@ -11,6 +11,7 @@ from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
+from src.ml.classifier.llm.util.outlier import OutlierValue
 from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
 from src.ml.classifier.llm.naive import RandomLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
@@ -22,7 +23,6 @@ random_llm = RandomLLM(
     selector=dict(),
     fixed_random_seed=False
 )
-
 
 class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
@@ -139,8 +139,7 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
 
         # Example usage
-        valid_labels = ["true", "false"]
-        Prediction.valid_labels = valid_labels
+        Prediction.valid_labels = OutlierValue.list()
         
         parser = PydanticOutputParser(pydantic_object=Prediction)
         instructions = parser.get_format_instructions()
@@ -198,7 +197,7 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
         if unknown_prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
 
-        if unknown_prediction.answer.label == "true":            
+        if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:            
             return UnknownClassLabel.UNKNOWN_STR.value, 1
 
         return self.classifier_model.single_predict(text=text, use_cache=use_cache, **kwargs)

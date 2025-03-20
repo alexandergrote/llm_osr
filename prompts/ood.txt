@@ -1,16 +1,10 @@
-You are an Out-Of-Distribution detector.
-
-Your task is to decide if "{text}" is similar in meaning to the supplied examples and their classes:
+Given these examples and their classes, is this data point "{text}" an outlier?
 
 {examples_msg} 
 
-First, think step by step about why the abstract concept behind the incoming data point might be similar to the concepts of the examples.
-Second, think step by step about why the the abstract concept the incoming data point might differ significantly from the examples.
-Third, compare the two scenarios and answer with the more probable answer.
+Let's think step by step. 
 
 You must follow these additional instructions:
-Provide the reasoning containing your thought process first and then the label.
-The label must be 'true' if the overall concept of the incoming data point is significantly different to the examples.
-It must be 'false' if the concept is similar.
+Provide the reasoning containing your thought process first and then the label. The label can only "inlier" or "outlier"
 
 {instructions}
