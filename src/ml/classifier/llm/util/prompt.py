@@ -30,9 +30,10 @@ def create_prompt(
 
     prompt = template.format(
         examples_msg=examples_msg,
-        text=text,
+        text=text_to_classify,
         instructions=instructions,
-        classes_msg=classes_msg
+        classes_msg=classes_msg,
+        unknown_label=UnknownClassLabel.UNKNOWN_STR.value
     )
 
     return prompt
