@@ -17,6 +17,7 @@ from src.ml.classifier.llm.naive import RandomLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import ErrorValues
 from src.ml.classifier.llm.base import LLMClassifierMixin
+from src.ml.classifier.llm.util.prompt import create_prompt
 
 
 random_llm = RandomLLM(
@@ -27,12 +28,13 @@ random_llm = RandomLLM(
 class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
     unknown_detection_model: Union[InferenceHandler, Dict[str, List[str]]]
-    unknown_detection_prompt: str = "ood.txt"
+    unknown_detection_prompt: str = "nd_with_classes.txt"
 
     classifier_model: RandomLLM = random_llm
 
     # shuffle free llm apis to equal use
     shuffle_free_llms: bool = False
+    use_classes_in_examples: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -142,20 +144,20 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
         Prediction.valid_labels = OutlierValue.list()
         
         parser = PydanticOutputParser(pydantic_object=Prediction)
-        instructions = parser.get_format_instructions()
-
+        
         examples = self._get_examples(
             text_to_classify=text,
         )
 
-        examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
-
-        prompt = self.unknown_detection_prompt.format(
-            examples_msg=examples_msg,
-            text=text,
-            instructions=instructions
+        prompt = create_prompt(
+            template=self.unknown_detection_prompt,
+            text_to_classify=text,
+            parser=parser,
+            examples=examples,
+            use_classes_in_examples=self.use_classes_in_examples
         )
 
+        
         if not isinstance(self.unknown_detection_model, AbstractLLM):
             raise ValueError("Unknown detection model must be of type AbstractLLM")
     
@@ -224,15 +226,15 @@ if __name__ == '__main__':
 
     # Explicitly cast llm
     llm = cast(PromptFirstRandomSecond, llm)
-
+    
     data_train = pd.DataFrame({
-        DatasetColumn.FEATURES: ["Ich heiße Alex", "Auf Wiedersehen!", "Hallo", "Wo kann ich Kekse kaufen?", "Die Apfelsaftschorle finde ich wo?", "Das Essen ist sehr lecker", "München ist eine große Stadt."],
-        DatasetColumn.LABEL: ['Greeting', 'Farewell', "Greeting", "Food", "Food", "Food", "City"]
+        DatasetColumn.FEATURES: ["Erdbeeren sind lecker", "Auf Wiedersehen!", "Hallo", "Wo kann ich Kekse kaufen?", "Die Apfelsaftschorle finde ich wo?", "Das Essen ist sehr lecker", "München ist eine große Stadt."],
+        DatasetColumn.LABEL: ['Food', 'Farewell', "Greeting", "Food", "Food", "Food", "City"]
     })
 
     data_valid = pd.DataFrame({
-        DatasetColumn.FEATURES: ["Ich bin ein Mensch", "Ich war noch nie in Berlin"],
-        DatasetColumn.LABEL: ['Mensch', 'City']
+        DatasetColumn.FEATURES: ["Kartoffeln sind was feines", "Ich war noch nie in Berlin"],
+        DatasetColumn.LABEL: ['Food', 'City']
     })
 
     llm.fit(
@@ -242,13 +244,30 @@ if __name__ == '__main__':
         y_valid=data_valid[DatasetColumn.LABEL].values,
     )
 
-    result = llm._single_predict(text="Hello")
+    x_test = np.array([['Pfirsiche sind lecker'], ["Ich morgen in die Schule"], ["Ich möchte einen Tee bestellen"], ['Ich mag Züge'], ["I like trains"]], dtype=np.object_)
+    y_test = np.array(["food", "unknown", "unknown", "unknown", "unknown"])
 
-    print(result)
+    prompts = ['nd_with_classes.txt','nd_no_classes.txt']
+    use_classes = [True, False]
 
-    result2 = llm.predict(
-        x=np.array([["Hola1234"], ["Hallo du"], ["Ich möchte einen Tee bestellen"], ['Ich wohne in Bayern'], ["I like trains"]], dtype=np.object_),
-        include_outlierscore=True
-    )
+    for prompt, use_class in zip(prompts, use_classes):
 
-    print(result2)
+        with open(Directory.PROMPT_DIR / prompt, 'r') as f:
+            llm.unknown_detection_prompt = f.read()
+            
+        llm.use_cache = False
+        llm.use_classes_in_examples = use_class
+
+        result = llm._single_predict(text="Hello")
+
+        print(result)
+
+        result2 = llm.predict(
+            x=x_test,
+            include_outlierscore=True
+        )
+
+        y_pred = result2[0]
+        
+        print(y_pred)
+        

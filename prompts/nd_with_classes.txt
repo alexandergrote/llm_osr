@@ -1,0 +1,9 @@
+Given these examples and their classes, is this data point "{text}" outlier that differs in its intent?
+
+{examples} 
+
+{chain_of_thought}
+
+{classes}
+
+{json_instructions}

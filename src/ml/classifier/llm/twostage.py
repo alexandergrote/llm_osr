@@ -16,12 +16,13 @@ from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import ErrorValues
 from src.ml.classifier.llm.base import LLMClassifierMixin
+from src.ml.classifier.llm.util.prompt import create_prompt
 
 
 class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
     unknown_detection_model: Union[InferenceHandler, Dict[str, List[str]]]
-    unknown_detection_prompt: str = "ood.txt"
+    unknown_detection_prompt: str = "nd_with_classes.txt"
 
     classifier_model: Union[InferenceHandler, Dict[str, List[str]]]
     classifier_prompt: str = "multiclass.txt"
@@ -134,18 +135,17 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         Prediction.valid_labels = OutlierValue.list()
         
         parser = PydanticOutputParser(pydantic_object=Prediction)
-        instructions = parser.get_format_instructions()
-
+        
         examples = self._get_examples(
             text_to_classify=text,
         )
 
-        examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
-
-        prompt = self.unknown_detection_prompt.format(
-            examples_msg=examples_msg,
-            text=text,
-            instructions=instructions
+        prompt = create_prompt(
+            template=self.unknown_detection_prompt,
+            text_to_classify=text,
+            parser=parser,
+            examples=examples,
+            use_classes_in_examples=False
         )
 
         if not isinstance(self.unknown_detection_model, AbstractLLM):
@@ -184,20 +184,17 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         Prediction.valid_labels = valid_labels
         
         parser = PydanticOutputParser(pydantic_object=Prediction)
-        instructions = parser.get_format_instructions()
-
+    
         examples = self._get_examples(
             text_to_classify=text,
         )
 
-        classes_msg = '\n'.join(set(example["output"] for example in examples))
-        examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
-
-        prompt = self.classifier_prompt.format(
-            examples_msg=examples_msg,
-            text=text,
-            instructions=instructions,
-            classes_msg=classes_msg
+        prompt = create_prompt(
+            template=self.classifier_prompt,
+            text_to_classify=text,
+            parser=parser,
+            examples=examples,
+            use_classes_in_examples=True
         )
 
         if not isinstance(self.classifier_model, AbstractLLM):
@@ -232,6 +229,8 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             if unknown_prediction is None:
                 return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
 
+            print(unknown_prediction.answer)
+
             if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:            
                 return UnknownClassLabel.UNKNOWN_STR.value, 1
         
@@ -264,6 +263,8 @@ if __name__ == '__main__':
 
     # Explicitly cast llm to TwoStageLLM
     llm = cast(TwoStageLLM, llm)
+
+    llm.use_cache = False
 
     data_train = pd.DataFrame({
         DatasetColumn.FEATURES: ["Ich heiße Alex", "Auf Wiedersehen!", "Hallo", "Wo kann ich Kekse kaufen?", "Die Apfelsaftschorle finde ich wo?", "Das Essen ist sehr lecker", "München ist eine große Stadt."],

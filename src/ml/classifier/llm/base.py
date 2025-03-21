@@ -88,7 +88,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
                 result = self._single_predict(text=el_str, use_cache=self.use_cache, pbar=pbar)
 
-                pbar.write(f"Sucess: {result[0]}")
+                pbar.write(f"Success: {result[0]}")
 
 
             except Exception as e:

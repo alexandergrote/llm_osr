@@ -13,6 +13,7 @@ from src.ml.classifier.llm.base import AbstractClassifierLLM, LLMClassifierMixin
 from src.util.constants import UnknownClassLabel
 from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
+from src.ml.classifier.llm.util.prompt import create_prompt
 from src.util.constants import Directory, ErrorValues, DatasetColumn
 
 
@@ -117,21 +118,15 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         Prediction.valid_labels = valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
 
         parser = PydanticOutputParser(pydantic_object=Prediction)
-        instructions = parser.get_format_instructions()
 
-        examples = self._get_examples(
+        examples = self._get_examples(text_to_classify=text)
+
+        prompt = create_prompt(
+            template=self.osr_prompt,
             text_to_classify=text,
-        )
-
-        classes_msg = '\n'.join([el["output"] for el in examples])
-        examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
-
-        prompt = self.osr_prompt.format(
-            examples_msg=examples_msg,
-            text=text,
-            instructions=instructions,
-            classes_msg=classes_msg,
-            unknown_label=UnknownClassLabel.UNKNOWN_STR.value
+            parser=parser,
+            examples=examples,
+            additional_formatting={'unknown_label': UnknownClassLabel.UNKNOWN_STR.value}
         )
 
         if not isinstance(self.osr_model, AbstractLLM):
