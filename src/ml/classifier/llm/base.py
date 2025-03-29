@@ -25,6 +25,9 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
     y_valid: Optional[np.ndarray] = None
     classes: Optional[np.ndarray] = None
 
+    unknown_detection_prompt: str
+    unknown_detection_model_name: str 
+    
     # use cache
     use_cache: bool = False
 

@@ -117,3 +117,47 @@ class ExperimentFactory(BaseModel):
                     experiments.append(Experiment(name=exp_name, overrides=overrides))
 
         return experiments
+
+    @classmethod
+    def create_llm_ood_experiments(cls, models: Optional[List[str]] = None, datasets: Optional[List[str]] = None, unknown_classes: Optional[List[float]] = None, random_seeds: Optional[List[int]] = None) -> List[Experiment]:
+
+        experiments = []
+
+        if models is None:
+            models = ['random_llm']
+
+        if datasets is None:
+            datasets = ['hwu'] # DATASETS
+
+        if unknown_classes is None:
+            unknown_classes = [0.2] # UNKNOWN_CLASSES
+
+        if random_seeds is None:
+            random_seeds = [0] # RANDOM_SEEDS
+
+        for dataset in datasets:
+
+            for model in models:
+
+                for unknown_class in unknown_classes:
+
+                    exp_name = f'ood__llm__data__{dataset}__model__{model}__unknown_classes__{unknown_class}'
+
+                    overrides = get_default_overrides(
+                        dataset=dataset,
+                        model=model,
+                        unknown_class=unknown_class,
+                        random_seeds=random_seeds,
+                        exp_name=exp_name
+                    )
+
+                    if ('one_stage' in model) or ('two_stage' in model):
+                        overrides.append('ml__classifier.params.shuffle_free_llms=true')
+
+                    overrides += [
+                        'ml__datasplit.params.subset_test=100',
+                    ]
+
+                    experiments.append(Experiment(name=exp_name, overrides=overrides))
+
+        return experiments

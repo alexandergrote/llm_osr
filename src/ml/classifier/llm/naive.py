@@ -13,7 +13,7 @@ from src.ml.classifier.llm.util.prediction import Prediction
 class RandomLLM(AbstractClassifierLLM):
 
     fixed_random_seed: bool = True
-
+    
     def fit(self, x_train: np.ndarray, y_train: np.ndarray, x_valid: np.ndarray, y_valid: np.ndarray, **kwargs):
         
         self.y_train = np.concatenate([

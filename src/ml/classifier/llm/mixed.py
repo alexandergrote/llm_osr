@@ -22,6 +22,8 @@ from src.ml.classifier.llm.util.prompt import create_prompt
 
 random_llm = RandomLLM(
     selector=dict(),
+    unknown_detection_prompt="random.txt",
+    unknown_detection_model_name="random",
     fixed_random_seed=False
 )
 
@@ -29,7 +31,7 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
     unknown_detection_model: Union[InferenceHandler, Dict[str, List[str]]]
     unknown_detection_prompt: str = "nd_with_classes.txt"
-
+    
     classifier_model: RandomLLM = random_llm
 
     # shuffle free llm apis to equal use
@@ -97,7 +99,6 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
         return self
 
-    
     def fit(
         self,
         x_train: np.ndarray,
