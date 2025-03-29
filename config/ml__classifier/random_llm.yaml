@@ -1,5 +1,8 @@
 class: src.RandomLLM
 params:
+  name: "Random"
+  unknown_detection_prompt: "random.txt"
+  unknown_detection_model_name: random
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:

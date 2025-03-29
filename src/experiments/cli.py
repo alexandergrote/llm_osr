@@ -2,7 +2,6 @@ import typer
 import concurrent.futures
 import subprocess
 import re
-import os
 import pandas as pd
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -11,6 +10,7 @@ from typing import Optional, List
 from src.util.logger import console
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.analysis.fewshot import BenchmarkAnalyser, LLMAnalyser
+from src.experiments.analysis.ood import OODAnalyser
 from src.io.data_import.mlflow_engine import QueryEngine
 from src.experiments.util.factory import ExperimentFactory
 from src.experiments.util.types import Experiment
@@ -19,8 +19,6 @@ from src.util.caching import environ_pickle_cache
 mlflow_engine = QueryEngine()
 
 #os.environ["src.experiments.cli.py.ExperimentRunner.get_experiment_data_from_mlflow"] = "cached"
-
-# os.environ["src.experiments.cli.py.ExperimentRunner.get_experiment_data_from_mlflow"] = "cached"
 
 class ExperimentRunner(BaseModel):
 
@@ -54,7 +52,6 @@ class ExperimentRunner(BaseModel):
 
             else:
                 print(f"Error: {e.stderr}")
-
 
     @staticmethod
     def run_processes_in_parallel(commands, workers):
@@ -128,7 +125,8 @@ class ExperimentRunner(BaseModel):
 
         combinations = [
             (ExperimentFactory.create_benchmark_experiments(), BenchmarkAnalyser()),
-            (ExperimentFactory.create_llm_fewshot_experiments(), LLMAnalyser())
+            (ExperimentFactory.create_llm_fewshot_experiments(), LLMAnalyser()),
+            (ExperimentFactory.create_llm_ood_experiments(), OODAnalyser())
         ]
 
         for experiments, analyser in combinations:

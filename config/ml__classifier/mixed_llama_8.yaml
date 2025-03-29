@@ -4,6 +4,7 @@ params:
   skip_unknown_detection: false
   shuffle_free_llms: false
   unknown_detection_prompt: 'nd_with_classes.txt'
+  unknown_detection_model_name: llama-3.1-8b
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:
