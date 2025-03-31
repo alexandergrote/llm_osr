@@ -1,4 +1,4 @@
-Given these examples and their classes, is this data point "{text}" outlier that differs in its intent?
+Given these examples and their classes, is this data point "{text}" an outlier that differs in its intent?
 
 {examples} 
 

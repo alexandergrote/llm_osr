@@ -1,6 +1,4 @@
-You are a classifier that assigns an incoming text the most probable class.
-
-Your task is to classify "{text}" with the help of the following examples and their classes:
+Given these examples and their classes, which class does "{text}" belong to?
 
 {examples}
 

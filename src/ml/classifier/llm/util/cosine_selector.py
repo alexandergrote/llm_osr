@@ -2,10 +2,11 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from pydantic import BaseModel
-from typing import Literal, List, Dict, Optional
+from typing import Literal, List, Optional
 
 from src.ml.classifier.llm.util.rate_limit import RateLimitManager
 from src.util.constants import DatasetColumn as dfc
+from src.ml.classifier.llm.util.prompt import PromptExample
 from src.util.logger import console
 
 rlm = RateLimitManager.create_from_config_file(filename="hf.yaml")
@@ -81,7 +82,7 @@ class CosineSelector(BaseModel):
         
         return data_copy_sub_sub.drop(columns=[self._key])
 
-    def _select_random(self, x_train: np.ndarray, y_train: np.ndarray, **kwargs) -> List[Dict[str, str]]:
+    def _select_random(self, x_train: np.ndarray, y_train: np.ndarray, **kwargs) -> List[PromptExample]:
 
         # draw a random example from each class
         examples = []
@@ -98,11 +99,11 @@ class CosineSelector(BaseModel):
 
             x_chosen = rng.choice(x_sub)
 
-            examples.append({self._query: x_chosen, self._answer: selected_class})
+            examples.append(PromptExample(text=x_chosen, label=selected_class))
 
         return examples
 
-    def _select_knn(self, text: str, x_train: np.ndarray, y_train: np.ndarray, **kwargs) -> List[Dict[str, str]]:
+    def _select_knn(self, text: str, x_train: np.ndarray, y_train: np.ndarray, **kwargs) -> List[PromptExample]:
 
         examples = []
 
@@ -133,14 +134,11 @@ class CosineSelector(BaseModel):
             )
 
         for _, row in dataframe.iterrows():
-            examples.append({
-                self._query: row[dfc.TEXT], 
-                self._answer: row[dfc.LABEL]
-            })
+            examples.append(PromptExample(text=row[dfc.TEXT], label=row[dfc.LABEL]))
 
         return examples
         
-    def get_examples(self, text: str, x_train: np.ndarray, y_train: np.ndarray, shuffle: bool = True, **kwargs) -> List[Dict[str, str]]:
+    def get_examples(self, text: str, x_train: np.ndarray, y_train: np.ndarray, shuffle: bool = True, **kwargs) -> List[PromptExample]:
 
         result = None
 
@@ -162,7 +160,6 @@ class CosineSelector(BaseModel):
             rng.shuffle(result)
 
         return result
-
         
 
 if __name__ == '__main__':

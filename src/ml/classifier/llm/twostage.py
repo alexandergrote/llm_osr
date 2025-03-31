@@ -10,23 +10,22 @@ from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
-from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
+from src.util.constants import UnknownClassLabel, DatasetColumn
 from src.ml.classifier.llm.util.outlier import OutlierValue
 from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import ErrorValues
 from src.ml.classifier.llm.base import LLMClassifierMixin
-from src.ml.classifier.llm.util.prompt import create_prompt
+from src.ml.classifier.llm.util.prompt import PromptCreator, PromptScenarioName, PROMPT_SCENARIOS
+
 
 
 class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
     unknown_detection_model: Union[InferenceHandler, Dict[str, List[str]]]
-    unknown_detection_prompt: str = "nd_with_classes.txt"
-
+    
     classifier_model: Union[InferenceHandler, Dict[str, List[str]]]
-    classifier_prompt: str = "multiclass.txt"
-
+    
     # skip unknown detection
     skip_unknown_detection: bool = False
 
@@ -83,19 +82,6 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         return data
     
-    @model_validator(mode='after')
-    def _init_model_prompts(self):
-
-        for prompt_attr_name in ["unknown_detection_prompt", "classifier_prompt"]:
-
-            prompt_filename = getattr(self, prompt_attr_name)
-
-            with open(Directory.PROMPT_DIR / prompt_filename, 'r') as f:
-                setattr(self, prompt_attr_name, f.read())
-
-        return self
-
-    
     def fit(
         self,
         x_train: np.ndarray,
@@ -140,12 +126,20 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             text_to_classify=text,
         )
 
-        prompt = create_prompt(
-            template=self.unknown_detection_prompt,
+        outlier_examples = self._get_outlier_examples(
+            outlier_value=OutlierValue.OUTLIER.value
+        )
+
+        prompt_creator = PROMPT_SCENARIOS[self.unknown_detection_scenario]
+
+        if not isinstance(prompt_creator, PromptCreator):
+            raise ValueError("Prompt creator must be an instance of PromptCreator")
+
+        prompt = prompt_creator.create(
             text_to_classify=text,
             parser=parser,
             examples=examples,
-            use_classes_in_examples=False
+            outlier_examples=outlier_examples,
         )
 
         if not isinstance(self.unknown_detection_model, AbstractLLM):
@@ -189,12 +183,16 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             text_to_classify=text,
         )
 
-        prompt = create_prompt(
-            template=self.classifier_prompt,
+        prompt_creator = PROMPT_SCENARIOS[PromptScenarioName.MULTICLASS]
+
+        if not isinstance(prompt_creator, PromptCreator):
+            raise ValueError("Prompt creator must be an instance of PromptCreator")
+
+        prompt = prompt_creator.create(
             text_to_classify=text,
             parser=parser,
             examples=examples,
-            use_classes_in_examples=True
+            outlier_examples=None,
         )
 
         if not isinstance(self.classifier_model, AbstractLLM):
@@ -229,8 +227,6 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             if unknown_prediction is None:
                 return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
 
-            print(unknown_prediction.answer)
-
             if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:            
                 return UnknownClassLabel.UNKNOWN_STR.value, 1
         
@@ -245,9 +241,13 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
 if __name__ == '__main__':
 
+    import mlflow
     import numpy as np
     from typing import cast
     from src.util.load_hydra import get_hydra_config
+
+    mlflow.set_experiment("Twostage")
+    mlflow.tracing.enable()
 
     key = "ml__classifier"
 
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     print(result)
 
     result2 = llm.predict(
-        x=np.array([["Hola"], ["Hallo du"], ["Ich möchte einen Tee bestellen"], ['Ich wohne in Bayern'], ["I like trains"]], dtype=np.object_),
+        x=np.array([["Hola"], ["Hallo ich heiße Alex"], ["Ich möchte einen Tee bestellen"], ['Ich wohne in Bayern'], ["I like trains"]], dtype=np.object_),
         include_outlierscore=True
     )
 

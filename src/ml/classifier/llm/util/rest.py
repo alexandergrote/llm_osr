@@ -1,4 +1,5 @@
 import json
+import mlflow
 import requests  # type: ignore
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Any, Union, Type
@@ -20,6 +21,7 @@ from src.util.error import LLMError, RateLimitException, UnknownAPIException
 from src.util.constants import Directory
 from src.util.caching import JsonCache
 
+mlflow.tracing.disable()
 
 def traced_request(*args, **kwargs):
     return requests.post(*args, **kwargs)
@@ -350,6 +352,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         return req_output
 
+    @mlflow.trace
     def _get_parsed_output(self, prompt: str, request_output: RequestOutput, pydantic_model: Type[BaseModel], **kwargs) -> LogProbScore:
 
         try:
@@ -467,7 +470,6 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 if __name__ == '__main__':
 
     from src.ml.classifier.llm.util.request import RequestOutput
-    from src.util.constants import LLMModels, RESTAPI_URLS
 
     prompt_template = """
     Please classify this sentence: {}

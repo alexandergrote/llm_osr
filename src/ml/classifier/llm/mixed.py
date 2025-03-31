@@ -10,19 +10,18 @@ from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.ml.classifier.llm.base import AbstractClassifierLLM
-from src.util.constants import UnknownClassLabel, Directory, DatasetColumn
+from src.util.constants import UnknownClassLabel, DatasetColumn
 from src.ml.classifier.llm.util.outlier import OutlierValue
 from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
 from src.ml.classifier.llm.naive import RandomLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import ErrorValues
 from src.ml.classifier.llm.base import LLMClassifierMixin
-from src.ml.classifier.llm.util.prompt import create_prompt
-
+from src.ml.classifier.llm.util.prompt import PromptCreator, PromptScenarioName, PROMPT_SCENARIOS
 
 random_llm = RandomLLM(
     selector=dict(),
-    unknown_detection_prompt="random.txt",
+    unknown_detection_scenario=PromptScenarioName.EXPLICIT_WITH_LABELS,
     unknown_detection_model_name="random",
     fixed_random_seed=False
 )
@@ -30,13 +29,12 @@ random_llm = RandomLLM(
 class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
     unknown_detection_model: Union[InferenceHandler, Dict[str, List[str]]]
-    unknown_detection_prompt: str = "nd_with_classes.txt"
     
     classifier_model: RandomLLM = random_llm
 
     # shuffle free llm apis to equal use
     shuffle_free_llms: bool = False
-    use_classes_in_examples: bool = False
+    use_classes_in_examples: bool = True
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -86,18 +84,6 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
             data['selector'] = DynamicImport.init_class_from_dict(data_selector)
 
         return data
-    
-    @model_validator(mode='after')
-    def _init_model_prompts(self):
-
-        for prompt_attr_name in ["unknown_detection_prompt"]:
-
-            prompt_filename = getattr(self, prompt_attr_name)
-
-            with open(Directory.PROMPT_DIR / prompt_filename, 'r') as f:
-                setattr(self, prompt_attr_name, f.read())
-
-        return self
 
     def fit(
         self,
@@ -150,15 +136,22 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
             text_to_classify=text,
         )
 
-        prompt = create_prompt(
-            template=self.unknown_detection_prompt,
+        outlier_examples = self._get_outlier_examples(
+            outlier_value=OutlierValue.OUTLIER.value
+        )
+
+        prompt_creator = PROMPT_SCENARIOS[self.unknown_detection_scenario]
+
+        if not isinstance(prompt_creator, PromptCreator):
+            raise ValueError("Prompt creator must be an instance of PromptCreator")
+
+        prompt = prompt_creator.create(
             text_to_classify=text,
             parser=parser,
             examples=examples,
-            use_classes_in_examples=self.use_classes_in_examples
+            outlier_examples=outlier_examples,
         )
 
-        
         if not isinstance(self.unknown_detection_model, AbstractLLM):
             raise ValueError("Unknown detection model must be of type AbstractLLM")
     
@@ -206,12 +199,15 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
         return self.classifier_model.single_predict(text=text, use_cache=use_cache, **kwargs)
         
 
-
 if __name__ == '__main__':
 
+    import mlflow
     import numpy as np
     from typing import cast
     from src.util.load_hydra import get_hydra_config
+
+    mlflow.set_experiment("PromptFirstRandomSecond")
+    mlflow.tracing.enable()
 
     key = "ml__classifier"
 
@@ -234,8 +230,8 @@ if __name__ == '__main__':
     })
 
     data_valid = pd.DataFrame({
-        DatasetColumn.FEATURES: ["Kartoffeln sind was feines", "Ich war noch nie in Berlin"],
-        DatasetColumn.LABEL: ['Food', 'City']
+        DatasetColumn.FEATURES: ["Kartoffeln sind was feines", "Ich war noch nie in Berlin", "Ich spiele gerne Fußball"],
+        DatasetColumn.LABEL: ['Food', 'City', 'Outlier']
     })
 
     llm.fit(
@@ -248,14 +244,8 @@ if __name__ == '__main__':
     x_test = np.array([['Pfirsiche sind lecker'], ["Ich morgen in die Schule"], ["Ich möchte einen Tee bestellen"], ['Ich mag Züge'], ["I like trains"]], dtype=np.object_)
     y_test = np.array(["food", "unknown", "unknown", "unknown", "unknown"])
 
-    prompts = ['nd_with_classes.txt','nd_no_classes.txt']
-    use_classes = [True, False]
+    for use_class in [True, False]:
 
-    for prompt, use_class in zip(prompts, use_classes):
-
-        with open(Directory.PROMPT_DIR / prompt, 'r') as f:
-            llm.unknown_detection_prompt = f.read()
-            
         llm.use_cache = False
         llm.use_classes_in_examples = use_class
 

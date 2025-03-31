@@ -6,7 +6,7 @@ from copy import copy
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from numpy import ndarray
-from typing import Optional, Union, Tuple, List, Dict
+from typing import Optional, Union, Tuple, List
 
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.rest import AbstractLLM
@@ -14,6 +14,7 @@ from src.ml.classifier.llm.util.logprob import LogProbScore
 from src.util.constants import ErrorValues
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
+from src.ml.classifier.llm.util.prompt import PromptExample, PromptScenarioName
 
 
 class AbstractClassifierLLM(BaseModel, BaseClassifier):
@@ -25,7 +26,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
     y_valid: Optional[np.ndarray] = None
     classes: Optional[np.ndarray] = None
 
-    unknown_detection_prompt: str
+    unknown_detection_scenario: PromptScenarioName
     unknown_detection_model_name: str 
     
     # use cache
@@ -45,7 +46,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         raise NotImplementedError("Method must be implemented in subclass")
 
 
-    def _get_examples(self, text_to_classify: str) -> List[Dict[str, str]]:
+    def _get_examples(self, text_to_classify: str) -> List[PromptExample]:
 
         if self.y_train is None:
             raise ValueError("Model is not fitted")
@@ -63,6 +64,34 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         )
 
         return examples
+
+    
+    def _get_outlier_examples(self, outlier_value: str) -> List[PromptExample]:
+
+        if self.classes is None:
+            raise ValueError("Model not fitted")
+
+        if self.y_valid is None:
+            raise ValueError("Model not fitted")
+
+        if self.x_valid is None:
+            raise ValueError("Model not fitted")
+        
+        # get mask of all unknown classes in y_valid
+        mask = ~np.isin(self.y_valid, self.classes)
+
+        x_valid_unknown = self.x_valid[mask]
+        x_valid_unknown = x_valid_unknown.reshape(-1)
+
+        examples = [
+            PromptExample(text=el, label=outlier_value) for el in x_valid_unknown
+        ]
+
+        if len(examples) == 0:
+            raise ValueError("No unknown classes found in validation set")
+
+        return examples
+
 
     def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
 
