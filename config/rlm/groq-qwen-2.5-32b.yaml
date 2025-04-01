@@ -1,6 +1,6 @@
 class: "src.ml.classifier.llm.util.rate_limit.RateLimitManager"
 params:
-  name: groq-llama-70b
+  name: qwen-2.5-32b
   rate_limits:
     num_req_minute:
       limit: 1000

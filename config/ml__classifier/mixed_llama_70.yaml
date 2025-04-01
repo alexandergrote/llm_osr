@@ -1,0 +1,16 @@
+class: src.PromptFirstRandomSecond
+params:
+  use_cache: true
+  skip_unknown_detection: false
+  shuffle_free_llms: false
+  unknown_detection_scenario: 'explicit_fewshot'
+  unknown_detection_model_name: llama-3.3-70b
+  selector:
+    class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
+    params:
+      mode: "knn"
+      n_classes: 3
+      n_datapoints: 5 
+  unknown_detection_model:
+    paid_llms: 
+      - groq-llama-70b.yaml
