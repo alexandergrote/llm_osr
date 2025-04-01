@@ -76,7 +76,7 @@ class TestOneStage(unittest.TestCase):
             overrides=[
                 f"{key}=one_stage_llama_8",
                 f"{key}.params.selector.params.mode=random_class",
-                f"{key}.params.osr_model.free_llms=[hf-llama-8b.yaml]"
+                f"{key}.params.osr_model.paid_llms=[hf-llama-8b.yaml]"
             ]
         )
 

@@ -44,8 +44,8 @@ class IDColumns(ColumnMixin, BaseModel):
 class PromptColumns(ColumnMixin, BaseModel):
 
     unknown_prompt: MLFlowColumn = MLFlowColumn(
-        column_name="params.ml__classifier.params.unknown_detection_prompt",
-        yaml_keys=["ml__classifier", "params", "unknown_detection_prompt"],
+        column_name="params.ml__classifier.params.unknown_detection_scenario",
+        yaml_keys=["ml__classifier", "params", "unknown_detection_scenario"],
         verbose_str="unknown_prompt"
     )
 

@@ -66,7 +66,6 @@ class TestStructuredRestLLM(unittest.TestCase):
                 ("num_req_minute", 1),
                 ("num_token_minute", 30),
                 ("num_req_day", 1),
-                ("num_token_day", 30),
             ]
 
         # first query

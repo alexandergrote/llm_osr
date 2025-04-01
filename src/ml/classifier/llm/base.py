@@ -28,6 +28,8 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
     unknown_detection_scenario: PromptScenarioName
     unknown_detection_model_name: str 
+
+    n_unknown_examples: int = 5
     
     # use cache
     use_cache: bool = False
@@ -89,6 +91,9 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         if len(examples) == 0:
             raise ValueError("No unknown classes found in validation set")
+
+        if len(examples) > self.n_unknown_examples:
+            examples = examples[:self.n_unknown_examples]
 
         return examples
 

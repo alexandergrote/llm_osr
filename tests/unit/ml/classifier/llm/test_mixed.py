@@ -66,7 +66,7 @@ output_binary_wrong = [
 ]
 
 
-class TestTwoStage(unittest.TestCase):
+class TestMixed(unittest.TestCase):
 
     def setUp(self):
 
@@ -90,7 +90,7 @@ class TestTwoStage(unittest.TestCase):
             overrides=[
                 f"{key}=mixed_llama_8",
                 f"{key}.params.selector.params.mode=random_class",
-                f"{key}.params.unknown_detection_model.free_llms=[hf-llama-8b.yaml]",
+                f"{key}.params.unknown_detection_model.paid_llms=[hf-llama-8b.yaml]",
             ]
         )
 

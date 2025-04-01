@@ -438,6 +438,8 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         # reformat output of request
         request_output = self._post_request(request_job=request_job, **kwargs)
+
+        mlflow.tracing.disable()
         
         # parse output based on standardized request output
         logprobscore = self._get_parsed_output(

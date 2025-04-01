@@ -9,7 +9,7 @@ from src.experiments.util.types import Experiment
 
 BENCHMARK_MODELS = ["naive", "hyper_simpleshot", "hyper_fastfit"]
 LLM_MODELS = ["random_llm", "two_stage_llama_8", "one_stage_llama_8", "two_stage_llama_70", "one_stage_llama_70"]
-LLM_OOD_MODELS = ["mixed_llama_8"]
+LLM_OOD_MODELS = ["mixed_llama_8", "mixed_qwen_32", "mixed_llama_70", "mixed_gemma2_9", "one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
 DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
 RANDOM_SEEDS = [0, 1, 2, 3, 4]
@@ -176,7 +176,7 @@ class ExperimentFactory(BaseModel):
                             overrides.append('ml__classifier.params.shuffle_free_llms=true')
 
                         overrides += [
-                            f'ml__classifier.params.unknown_detection_scenario={scenario_name}'
+                            f'ml__classifier.params.unknown_detection_scenario={scenario_name.value}',
                             'ml__datasplit.params.subset_test=100',
                         ]
 

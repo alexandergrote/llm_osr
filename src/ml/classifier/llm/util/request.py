@@ -396,6 +396,8 @@ class RequestOutput(BaseModel):
         if kwargs["is_prefilled"]:
             text = "```" + text
 
+        text = text.replace("`", "").replace("json\n", "")
+
         return cls(
             text=text,
             logprobas=logprob_list,
