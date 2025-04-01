@@ -2,7 +2,7 @@ class: src.OneStageLLM
 params:
   use_cache: true
   shuffle_free_llms: false
-  unknown_detection_scenario: 'implicit_with_labels'
+  unknown_detection_scenario: 'implicit_fewshot'
   unknown_detection_model_name: llama-3.1-8b
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector

@@ -19,12 +19,29 @@ class PromptExample(BaseModel):
     label: str
 
 
+class PromptDataScenario(Enum):
+    ZEROSHOT = "zeroshot"
+    FEWSHOT = "fewshot"
+
+    @classmethod
+    def list(cls) -> List["PromptDataScenario"]:
+        return [member for member in cls]
+
+class PromptOODScenario(Enum):
+    IMPLICIT = "implicit"
+    EXPLICIT = "explicit"
+
+
 class PromptScenarioName(Enum):
-    EXPLICIT_WITH_LABELS = "explicit_with_labels"
-    EXPLICIT_WITHOUT_LABELS = "explicit_without_labels"
-    IMPLICIT_WITH_LABELS = "implicit_with_labels"
-    IMPLICIT_WITHOUT_LABELS = "implicit_without_labels"
+    EXPLICIT_WITH_LABELS = f"{PromptOODScenario.EXPLICIT.value}_{PromptDataScenario.FEWSHOT.value}"
+    EXPLICIT_WITHOUT_LABELS = f"{PromptOODScenario.EXPLICIT.value}_{PromptDataScenario.ZEROSHOT.value}"
+    IMPLICIT_WITH_LABELS = f"{PromptOODScenario.IMPLICIT.value}_{PromptDataScenario.FEWSHOT.value}"
+    IMPLICIT_WITHOUT_LABELS = f"{PromptOODScenario.IMPLICIT.value}_{PromptDataScenario.ZEROSHOT.value}"
     MULTICLASS = "multiclass"
+
+    @classmethod
+    def create_from_enums(cls, ood_scenario: PromptOODScenario, data_scenario: PromptDataScenario) -> "PromptScenarioName":
+        return cls(f"{ood_scenario.value}_{data_scenario.value}")
     
 
 class PromptTemplate(Enum):
