@@ -3,7 +3,7 @@ params:
   use_cache: true
   shuffle_free_llms: false
   unknown_detection_scenario: 'implicit_fewshot'
-  unknown_detection_model_name: llama-3.1-8b
+  unknown_detection_model_name: gemma-2-9b
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:
@@ -12,5 +12,5 @@ params:
       n_datapoints: 5
   osr_model:
     paid_llms:
-      - groq-llama-8b.yaml
+      - groq-gemma2-9b.yaml
   

@@ -1,12 +1,12 @@
 class: "src.ml.classifier.llm.util.rate_limit.RateLimitManager"
 params:
-  name: groq-llama-9b
+  name: groq-gemma2-9b
   rate_limits:
     num_req_minute:
       limit: 200
       increment_level: "frequency"
       agg_level: "%Y-%m-%d %H:%M"
-      action: "raise"
+      action: "wait"
       waiting_time: 60
     num_token_minute:
       limit: 30000

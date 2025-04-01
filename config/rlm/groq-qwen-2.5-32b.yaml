@@ -6,13 +6,13 @@ params:
       limit: 1000
       increment_level: "frequency"
       agg_level: "%Y-%m-%d %H:%M"
-      action: "raise"
+      action: "wait"
       waiting_time: 60
     num_token_minute:
       limit: 250000
       increment_level: "token"
       agg_level: "%Y-%m-%d %H:%M"
-      action: "raise"
+      action: "wait"
       waiting_time: 60
     num_req_day:
       limit: 500000
