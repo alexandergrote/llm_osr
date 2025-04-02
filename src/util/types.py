@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
 from typing import Tuple
+from enum import Enum
 
 from typing_extensions import Annotated
 from pydantic import Field, BaseModel, model_validator, StrictStr
 from pydantic.config import ConfigDict
 from typing import Optional, Set
+from pathlib import Path
 
 from src.util.constants import DatasetColumn
 from src.util.hashing import Hash
@@ -92,6 +94,14 @@ class MLDataFrame(BaseModel):
         return cls(text_column=DatasetColumn.TEXT, feature_column=DatasetColumn.FEATURES, target_column=DatasetColumn.LABEL, data=data)
 
 
+# Define an Enum for filenames
+class MLPredictionFiles(Enum):
+    Y_PRED = 'y_pred.csv'
+    Y_TEST = 'y_test.csv'
+    CLASSES_IN_TRAINING = 'classes_in_training.txt'
+    OUTLIER_SCORE = 'outlier_score.csv'
+
+
 class MLPrediction(BaseModel):
 
     y_pred: pd.Series
@@ -123,8 +133,8 @@ class MLPrediction(BaseModel):
         assert len(self.y_pred) == len(self.y_test), "Length of prediction and test set do not match"
 
         # check types
-        assert pd.api.types.is_object_dtype(self.y_pred.dtype), "Prediction must be of type int"
-        assert pd.api.types.is_object_dtype(self.y_test.dtype), "Test set must be of type int"
+        assert pd.api.types.is_object_dtype(self.y_pred.dtype), "Prediction must be of type str"
+        assert pd.api.types.is_object_dtype(self.y_test.dtype), "Test set must be of type str"
 
         # check for NaN values
         assert not self.y_pred.isnull().any(), "Prediction contains NaN values"
@@ -133,12 +143,57 @@ class MLPrediction(BaseModel):
         # check outlier scores if given
         if self.outlier_score is not None:
             assert len(self.outlier_score) == len(self.y_pred), "Length of prediction and outlier scores do not match"
-            assert pd.api.types.is_float_dtype(self.outlier_score.dtype), "Outlier scores must be of type int"
+            assert pd.api.types.is_float_dtype(self.outlier_score.dtype), "Outlier scores must be of type float"
             assert not self.outlier_score.isnull().any(), "Outlier scores contain NaN values"
 
         # check for classes
         assert len(self.classes_in_training) > 0, "Classes in training must be provided"
         
+    def save(self, directory: Path):
+
+        if not directory.exists():
+            directory.mkdir(parents=True)
+
+        y_pred_path = directory / MLPredictionFiles.Y_PRED.value
+        self.y_pred.to_csv(y_pred_path, index=False)
+
+        y_test_path = directory / MLPredictionFiles.Y_TEST.value
+        self.y_test.to_csv(y_test_path, index=False)
+
+        classes_in_training_path = directory / MLPredictionFiles.CLASSES_IN_TRAINING.value
+        with open(classes_in_training_path, 'w') as f:
+            for cls in self.classes_in_training:
+                f.write(f'{cls}\n')
+
+        if self.outlier_score is not None:
+            outlier_score_path = directory / MLPredictionFiles.OUTLIER_SCORE.value
+            self.outlier_score.to_csv(outlier_score_path, index=False)
+
+
+    @classmethod
+    def load(cls, directory: Path) -> "MLPrediction":
+        
+        y_pred_path = directory / MLPredictionFiles.Y_PRED.value
+        y_test_path = directory / MLPredictionFiles.Y_TEST.value
+        classes_in_training_path = directory / MLPredictionFiles.CLASSES_IN_TRAINING.value
+        outlier_score_path = directory / MLPredictionFiles.OUTLIER_SCORE.value
+
+        # Load y_pred and y_test
+        y_pred = pd.read_csv(y_pred_path, header=0).squeeze().astype(str)
+        y_test = pd.read_csv(y_test_path, header=0).squeeze().astype(str)
+
+        # Load classes_in_training
+        with open(classes_in_training_path, 'r') as f:
+            classes_in_training = {line.strip() for line in f}
+
+        # Load outlier_score if it exists
+        outlier_score = None
+        if outlier_score_path.exists():
+            outlier_score = pd.read_csv(outlier_score_path, header=0).squeeze()
+            outlier_score = pd.to_numeric(outlier_score)
+
+        return cls(y_pred=y_pred, y_test=y_test, classes_in_training=classes_in_training, outlier_score=outlier_score)
+
 
 # dataframe types
 DualDataFrameTuple = Tuple[MLDataFrame, MLDataFrame]
