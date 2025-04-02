@@ -7,6 +7,8 @@ from typing import List
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel, ConfigDict
 
+from src.util.constants import Directory
+
 
 class SpiderDatasetSchema(pa.DataFrameModel):
     dataset: Series[str] = pa.Field(coerce=True)
@@ -45,7 +47,7 @@ class SpiderPlot(BaseModel):
         angles = np.linspace(0, 2 * np.pi, len(models), endpoint=False).tolist()
         angles += angles[:1]
         
-        fig, axes = plt.subplots(len(metrics), len(datasets), figsize=(12, 12), subplot_kw={"projection": "polar"})
+        fig, axes = plt.subplots(len(metrics), len(datasets), figsize=(18, 12), subplot_kw={"projection": "polar"})
         if len(datasets) == 1:
             axes = np.expand_dims(axes, axis=1)
         if len(metrics) == 1:
@@ -67,8 +69,11 @@ class SpiderPlot(BaseModel):
         # Add a single legend at the top
         handles, labels = ax.get_legend_handles_labels()
         fig.legend(handles, labels, loc="upper center", ncol=len(prompts))
+        plt.subplots_adjust(hspace=1)
+        
         plt.tight_layout(rect=[0, 0, 1, 0.95])
-        plt.show()
+        plt.savefig(Directory.OUTPUT_DIR / f"spider_plot.pdf")
+        #plt.show()
 
 if __name__ == '__main__':
 
