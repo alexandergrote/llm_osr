@@ -64,7 +64,7 @@ class SpiderPlot(BaseModel):
                 
                 ax.set_xticks(angles[:-1])
                 ax.set_xticklabels(models)
-                ax.set_title(f"{metric.capitalize()} - Dataset {dataset}")
+                ax.set_title(f"{metric.capitalize()} - {dataset}")
         
         # Add a single legend at the top
         handles, labels = ax.get_legend_handles_labels()

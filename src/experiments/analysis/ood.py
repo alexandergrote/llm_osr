@@ -38,7 +38,10 @@ class OODAnalyser(BaseModel, BaseAnalyser):
 
         }
 
+
         data2plot = data_copy[all_columns].rename(columns=column_mapping)
+        data2plot[SpiderDatasetSchema.dataset] = data2plot[SpiderDatasetSchema.dataset].str.replace("src.", "")
+        data2plot[SpiderDatasetSchema.dataset] = data2plot[SpiderDatasetSchema.dataset].str.replace("Dataset", "")
 
         # visualize results
         spider_plot = SpiderPlot(
