@@ -1,12 +1,10 @@
 import pandas as pd
-import numpy as np
 from pydantic import BaseModel
-from pathlib import Path
 
-from src.util.types import MLDataFrame, MLPrediction
 from src.util.mlflow_columns import id_columns, unknown_auc_analysis_columns, prompt_columns
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.visualization.spider import SpiderPlot, SpiderDatasetSchema
+from src.experiments.visualization.strategy_boxplot import StrategyBoxPlot
 from src.experiments.util.artifacts import artifact_sanity_check
 
 
@@ -30,11 +28,6 @@ class OODAnalyser(BaseModel, BaseAnalyser):
         for col in all_columns:
             assert col in data_copy.columns, f"'{col}' must be present in the analysis DataFrame."
 
-        # analyse unknown predictions
-        data_copy_grouped = data_copy.groupby([dataset_col, perc_unknown_col])[all_metrics].agg(["mean", "std"]).reset_index()
-
-        print(data_copy_grouped)
-
         column_mapping = {
             dataset_col: SpiderDatasetSchema.dataset,
             unknown_prompt_col: SpiderDatasetSchema.prompt_version,
@@ -45,10 +38,16 @@ class OODAnalyser(BaseModel, BaseAnalyser):
 
         }
 
-
         data2plot = data_copy[all_columns].rename(columns=column_mapping)
         data2plot[SpiderDatasetSchema.dataset] = data2plot[SpiderDatasetSchema.dataset].str.replace("src.", "")
         data2plot[SpiderDatasetSchema.dataset] = data2plot[SpiderDatasetSchema.dataset].str.replace("Dataset", "")
+
+        # analyse unknown predictions
+        data2plot_grouped = data2plot.groupby([SpiderDatasetSchema.dataset, SpiderDatasetSchema.model, SpiderDatasetSchema.prompt_version])[[SpiderDatasetSchema.F1, SpiderDatasetSchema.recall, SpiderDatasetSchema.precision]].agg(["mean"]).reset_index()
+
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.precision', 2):
+            print(data2plot_grouped)
+
 
         # visualize results
         spider_plot = SpiderPlot(
@@ -56,3 +55,9 @@ class OODAnalyser(BaseModel, BaseAnalyser):
         )
 
         spider_plot.plot()
+
+        boxplot = StrategyBoxPlot(
+            data=data2plot,
+        )
+
+        boxplot.plot()

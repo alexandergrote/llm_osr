@@ -1,4 +1,3 @@
-import numpy as np
 import pandera as pa
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -6,6 +5,9 @@ from typing import List
 
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel, ConfigDict
+
+
+from src.util.constants import Directory
 
 
 class BoxPlotDatasetSchema(pa.DataFrameModel):
@@ -95,7 +97,7 @@ class BoxPlot(BaseModel):
         
         plt.suptitle("Performance Metrics Across Models and Prompt Versions", fontsize=16, y=1.02)
         plt.tight_layout(rect=[0, 0, 1, 0.97])  # Adjust layout to prevent title overlap
-        plt.savefig("boxplot.pdf")
+        plt.savefig(Directory.OUTPUT_DIR / "boxplot.pdf")
         plt.show()
 
 

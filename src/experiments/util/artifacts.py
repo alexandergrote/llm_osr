@@ -22,9 +22,9 @@ def get_artifacts(data_copy: pd.DataFrame) -> Tuple[List[MLPrediction], List[MLD
     for path in artifact_paths:
 
         prediction = MLPrediction.load(Path(path)) 
-        data_train = MLDataFrame.load(Path(path) / 'data_train.csv')
-        data_valid = MLDataFrame.load(Path(path) / 'data_valid.csv')
-        data_test = MLDataFrame.load(Path(path) / 'data_test.csv')
+        data_train = MLDataFrame.load(str(Path(path) / 'data_train.csv'))
+        data_valid = MLDataFrame.load(str(Path(path) / 'data_valid.csv'))
+        data_test = MLDataFrame.load(str(Path(path) / 'data_test.csv'))
 
         prediction_list.append(prediction)
         data_train_list.append(data_train)

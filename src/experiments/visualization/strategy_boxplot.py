@@ -3,11 +3,12 @@ import pandera as pa
 import seaborn as sns
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-from typing import List, Dict, NamedTuple
+from typing import List, Dict, NamedTuple, Any
 
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel, ConfigDict
 
+from src.util.constants import Directory
 
 class StrategyBoxPlotDatasetSchema(pa.DataFrameModel):
     dataset: Series[str] = pa.Field(coerce=True)
@@ -61,7 +62,7 @@ class StrategyBoxPlot(BaseModel):
         """
         metrics = self.get_metrics()
         prompt_versions = sorted(self.get_prompts())
-        results = {}
+        results: Dict[str, Any] = {}
         
         for metric in metrics:
             results[metric] = {}
@@ -240,7 +241,7 @@ class StrategyBoxPlot(BaseModel):
                 
                 bar_idx = 0
                 for p_i, prompt1 in enumerate(prompt_versions):
-                    for p_j, prompt2 in enumerate(prompt_versions[p_i+1:], p_i+1):
+                    for _, prompt2 in enumerate(prompt_versions[p_i+1:], p_i+1):
                         comparison_key = f"{prompt1}_vs_{prompt2}"
                         if comparison_key in stat_results[metric]:
                             result = stat_results[metric][comparison_key]
@@ -269,40 +270,40 @@ class StrategyBoxPlot(BaseModel):
                             effect_color = "darkgray"
                         
                         # Only draw significance bars for significant results
-                        if p_value < 0.05:
-                            # Get x positions
-                            x1, x2 = x_coords[prompt1], x_coords[prompt2]
-                            y = bar_positions[bar_idx]
-                            
-                            # Draw the bar
-                            ax.plot([x1, x2], [y, y], 'k-', linewidth=1.5)
-                            ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1.5)
-                            ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1.5)
-                            
-                            # Add significance symbol
-                            ax.text(
-                                (x1+x2)/2, 
-                                y + text_height/2, 
-                                sig_symbol,
-                                ha='center', 
-                                va='bottom', 
-                                color='black', 
-                                fontsize=12
-                            )
-                            
-                            # Add p-value and effect size text
-                            ax.text(
-                                (x1+x2)/2, 
-                                y + text_height*2,
-                                f"p={p_value:.3f}, d={effect_size:.2f}",
-                                ha='center', 
-                                va='bottom', 
-                                color=effect_color,
-                                fontsize=9, 
-                                style='italic'
-                            )
-                            
-                            bar_idx += 1
+                        # if p_value < 0.05:
+                        # Get x positions
+                        x1, x2 = x_coords[prompt1], x_coords[prompt2]
+                        y = bar_positions[bar_idx]
+                        
+                        # Draw the bar
+                        ax.plot([x1, x2], [y, y], 'k-', linewidth=1.5)
+                        ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1.5)
+                        ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1.5)
+                        
+                        # Add significance symbol
+                        ax.text(
+                            (x1+x2)/2, 
+                            y + text_height/2, 
+                            sig_symbol,
+                            ha='center', 
+                            va='bottom', 
+                            color='black', 
+                            fontsize=12
+                        )
+                        
+                        # Add p-value and effect size text
+                        ax.text(
+                            (x1+x2)/2, 
+                            y + text_height*2,
+                            f"p={p_value:.3f}, d={effect_size:.2f}",
+                            ha='center', 
+                            va='bottom', 
+                            color=effect_color,
+                            fontsize=9, 
+                            style='italic'
+                        )
+                        
+                        bar_idx += 1
             
             # Adjust y-axis limits to accommodate significance bars
             if bar_idx > 0:
@@ -320,7 +321,7 @@ class StrategyBoxPlot(BaseModel):
         
         # Adjust layout
         plt.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.savefig(filename)
+        plt.savefig(Directory.OUTPUT_DIR / filename)
         plt.show()
         
     def plot_all_datasets(self):
@@ -334,9 +335,9 @@ if __name__ == '__main__':
     from itertools import product
     import numpy as np
 
-    datasets = ["A", "B"]
+    datasets = ["A", "B", "C"]
     models = ["GPT-3.5", "GPT-4", "Llama 2", "Claude 2", "Mistral"]
-    prompt_versions = ["osr", "ad", "nd"]
+    prompt_versions = ["osr", "ad", "nd", "od"]
     metrics = ["precision", "recall", "F1"]
 
     # Set random seed for reproducibility
