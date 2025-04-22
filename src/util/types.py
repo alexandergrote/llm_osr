@@ -62,6 +62,17 @@ class MLDataFrame(BaseModel):
 
         return Hash.hash(' '.join(hash_list))
 
+    def raw_text(self) -> np.ndarray:
+
+        array = self.data[self.text_column].values.reshape(-1)
+
+        assert isinstance(array, np.ndarray), "Text column must be of type ndarray"
+        assert isinstance(array[0], str), "Text column must contain strings"
+        assert len(array) == len(self.data), "Text column must contain the same number of elements as the data"
+        assert not self.data[self.text_column].isnull().any(), "Text column contain NaN values"
+
+        return array
+
     def features(self) -> np.ndarray:
 
         if self.feature_column is None:
@@ -84,6 +95,20 @@ class MLDataFrame(BaseModel):
         assert len(array.shape) == 1, "Target column must be a 1D array"
 
         return array
+
+    def save(self, filename: str):
+        """Save the dataframe to a CSV file."""
+        self.data.to_csv(filename, index=False)
+
+    @classmethod
+    def load(cls, filename: str) -> "MLDataFrame":
+        """Load the dataframe from a CSV file."""
+        data = pd.read_csv(filename)
+
+        if DatasetColumn.FEATURES in data.columns:
+            return cls.from_pandas_dataframe(data)
+
+        return cls.from_raw_pandas_dataframe(data)
     
     @classmethod
     def from_raw_pandas_dataframe(cls, data: pd.DataFrame) -> "MLDataFrame":

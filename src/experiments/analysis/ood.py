@@ -1,9 +1,13 @@
 import pandas as pd
+import numpy as np
 from pydantic import BaseModel
+from pathlib import Path
 
+from src.util.types import MLDataFrame, MLPrediction
 from src.util.mlflow_columns import id_columns, unknown_auc_analysis_columns, prompt_columns
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.visualization.spider import SpiderPlot, SpiderDatasetSchema
+from src.experiments.util.artifacts import artifact_sanity_check
 
 
 class OODAnalyser(BaseModel, BaseAnalyser):
@@ -12,6 +16,9 @@ class OODAnalyser(BaseModel, BaseAnalyser):
 
         # work on copy
         data_copy = data.copy(deep=True)
+
+        # sanity check
+        artifact_sanity_check(data_copy=data_copy, dataset_col=id_columns.dataset.column_name)
 
         dataset_col, perc_unknown_col = id_columns.dataset.column_name, id_columns.perc_unknown_classes.column_name
         unknown_prompt_col, unknown_model_col = prompt_columns.unknown_prompt.column_name, prompt_columns.unknown_prompt_model_name.column_name

@@ -235,7 +235,7 @@ class Evaluator(BaseModel, BaseEvaluator):
                 unknown_scores = unknown_scores[mask_parsing]
 
             ratio_parsing_error = 1 - np.sum(mask_parsing) / mask_parsing.shape[0]
-
+            
         with warnings.catch_warnings():
             
             warnings.simplefilter(action='ignore', category=UndefinedMetricWarning)

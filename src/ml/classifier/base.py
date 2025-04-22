@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+from pathlib import Path
 from typing import Union, Tuple
 from abc import abstractmethod
 from pydantic.v1 import validate_arguments
@@ -50,12 +51,20 @@ class BaseClassifier(BaseExecutionBlock):
 
         y_test = data_test.target()
 
-        # store results
-        kwargs["prediction"] = MLPrediction(
+        prediction = MLPrediction(
             y_pred=pd.Series(y_pred),
             y_test=pd.Series(y_test),
             classes_in_training=list(set(data_train.target())),
             outlier_score=pd.Series(outlier_score)
         )
+
+        kwargs["prediction"] = prediction
+
+        # store results
+        cwd = Path.cwd()
+        prediction.save(directory=cwd)
+        data_train.save(filename="data_train.csv")
+        data_valid.save(filename="data_valid.csv")
+        data_test.save(filename="data_test.csv")
         
         return kwargs

@@ -41,6 +41,16 @@ class IDColumns(ColumnMixin, BaseModel):
     )
 
 
+class ArtifactColumns(ColumnMixin, BaseModel):
+
+    artifact_path: MLFlowColumn = MLFlowColumn(
+        column_name='meta.artifact_uri',
+        yaml_keys=['meta', "artifact_uri"],
+        verbose_str='artifact_path'
+    )
+
+
+
 class PromptColumns(ColumnMixin, BaseModel):
 
     unknown_prompt: MLFlowColumn = MLFlowColumn(
@@ -95,6 +105,7 @@ id_columns = IDColumns()
 f1_analysis_columns = F1AnalysisColumns()
 unknown_auc_analysis_columns = UnknownAUCAnalysisColumns()
 prompt_columns = PromptColumns()
+artifact_columns = ArtifactColumns()
 
 
 __all__ = [
@@ -102,5 +113,6 @@ __all__ = [
     "f1_analysis_columns",
     "unknown_auc_analysis_columns",
     "MLFlowColumn",
-    "prompt_columns"
+    "prompt_columns",
+    "artifact_columns"
 ]
