@@ -48,7 +48,7 @@ class StrategyBoxPlot(BaseModel):
         fig, axes = plt.subplots(
             len(metrics), 
             1, 
-            figsize=(12, 4 * len(metrics)),
+            figsize=(10, 4 * len(metrics)),
             sharex=True  # Share x-axis between subplots
         )
         
@@ -56,45 +56,28 @@ class StrategyBoxPlot(BaseModel):
         if len(metrics) == 1:
             axes = [axes]
         
-        # Create a new column that combines model and prompt_version
-        self.data['strategy_model'] = self.data['prompt_version'] + ' - ' + self.data['model']
-        
-        # Define a color palette that groups by prompt strategy
+        # Define a color palette for prompt strategies
         prompt_versions = self.get_prompts()
-        base_palette = sns.color_palette("viridis", len(self.get_models()))
-        palette = {}
-        
-        for i, prompt in enumerate(prompt_versions):
-            models = self.get_models()
-            for j, model in enumerate(models):
-                # Adjust color brightness based on prompt version
-                color = base_palette[j]
-                # Make colors slightly different for each prompt version
-                adjusted_color = [
-                    max(0, min(1, c * (0.8 + 0.2 * i))) 
-                    for c in color
-                ]
-                palette[f"{prompt} - {model}"] = adjusted_color
+        palette = sns.color_palette("viridis", len(prompt_versions))
         
         # Iterate through metrics to create the plots
         for i, metric in enumerate(metrics):
             ax = axes[i]
             
-            # Create boxplot for this metric
+            # Create boxplot for this metric, grouped by prompt_version
             sns.boxplot(
-                x='strategy_model',
+                x='prompt_version',
                 y=metric,
                 data=self.data,
                 ax=ax,
                 palette=palette,
                 width=0.7,
-                order=sorted(self.data['strategy_model'].unique(), 
-                             key=lambda x: (x.split(' - ')[0], x.split(' - ')[1]))
+                order=sorted(prompt_versions)
             )
             
             # Add individual data points
             sns.stripplot(
-                x='strategy_model',
+                x='prompt_version',
                 y=metric,
                 data=self.data,
                 ax=ax,
@@ -102,20 +85,16 @@ class StrategyBoxPlot(BaseModel):
                 alpha=0.5,
                 size=4,
                 jitter=True,
-                order=sorted(self.data['strategy_model'].unique(), 
-                             key=lambda x: (x.split(' - ')[0], x.split(' - ')[1]))
+                order=sorted(prompt_versions)
             )
             
             # Set titles and labels
             ax.set_ylabel(f"{metric.capitalize()}", fontsize=12)
             
             if i == len(metrics) - 1:  # Only set x-labels for the bottom plot
-                ax.set_xlabel("Prompt Strategy - Model", fontsize=12)
+                ax.set_xlabel("Prompt Strategy", fontsize=12)
             else:
                 ax.set_xlabel("")
-            
-            # Rotate x-axis labels
-            plt.setp(ax.get_xticklabels(), rotation=45, ha='right', fontsize=10)
             
             # Add reference lines
             ax.axhline(y=0.7, color='r', linestyle='--', alpha=0.3)
@@ -132,31 +111,6 @@ class StrategyBoxPlot(BaseModel):
                 ],
                 loc='upper right'
             )
-            
-            # Add vertical separators between prompt strategies
-            prompt_groups = sorted(prompt_versions)
-            models_per_group = len(self.get_models())
-            
-            for j in range(1, len(prompt_groups)):
-                # Add a vertical line after each prompt strategy group
-                ax.axvline(x=(j * models_per_group) - 0.5, color='gray', linestyle='-', alpha=0.3)
-                
-            # Add annotations for prompt strategy groups
-            for j, prompt in enumerate(prompt_groups):
-                # Position for the annotation (middle of each group)
-                x_pos = j * models_per_group + (models_per_group / 2) - 0.5
-                
-                # Add text annotation above the plot
-                ax.annotate(
-                    f"Strategy: {prompt}",
-                    xy=(x_pos, 0.84),
-                    xycoords=('data', 'data'),
-                    ha='center',
-                    va='bottom',
-                    fontsize=12,
-                    fontweight='bold',
-                    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.8)
-                )
         
         # Add overall title
         plt.suptitle("Performance Metrics by Prompting Strategy", fontsize=16, y=0.98)
