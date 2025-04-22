@@ -41,8 +41,8 @@ class BoxPlot(BaseModel):
         # Set the seaborn style
         sns.set(style="whitegrid")
         
-        # Create subplots
-        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        # Create subplots stacked vertically
+        fig, axes = plt.subplots(3, 1, figsize=(10, 15))
         
         # Add a combined model-prompt column for better visualization
         self.data['model_prompt'] = self.data['model'] + ' (' + self.data['prompt_version'] + ')'
@@ -91,7 +91,7 @@ class BoxPlot(BaseModel):
             # Set y-axis limits for consistency across plots
             ax.set_ylim(0.65, 0.85)
         
-        plt.suptitle("Performance Metrics Across Models and Prompt Versions", fontsize=16, y=0.98)
+        plt.suptitle("Performance Metrics Across Models and Prompt Versions", fontsize=16, y=1.02)
         plt.tight_layout()
         plt.savefig("boxplot.pdf")
         plt.show()
