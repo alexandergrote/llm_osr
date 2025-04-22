@@ -242,11 +242,11 @@ class StrategyBoxPlot(BaseModel):
                 for p_i, prompt1 in enumerate(prompt_versions):
                     for p_j, prompt2 in enumerate(prompt_versions[p_i+1:], p_i+1):
                         comparison_key = f"{prompt1}_vs_{prompt2}"
-                    if comparison_key in stat_results[metric]:
-                        result = stat_results[metric][comparison_key]
-                        p_value = result.p_value
-                        effect_size = result.effect_size
-                        effect_interp = result.effect_size_interpretation
+                        if comparison_key in stat_results[metric]:
+                            result = stat_results[metric][comparison_key]
+                            p_value = result.p_value
+                            effect_size = result.effect_size
+                            effect_interp = result.effect_size_interpretation
                         
                         # Determine significance level
                         if p_value < 0.001:
