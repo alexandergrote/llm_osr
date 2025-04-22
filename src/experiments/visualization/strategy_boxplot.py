@@ -3,7 +3,7 @@ import pandera as pa
 import seaborn as sns
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, NamedTuple
 
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel, ConfigDict
@@ -39,12 +39,24 @@ class StrategyBoxPlot(BaseModel):
     def get_metrics(self) -> List[str]:
         return ["precision", "recall", "F1"]
         
-    def perform_statistical_tests(self) -> Dict[str, Dict[str, Dict[str, Tuple[float, float]]]]:
+class StatTestResult(NamedTuple):
+    """Container for statistical test results"""
+    statistic: float
+    p_value: float
+    effect_size: float
+    effect_size_interpretation: str
+
+    def __str__(self) -> str:
+        """String representation of test results"""
+        return f"p={self.p_value:.3f}, d={self.effect_size:.2f} ({self.effect_size_interpretation})"
+
+    def perform_statistical_tests(self) -> Dict[str, Dict[str, StatTestResult]]:
         """
         Perform Mann-Whitney U tests between all pairs of prompt strategies for each metric.
+        Also calculates Cliff's delta as effect size measure.
         
         Returns:
-            Dict with structure: {metric: {strategy1_vs_strategy2: (statistic, p_value)}}
+            Dict with structure: {metric: {strategy1_vs_strategy2: StatTestResult}}
         """
         metrics = self.get_metrics()
         prompt_versions = sorted(self.get_prompts())
@@ -57,17 +69,60 @@ class StrategyBoxPlot(BaseModel):
             for i, prompt1 in enumerate(prompt_versions):
                 for prompt2 in prompt_versions[i+1:]:
                     # Get data for each prompt strategy
-                    data1 = self.data[self.data['prompt_version'] == prompt1][metric]
-                    data2 = self.data[self.data['prompt_version'] == prompt2][metric]
+                    data1 = self.data[self.data['prompt_version'] == prompt1][metric].values
+                    data2 = self.data[self.data['prompt_version'] == prompt2][metric].values
                     
                     # Perform Mann-Whitney U test
                     statistic, p_value = stats.mannwhitneyu(data1, data2, alternative='two-sided')
                     
+                    # Calculate Cliff's delta (effect size)
+                    effect_size = self._cliffs_delta(data1, data2)
+                    
+                    # Interpret effect size
+                    if abs(effect_size) < 0.147:
+                        interpretation = "negligible"
+                    elif abs(effect_size) < 0.33:
+                        interpretation = "small"
+                    elif abs(effect_size) < 0.474:
+                        interpretation = "medium"
+                    else:
+                        interpretation = "large"
+                    
                     # Store results
                     comparison_key = f"{prompt1}_vs_{prompt2}"
-                    results[metric][comparison_key] = (statistic, p_value)
+                    results[metric][comparison_key] = StatTestResult(
+                        statistic=statistic,
+                        p_value=p_value,
+                        effect_size=effect_size,
+                        effect_size_interpretation=interpretation
+                    )
         
         return results
+    
+    def _cliffs_delta(self, x: np.ndarray, y: np.ndarray) -> float:
+        """
+        Calculate Cliff's delta, a non-parametric effect size measure.
+        
+        Args:
+            x: First sample
+            y: Second sample
+            
+        Returns:
+            Cliff's delta value between -1 and 1
+        """
+        # Count the number of times values in x are greater/less than values in y
+        greater = 0
+        less = 0
+        
+        for i in x:
+            for j in y:
+                if i > j:
+                    greater += 1
+                elif i < j:
+                    less += 1
+        
+        # Calculate Cliff's delta
+        return (greater - less) / (len(x) * len(y))
 
     def plot(self):
         metrics = self.get_metrics()
@@ -170,6 +225,11 @@ class StrategyBoxPlot(BaseModel):
                     if comparison_key in stat_results[metric]:
                         _, p_value = stat_results[metric][comparison_key]
                         
+                        result = stat_results[metric][comparison_key]
+                        p_value = result.p_value
+                        effect_size = result.effect_size
+                        effect_interp = result.effect_size_interpretation
+                        
                         # Determine significance level
                         if p_value < 0.001:
                             sig_symbol = '***'
@@ -179,6 +239,16 @@ class StrategyBoxPlot(BaseModel):
                             sig_symbol = '*'
                         else:
                             sig_symbol = 'ns'
+                        
+                        # Get effect size color based on interpretation
+                        if effect_interp == "large":
+                            effect_color = "darkred"
+                        elif effect_interp == "medium":
+                            effect_color = "darkorange"
+                        elif effect_interp == "small":
+                            effect_color = "darkgreen"
+                        else:  # negligible
+                            effect_color = "darkgray"
                         
                         # Only draw significance bars for significant results
                         if p_value < 0.05:
@@ -191,9 +261,15 @@ class StrategyBoxPlot(BaseModel):
                             ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1.5)
                             ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1.5)
                             
-                            # Add p-value text
+                            # Add significance symbol
                             ax.text((x1+x2)/2, y + text_height/2, sig_symbol, 
                                    ha='center', va='bottom', color='black', fontsize=12)
+                            
+                            # Add p-value and effect size text
+                            ax.text((x1+x2)/2, y + text_height*2, 
+                                   f"p={p_value:.3f}, d={effect_size:.2f}", 
+                                   ha='center', va='bottom', color=effect_color, 
+                                   fontsize=9, style='italic')
                             
                             bar_idx += 1
             
