@@ -9,6 +9,7 @@ from src.experiments.util.types import Experiment
 
 BENCHMARK_MODELS = ["naive", "hyper_simpleshot", "hyper_fastfit"]
 LLM_MODELS = ["random_llm", "two_stage_llama_8", "one_stage_llama_8", "two_stage_llama_70", "one_stage_llama_70"]
+LLM_ERROR_MODELS = ["mixed_gemma2_9", "one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
 LLM_OOD_MODELS = ["mixed_llama_8", "mixed_qwen_32", "mixed_llama_70", "mixed_gemma2_9", "one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
 DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
@@ -119,6 +120,51 @@ class ExperimentFactory(BaseModel):
                     experiments.append(Experiment(name=exp_name, overrides=overrides))
 
         return experiments
+
+    @classmethod
+    def create_llm_error_experiments(cls, models: Optional[List[str]] = None, datasets: Optional[List[str]] = None, unknown_classes: Optional[List[float]] = None, random_seeds: Optional[List[int]] = None) -> List[Experiment]:
+
+        experiments = []
+
+        if models is None:
+            models = ['naive', 'random_llm'] # LLM_MODELS + BENCHMARK_MODELS
+
+        if datasets is None:
+            datasets = ['hwu'] # DATASETS
+
+        if unknown_classes is None:
+            unknown_classes = [0.2] #UNKNOWN_CLASSES
+
+        if random_seeds is None:
+            random_seeds = [0]
+
+        for dataset in datasets:
+
+            for model in models:
+
+                for unknown_class in unknown_classes:
+
+                    exp_name = f'error__llm__data__{dataset}__model__{model}__unknown_classes__{unknown_class}'
+
+                    overrides = get_default_overrides(
+                        dataset=dataset,
+                        model=model,
+                        unknown_class=unknown_class,
+                        random_seeds=random_seeds,
+                        exp_name=exp_name
+                    )
+
+                    if ('one_stage' in model) or ('two_stage' in model):
+                        overrides.append('ml__classifier.params.shuffle_free_llms=true')
+
+                    overrides += [
+                        'ml__datasplit.params.subset_test=100',
+                    ]
+
+                    experiments.append(Experiment(name=exp_name, overrides=overrides))
+
+        return experiments
+
 
     @classmethod
     def create_llm_ood_experiments(cls, models: Optional[List[str]] = None, datasets: Optional[List[str]] = None, unknown_classes: Optional[List[float]] = None, random_seeds: Optional[List[int]] = None) -> List[Experiment]:

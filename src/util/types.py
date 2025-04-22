@@ -173,7 +173,10 @@ class MLPrediction(BaseModel):
 
         # check for classes
         assert len(self.classes_in_training) > 0, "Classes in training must be provided"
-        
+
+    def error(self) -> pd.Series:
+        return self.y_pred == self.y_test
+
     def save(self, directory: Path):
 
         if not directory.exists():
@@ -193,7 +196,6 @@ class MLPrediction(BaseModel):
         if self.outlier_score is not None:
             outlier_score_path = directory / MLPredictionFiles.OUTLIER_SCORE.value
             self.outlier_score.to_csv(outlier_score_path, index=False)
-
 
     @classmethod
     def load(cls, directory: Path) -> "MLPrediction":

@@ -35,7 +35,6 @@ class OODAnalyser(BaseModel, BaseAnalyser):
             f1_col: SpiderDatasetSchema.F1,
             recall_col: SpiderDatasetSchema.recall,
             precision_col: SpiderDatasetSchema.precision,
-
         }
 
         data2plot = data_copy[all_columns].rename(columns=column_mapping)

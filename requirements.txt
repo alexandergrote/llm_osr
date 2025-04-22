@@ -26,3 +26,4 @@ fast-fit>=1.2.1
 transformers
 pyyaml
 pandera
+statsmodels

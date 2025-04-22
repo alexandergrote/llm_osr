@@ -11,6 +11,7 @@ from src.util.logger import console
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.analysis.fewshot import BenchmarkAnalyser, LLMAnalyser
 from src.experiments.analysis.ood import OODAnalyser
+from src.experiments.analysis.error import ErrorAnalyser
 from src.io.data_import.mlflow_engine import QueryEngine
 from src.experiments.factory import ExperimentFactory
 from src.experiments.util.types import Experiment
@@ -126,7 +127,8 @@ class ExperimentRunner(BaseModel):
         combinations = [
             (ExperimentFactory.create_benchmark_experiments(), BenchmarkAnalyser()),
             (ExperimentFactory.create_llm_fewshot_experiments(), LLMAnalyser()),
-            (ExperimentFactory.create_llm_ood_experiments(), OODAnalyser())
+            (ExperimentFactory.create_llm_ood_experiments(), OODAnalyser()),
+            (ExperimentFactory.create_llm_error_experiments(), ErrorAnalyser())
         ]
 
         for experiments, analyser in combinations:
