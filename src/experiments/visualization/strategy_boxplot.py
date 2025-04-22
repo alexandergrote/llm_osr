@@ -2,7 +2,8 @@ import numpy as np
 import pandera as pa
 import seaborn as sns
 import matplotlib.pyplot as plt
-from typing import List
+import scipy.stats as stats
+from typing import List, Dict, Tuple
 
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel, ConfigDict
@@ -37,9 +38,42 @@ class StrategyBoxPlot(BaseModel):
 
     def get_metrics(self) -> List[str]:
         return ["precision", "recall", "F1"]
+        
+    def perform_statistical_tests(self) -> Dict[str, Dict[str, Dict[str, Tuple[float, float]]]]:
+        """
+        Perform Mann-Whitney U tests between all pairs of prompt strategies for each metric.
+        
+        Returns:
+            Dict with structure: {metric: {strategy1_vs_strategy2: (statistic, p_value)}}
+        """
+        metrics = self.get_metrics()
+        prompt_versions = sorted(self.get_prompts())
+        results = {}
+        
+        for metric in metrics:
+            results[metric] = {}
+            
+            # Compare each pair of prompt strategies
+            for i, prompt1 in enumerate(prompt_versions):
+                for prompt2 in prompt_versions[i+1:]:
+                    # Get data for each prompt strategy
+                    data1 = self.data[self.data['prompt_version'] == prompt1][metric]
+                    data2 = self.data[self.data['prompt_version'] == prompt2][metric]
+                    
+                    # Perform Mann-Whitney U test
+                    statistic, p_value = stats.mannwhitneyu(data1, data2, alternative='two-sided')
+                    
+                    # Store results
+                    comparison_key = f"{prompt1}_vs_{prompt2}"
+                    results[metric][comparison_key] = (statistic, p_value)
+        
+        return results
 
     def plot(self):
         metrics = self.get_metrics()
+        
+        # Perform statistical tests
+        stat_results = self.perform_statistical_tests()
         
         # Set the seaborn style
         sns.set(style="whitegrid")
@@ -48,7 +82,7 @@ class StrategyBoxPlot(BaseModel):
         fig, axes = plt.subplots(
             len(metrics), 
             1, 
-            figsize=(10, 4 * len(metrics)),
+            figsize=(10, 5 * len(metrics)),  # Increase height to accommodate significance annotations
             sharex=True  # Share x-axis between subplots
         )
         
@@ -111,6 +145,59 @@ class StrategyBoxPlot(BaseModel):
                 ],
                 loc='upper right'
             )
+            
+            # Add statistical significance annotations
+            prompt_versions = sorted(self.get_prompts())
+            
+            # Get x-coordinates for each prompt version
+            x_coords = {prompt: idx for idx, prompt in enumerate(prompt_versions)}
+            
+            # Add significance bars and annotations
+            bar_height = 0.02  # Height of significance bars
+            text_height = 0.01  # Height of p-value text
+            max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
+            
+            # Calculate y positions for significance bars
+            y_max = ax.get_ylim()[1]
+            bar_positions = np.linspace(y_max, y_max + (bar_height + text_height) * max_bars, max_bars)
+            
+            bar_idx = 0
+            for i, prompt1 in enumerate(prompt_versions):
+                for j, prompt2 in enumerate(prompt_versions[i+1:], i+1):
+                    comparison_key = f"{prompt1}_vs_{prompt2}"
+                    if comparison_key in stat_results[metric]:
+                        _, p_value = stat_results[metric][comparison_key]
+                        
+                        # Determine significance level
+                        if p_value < 0.001:
+                            sig_symbol = '***'
+                        elif p_value < 0.01:
+                            sig_symbol = '**'
+                        elif p_value < 0.05:
+                            sig_symbol = '*'
+                        else:
+                            sig_symbol = 'ns'
+                        
+                        # Only draw significance bars for significant results
+                        if p_value < 0.05:
+                            # Get x positions
+                            x1, x2 = x_coords[prompt1], x_coords[prompt2]
+                            y = bar_positions[bar_idx]
+                            
+                            # Draw the bar
+                            ax.plot([x1, x2], [y, y], 'k-', linewidth=1.5)
+                            ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1.5)
+                            ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1.5)
+                            
+                            # Add p-value text
+                            ax.text((x1+x2)/2, y + text_height/2, sig_symbol, 
+                                   ha='center', va='bottom', color='black', fontsize=12)
+                            
+                            bar_idx += 1
+            
+            # Adjust y-axis limits to accommodate significance bars
+            if bar_idx > 0:
+                ax.set_ylim(0.65, bar_positions[bar_idx-1] + text_height * 2)
         
         # Add overall title
         plt.suptitle("Performance Metrics by Prompting Strategy", fontsize=16, y=0.98)
@@ -124,18 +211,41 @@ class StrategyBoxPlot(BaseModel):
 if __name__ == '__main__':
     import pandas as pd
     from itertools import product
+    import numpy as np
 
     datasets = ["A", "B"]
     models = ["GPT-3.5", "GPT-4", "Llama 2", "Claude 2", "Mistral"]
     prompt_versions = ["osr", "ad", "nd"]
     metrics = ["precision", "recall", "F1"]
 
-    # Creating all possible combinations
+    # Set random seed for reproducibility
+    np.random.seed(42)
+
+    # Creating all possible combinations with more realistic differences between strategies
     data = []
     for dataset, model, prompt in product(datasets, models, prompt_versions):
-        precision = round(0.75 + (hash(dataset + model + prompt) % 10) / 100, 2)
-        recall = round(0.70 + (hash(model + prompt) % 10) / 100, 2)
+        # Base values with strategy-specific biases to ensure statistical differences
+        if prompt == "osr":
+            base_precision = 0.78
+            base_recall = 0.72
+        elif prompt == "ad":
+            base_precision = 0.82
+            base_recall = 0.74
+        else:  # nd
+            base_precision = 0.76
+            base_recall = 0.76
+            
+        # Add random noise
+        precision = round(base_precision + np.random.normal(0, 0.02), 2)
+        recall = round(base_recall + np.random.normal(0, 0.02), 2)
+        
+        # Ensure values are in valid range
+        precision = max(0.65, min(0.95, precision))
+        recall = max(0.65, min(0.95, recall))
+        
+        # Calculate F1
         f1 = round((2 * precision * recall) / (precision + recall), 2)
+        
         data.append([dataset, model, prompt, precision, recall, f1])
 
     # Creating the DataFrame
