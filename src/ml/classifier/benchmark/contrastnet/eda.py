@@ -7,7 +7,7 @@ import logging
 import argparse
 import os
 from tqdm import tqdm
-from utils.data import write_json_data, get_json_data
+from .utils.data import write_json_data, get_json_data
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -78,8 +78,8 @@ def get_only_chars(line):
 ########################################################################
 
 # for the first time you use wordnet
-# import nltk
-# nltk.download('wordnet')
+import nltk
+nltk.download('wordnet')
 from nltk.corpus import wordnet
 
 

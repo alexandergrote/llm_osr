@@ -8,8 +8,8 @@ import random
 from torch.utils.data import Dataset
 #from transformers.models.auto.tokenization_auto import BartTokenizerFast
 from transformers.models.bart import BartTokenizerFast
-from paraphrase.modeling import ParaphraseModel
-from utils.data import get_json_data, get_txt_data
+from src.ml.classifier.benchmark.contrastnet.paraphrase.modeling import ParaphraseModel
+from src.ml.classifier.benchmark.contrastnet.utils.data import get_json_data, get_txt_data
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 import time
 # from models.use import USEEmbedder

@@ -6,8 +6,8 @@ import warnings
 import torch
 from torch.autograd import Variable
 from transformers import AutoModel, AutoTokenizer
-from paraphrase.utils.data import FewShotDataset, FewShotSSLParaphraseDataset, FewShotSSLFileDataset
-from utils.math import euclidean_dist, cosine_similarity
+from .paraphrase.utils.data import FewShotDataset, FewShotSSLParaphraseDataset, FewShotSSLFileDataset
+from .utils.math import euclidean_dist, cosine_similarity
 import numpy as np
 import collections
 
@@ -413,6 +413,7 @@ if __name__ == '__main__':
         classes = []
         for i in episode[xs_key]:
             classes.append(i[0]['label'])
+
         print(classes)
             
 
