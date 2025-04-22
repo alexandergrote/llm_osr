@@ -3,7 +3,7 @@ import pandera as pa
 import seaborn as sns
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-from typing import List, Dict, Tuple, NamedTuple
+from typing import List, Dict, NamedTuple
 
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel, ConfigDict
@@ -18,7 +18,6 @@ class StrategyBoxPlotDatasetSchema(pa.DataFrameModel):
     F1: Series[float]
 
 
-        
 class StatTestResult(NamedTuple):
     """Container for statistical test results"""
     statistic: float
@@ -225,8 +224,6 @@ class StrategyBoxPlot(BaseModel):
                 for j, prompt2 in enumerate(prompt_versions[i+1:], i+1):
                     comparison_key = f"{prompt1}_vs_{prompt2}"
                     if comparison_key in stat_results[metric]:
-                        _, p_value = stat_results[metric][comparison_key]
-                        
                         result = stat_results[metric][comparison_key]
                         p_value = result.p_value
                         effect_size = result.effect_size
@@ -264,14 +261,27 @@ class StrategyBoxPlot(BaseModel):
                             ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1.5)
                             
                             # Add significance symbol
-                            ax.text((x1+x2)/2, y + text_height/2, sig_symbol, 
-                                   ha='center', va='bottom', color='black', fontsize=12)
+                            ax.text(
+                                (x1+x2)/2, 
+                                y + text_height/2, 
+                                sig_symbol,
+                                ha='center', 
+                                va='bottom', 
+                                color='black', 
+                                fontsize=12
+                            )
                             
                             # Add p-value and effect size text
-                            ax.text((x1+x2)/2, y + text_height*2, 
-                                   f"p={p_value:.3f}, d={effect_size:.2f}", 
-                                   ha='center', va='bottom', color=effect_color, 
-                                   fontsize=9, style='italic')
+                            ax.text(
+                                (x1+x2)/2, 
+                                y + text_height*2,
+                                f"p={p_value:.3f}, d={effect_size:.2f}",
+                                ha='center', 
+                                va='bottom', 
+                                color=effect_color,
+                                fontsize=9, 
+                                style='italic'
+                            )
                             
                             bar_idx += 1
             
