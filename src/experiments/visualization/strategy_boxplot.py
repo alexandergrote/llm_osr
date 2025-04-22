@@ -216,23 +216,8 @@ class StrategyBoxPlot(BaseModel):
                 else:
                     ax.set_xlabel("")
             
-                # Add reference lines
-                ax.axhline(y=0.7, color='r', linestyle='--', alpha=0.3)
-                ax.axhline(y=0.8, color='g', linestyle='--', alpha=0.3)
-                
                 # Set y-axis limits for consistency
                 ax.set_ylim(0.65, 0.85)
-                
-                # Add a legend for the reference lines
-                ax.legend(
-                    handles=[
-                        plt.Line2D([0], [0], color='r', linestyle='--', alpha=0.3, 
-                                  label='0.7 threshold'),
-                        plt.Line2D([0], [0], color='g', linestyle='--', alpha=0.3, 
-                                  label='0.8 threshold')
-                    ],
-                    loc='upper right'
-                )
             
                 # Add statistical significance annotations
                 prompt_versions = sorted(self.get_prompts())
