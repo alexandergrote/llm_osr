@@ -18,6 +18,19 @@ class StrategyBoxPlotDatasetSchema(pa.DataFrameModel):
     F1: Series[float]
 
 
+        
+class StatTestResult(NamedTuple):
+    """Container for statistical test results"""
+    statistic: float
+    p_value: float
+    effect_size: float
+    effect_size_interpretation: str
+
+    def __str__(self) -> str:
+        """String representation of test results"""
+        return f"p={self.p_value:.3f}, d={self.effect_size:.2f} ({self.effect_size_interpretation})"
+
+
 class StrategyBoxPlot(BaseModel):
     """
     Creates boxplots that compare performance across different prompting strategies,
@@ -39,17 +52,6 @@ class StrategyBoxPlot(BaseModel):
     def get_metrics(self) -> List[str]:
         return ["precision", "recall", "F1"]
         
-class StatTestResult(NamedTuple):
-    """Container for statistical test results"""
-    statistic: float
-    p_value: float
-    effect_size: float
-    effect_size_interpretation: str
-
-    def __str__(self) -> str:
-        """String representation of test results"""
-        return f"p={self.p_value:.3f}, d={self.effect_size:.2f} ({self.effect_size_interpretation})"
-
     def perform_statistical_tests(self) -> Dict[str, Dict[str, StatTestResult]]:
         """
         Perform Mann-Whitney U tests between all pairs of prompt strategies for each metric.
