@@ -40,85 +40,123 @@ class StrategyBoxPlot(BaseModel):
 
     def plot(self):
         metrics = self.get_metrics()
-        prompt_versions = self.get_prompts()
         
         # Set the seaborn style
         sns.set(style="whitegrid")
         
-        # Create a figure with a grid of subplots (metrics × prompt versions)
+        # Create a figure with one subplot per metric
         fig, axes = plt.subplots(
             len(metrics), 
-            len(prompt_versions), 
-            figsize=(5 * len(prompt_versions), 4 * len(metrics)),
-            sharex='col',  # Share x-axis within columns
-            sharey='row'   # Share y-axis within rows
+            1, 
+            figsize=(12, 4 * len(metrics)),
+            sharex=True  # Share x-axis between subplots
         )
         
-        # Iterate through metrics and prompt versions to create the grid of plots
+        # If there's only one metric, axes won't be an array
+        if len(metrics) == 1:
+            axes = [axes]
+        
+        # Create a new column that combines model and prompt_version
+        self.data['strategy_model'] = self.data['prompt_version'] + ' - ' + self.data['model']
+        
+        # Define a color palette that groups by prompt strategy
+        prompt_versions = self.get_prompts()
+        base_palette = sns.color_palette("viridis", len(self.get_models()))
+        palette = {}
+        
+        for i, prompt in enumerate(prompt_versions):
+            models = self.get_models()
+            for j, model in enumerate(models):
+                # Adjust color brightness based on prompt version
+                color = base_palette[j]
+                # Make colors slightly different for each prompt version
+                adjusted_color = [
+                    max(0, min(1, c * (0.8 + 0.2 * i))) 
+                    for c in color
+                ]
+                palette[f"{prompt} - {model}"] = adjusted_color
+        
+        # Iterate through metrics to create the plots
         for i, metric in enumerate(metrics):
-            for j, prompt in enumerate(prompt_versions):
-                # Filter data for this prompt version
-                prompt_data = self.data[self.data['prompt_version'] == prompt]
+            ax = axes[i]
+            
+            # Create boxplot for this metric
+            sns.boxplot(
+                x='strategy_model',
+                y=metric,
+                data=self.data,
+                ax=ax,
+                palette=palette,
+                width=0.7,
+                order=sorted(self.data['strategy_model'].unique(), 
+                             key=lambda x: (x.split(' - ')[0], x.split(' - ')[1]))
+            )
+            
+            # Add individual data points
+            sns.stripplot(
+                x='strategy_model',
+                y=metric,
+                data=self.data,
+                ax=ax,
+                color='black',
+                alpha=0.5,
+                size=4,
+                jitter=True,
+                order=sorted(self.data['strategy_model'].unique(), 
+                             key=lambda x: (x.split(' - ')[0], x.split(' - ')[1]))
+            )
+            
+            # Set titles and labels
+            ax.set_ylabel(f"{metric.capitalize()}", fontsize=12)
+            
+            if i == len(metrics) - 1:  # Only set x-labels for the bottom plot
+                ax.set_xlabel("Prompt Strategy - Model", fontsize=12)
+            else:
+                ax.set_xlabel("")
+            
+            # Rotate x-axis labels
+            plt.setp(ax.get_xticklabels(), rotation=45, ha='right', fontsize=10)
+            
+            # Add reference lines
+            ax.axhline(y=0.7, color='r', linestyle='--', alpha=0.3)
+            ax.axhline(y=0.8, color='g', linestyle='--', alpha=0.3)
+            
+            # Set y-axis limits for consistency
+            ax.set_ylim(0.65, 0.85)
+            
+            # Add a legend for the reference lines
+            ax.legend(
+                handles=[
+                    plt.Line2D([0], [0], color='r', linestyle='--', alpha=0.3, label='0.7 threshold'),
+                    plt.Line2D([0], [0], color='g', linestyle='--', alpha=0.3, label='0.8 threshold')
+                ],
+                loc='upper right'
+            )
+            
+            # Add vertical separators between prompt strategies
+            prompt_groups = sorted(prompt_versions)
+            models_per_group = len(self.get_models())
+            
+            for j in range(1, len(prompt_groups)):
+                # Add a vertical line after each prompt strategy group
+                ax.axvline(x=(j * models_per_group) - 0.5, color='gray', linestyle='-', alpha=0.3)
                 
-                # Get the current axis
-                ax = axes[i, j]
+            # Add annotations for prompt strategy groups
+            for j, prompt in enumerate(prompt_groups):
+                # Position for the annotation (middle of each group)
+                x_pos = j * models_per_group + (models_per_group / 2) - 0.5
                 
-                # Create boxplot for this metric and prompt version
-                sns.boxplot(
-                    x='model',
-                    y=metric,
-                    hue='model',
-                    data=prompt_data,
-                    ax=ax,
-                    palette='viridis',
-                    width=0.6,
-                    legend=False
+                # Add text annotation above the plot
+                ax.annotate(
+                    f"Strategy: {prompt}",
+                    xy=(x_pos, 0.84),
+                    xycoords=('data', 'data'),
+                    ha='center',
+                    va='bottom',
+                    fontsize=12,
+                    fontweight='bold',
+                    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.8)
                 )
-                
-                # Add individual data points
-                sns.stripplot(
-                    x='model',
-                    y=metric,
-                    data=prompt_data,
-                    ax=ax,
-                    color='black',
-                    alpha=0.5,
-                    size=4,
-                    jitter=True
-                )
-                
-                # Set titles and labels
-                if i == 0:  # Only set column titles for the first row
-                    ax.set_title(f"Prompt Strategy: {prompt}", fontsize=14)
-                
-                if j == 0:  # Only set row labels for the first column
-                    ax.set_ylabel(f"{metric.capitalize()}", fontsize=12)
-                else:
-                    ax.set_ylabel("")
-                
-                if i == len(metrics) - 1:  # Only set x-labels for the bottom row
-                    ax.set_xlabel("Model", fontsize=12)
-                else:
-                    ax.set_xlabel("")
-                
-                # Rotate x-axis labels
-                plt.setp(ax.get_xticklabels(), rotation=45, ha='right', fontsize=10)
-                
-                # Add reference lines
-                ax.axhline(y=0.7, color='r', linestyle='--', alpha=0.3)
-                ax.axhline(y=0.8, color='g', linestyle='--', alpha=0.3)
-                
-                # Set y-axis limits for consistency
-                ax.set_ylim(0.65, 0.85)
-        
-        # Add a legend for the reference lines in the top-right subplot
-        axes[0, -1].legend(
-            handles=[
-                plt.Line2D([0], [0], color='r', linestyle='--', alpha=0.3, label='0.7 threshold'),
-                plt.Line2D([0], [0], color='g', linestyle='--', alpha=0.3, label='0.8 threshold')
-            ],
-            loc='upper right'
-        )
         
         # Add overall title
         plt.suptitle("Performance Metrics by Prompting Strategy", fontsize=16, y=0.98)
