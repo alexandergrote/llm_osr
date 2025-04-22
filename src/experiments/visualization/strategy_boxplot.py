@@ -125,8 +125,20 @@ class StrategyBoxPlot(BaseModel):
         # Calculate Cliff's delta
         return (greater - less) / (len(x) * len(y))
 
-    def plot(self):
+    def plot(self, dataset=None):
+        """
+        Create boxplots for the specified dataset or for all datasets if None.
+        
+        Args:
+            dataset: Optional dataset to filter by. If None, plots all datasets.
+        """
         metrics = self.get_metrics()
+        datasets = self.get_datasets() if dataset is None else [dataset]
+        
+        # Filter data if a specific dataset is requested
+        plot_data = self.data
+        if dataset is not None:
+            plot_data = self.data[self.data['dataset'] == dataset]
         
         # Perform statistical tests
         stat_results = self.perform_statistical_tests()
@@ -134,95 +146,117 @@ class StrategyBoxPlot(BaseModel):
         # Set the seaborn style
         sns.set(style="whitegrid")
         
-        # Create a figure with one subplot per metric
+        # Create a figure with subplots for each dataset and metric
         fig, axes = plt.subplots(
             len(metrics), 
-            1, 
-            figsize=(10, 5 * len(metrics)),  # Increase height to accommodate significance annotations
-            sharex=True  # Share x-axis between subplots
+            len(datasets),
+            figsize=(8 * len(datasets), 5 * len(metrics)),
+            sharex='col',  # Share x-axis within columns
+            sharey='row'   # Share y-axis within rows
         )
         
-        # If there's only one metric, axes won't be an array
-        if len(metrics) == 1:
-            axes = [axes]
+        # If there's only one subplot, make sure axes is a 2D array
+        if len(metrics) == 1 and len(datasets) == 1:
+            axes = np.array([[axes]])
+        elif len(metrics) == 1:
+            axes = axes.reshape(1, -1)
+        elif len(datasets) == 1:
+            axes = axes.reshape(-1, 1)
         
         # Define a color palette for prompt strategies
         prompt_versions = self.get_prompts()
         palette = sns.color_palette("viridis", len(prompt_versions))
         
-        # Iterate through metrics to create the plots
+        # Iterate through datasets and metrics to create the plots
         for i, metric in enumerate(metrics):
-            ax = axes[i]
+            for j, ds in enumerate(datasets):
+                # Get the current axis
+                ax = axes[i, j]
+                
+                # Filter data for this dataset
+                ds_data = plot_data[plot_data['dataset'] == ds]
             
-            # Create boxplot for this metric, grouped by prompt_version
-            sns.boxplot(
-                x='prompt_version',
-                y=metric,
-                hue='prompt_version',  # Add hue parameter to fix FutureWarning
-                data=self.data,
-                ax=ax,
-                palette=palette,
-                width=0.7,
-                order=sorted(prompt_versions),
-                legend=False  # Hide the legend since it's redundant with x-axis
-            )
+                # Create boxplot for this metric and dataset, grouped by prompt_version
+                sns.boxplot(
+                    x='prompt_version',
+                    y=metric,
+                    hue='prompt_version',
+                    data=ds_data,
+                    ax=ax,
+                    palette=palette,
+                    width=0.7,
+                    order=sorted(prompt_versions),
+                    legend=False
+                )
+                
+                # Add individual data points
+                sns.stripplot(
+                    x='prompt_version',
+                    y=metric,
+                    data=ds_data,
+                    ax=ax,
+                    color='black',
+                    alpha=0.5,
+                    size=4,
+                    jitter=True,
+                    order=sorted(prompt_versions)
+                )
             
-            # Add individual data points
-            sns.stripplot(
-                x='prompt_version',
-                y=metric,
-                data=self.data,
-                ax=ax,
-                color='black',
-                alpha=0.5,
-                size=4,
-                jitter=True,
-                order=sorted(prompt_versions)
-            )
+                # Set titles and labels
+                if i == 0:  # Add dataset title on the first row
+                    ax.set_title(f"Dataset {ds}", fontsize=14)
+                    
+                if j == 0:  # Add metric label on the first column
+                    ax.set_ylabel(f"{metric.capitalize()}", fontsize=12)
+                else:
+                    ax.set_ylabel("")
+                
+                if i == len(metrics) - 1:  # Only set x-labels for the bottom row
+                    ax.set_xlabel("Prompt Strategy", fontsize=12)
+                else:
+                    ax.set_xlabel("")
             
-            # Set titles and labels
-            ax.set_ylabel(f"{metric.capitalize()}", fontsize=12)
+                # Add reference lines
+                ax.axhline(y=0.7, color='r', linestyle='--', alpha=0.3)
+                ax.axhline(y=0.8, color='g', linestyle='--', alpha=0.3)
+                
+                # Set y-axis limits for consistency
+                ax.set_ylim(0.65, 0.85)
+                
+                # Add a legend for the reference lines
+                ax.legend(
+                    handles=[
+                        plt.Line2D([0], [0], color='r', linestyle='--', alpha=0.3, 
+                                  label='0.7 threshold'),
+                        plt.Line2D([0], [0], color='g', linestyle='--', alpha=0.3, 
+                                  label='0.8 threshold')
+                    ],
+                    loc='upper right'
+                )
             
-            if i == len(metrics) - 1:  # Only set x-labels for the bottom plot
-                ax.set_xlabel("Prompt Strategy", fontsize=12)
-            else:
-                ax.set_xlabel("")
-            
-            # Add reference lines
-            ax.axhline(y=0.7, color='r', linestyle='--', alpha=0.3)
-            ax.axhline(y=0.8, color='g', linestyle='--', alpha=0.3)
-            
-            # Set y-axis limits for consistency
-            ax.set_ylim(0.65, 0.85)
-            
-            # Add a legend for the reference lines
-            ax.legend(
-                handles=[
-                    plt.Line2D([0], [0], color='r', linestyle='--', alpha=0.3, label='0.7 threshold'),
-                    plt.Line2D([0], [0], color='g', linestyle='--', alpha=0.3, label='0.8 threshold')
-                ],
-                loc='upper right'
-            )
-            
-            # Add statistical significance annotations
-            prompt_versions = sorted(self.get_prompts())
-            
-            # Get x-coordinates for each prompt version
-            x_coords = {prompt: idx for idx, prompt in enumerate(prompt_versions)}
-            
-            # Add significance bars and annotations
-            bar_height = 0.02  # Height of significance bars
-            text_height = 0.01  # Height of p-value text
-            max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
-            
-            # Calculate y positions for significance bars
-            y_max = ax.get_ylim()[1]
-            bar_positions = np.linspace(y_max, y_max + (bar_height + text_height) * max_bars, max_bars)
-            
-            bar_idx = 0
-            for i, prompt1 in enumerate(prompt_versions):
-                for j, prompt2 in enumerate(prompt_versions[i+1:], i+1):
-                    comparison_key = f"{prompt1}_vs_{prompt2}"
+                # Add statistical significance annotations
+                prompt_versions = sorted(self.get_prompts())
+                
+                # Get x-coordinates for each prompt version
+                x_coords = {prompt: idx for idx, prompt in enumerate(prompt_versions)}
+                
+                # Add significance bars and annotations
+                bar_height = 0.02  # Height of significance bars
+                text_height = 0.01  # Height of p-value text
+                max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
+                
+                # Calculate y positions for significance bars
+                y_max = ax.get_ylim()[1]
+                bar_positions = np.linspace(
+                    y_max, 
+                    y_max + (bar_height + text_height) * max_bars, 
+                    max_bars
+                )
+                
+                bar_idx = 0
+                for p_i, prompt1 in enumerate(prompt_versions):
+                    for p_j, prompt2 in enumerate(prompt_versions[p_i+1:], p_i+1):
+                        comparison_key = f"{prompt1}_vs_{prompt2}"
                     if comparison_key in stat_results[metric]:
                         result = stat_results[metric][comparison_key]
                         p_value = result.p_value
@@ -290,12 +324,28 @@ class StrategyBoxPlot(BaseModel):
                 ax.set_ylim(0.65, bar_positions[bar_idx-1] + text_height * 2)
         
         # Add overall title
-        plt.suptitle("Performance Metrics by Prompting Strategy", fontsize=16, y=0.98)
+        if dataset is None:
+            plt.suptitle("Performance Metrics by Dataset and Prompting Strategy", 
+                        fontsize=16, y=0.98)
+            filename = "strategy_boxplot_all_datasets.pdf"
+        else:
+            plt.suptitle(f"Performance Metrics for Dataset {dataset} by Prompting Strategy", 
+                        fontsize=16, y=0.98)
+            filename = f"strategy_boxplot_dataset_{dataset}.pdf"
         
         # Adjust layout
         plt.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.savefig("strategy_boxplot.pdf")
+        plt.savefig(filename)
         plt.show()
+        
+    def plot_all_datasets(self):
+        """Plot all datasets together and then each dataset separately"""
+        # Plot all datasets in one figure
+        self.plot()
+        
+        # Plot each dataset separately
+        for dataset in self.get_datasets():
+            self.plot(dataset=dataset)
 
 
 if __name__ == '__main__':
@@ -342,4 +392,4 @@ if __name__ == '__main__':
     df = pd.DataFrame(data, columns=["dataset", "model", "prompt_version", "precision", "recall", "F1"])
     
     strategy_boxplot = StrategyBoxPlot(data=df)
-    strategy_boxplot.plot()
+    strategy_boxplot.plot_all_datasets()
