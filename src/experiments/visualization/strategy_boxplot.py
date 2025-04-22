@@ -327,10 +327,6 @@ class StrategyBoxPlot(BaseModel):
         """Plot all datasets together and then each dataset separately"""
         # Plot all datasets in one figure
         self.plot()
-        
-        # Plot each dataset separately
-        for dataset in self.get_datasets():
-            self.plot(dataset=dataset)
 
 
 if __name__ == '__main__':
