@@ -54,10 +54,12 @@ class BoxPlot(BaseModel):
             sns.boxplot(
                 x='model_prompt',
                 y=metric,
+                hue='model_prompt',  # Add hue parameter to fix FutureWarning
                 data=self.data,
                 ax=ax,
                 palette='viridis',
-                width=0.6
+                width=0.6,
+                legend=False  # Hide the legend since it's redundant with x-axis
             )
             
             # Add individual data points for better visualization
@@ -78,7 +80,7 @@ class BoxPlot(BaseModel):
             ax.set_xlabel("")
             
             # Rotate x-axis labels for better readability
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right', fontsize=10)
+            plt.setp(ax.get_xticklabels(), rotation=45, ha='right', fontsize=10)
             
             # Add reference lines
             ax.axhline(y=0.7, color='r', linestyle='--', alpha=0.3, label='0.7 threshold')
@@ -92,7 +94,7 @@ class BoxPlot(BaseModel):
             ax.set_ylim(0.65, 0.85)
         
         plt.suptitle("Performance Metrics Across Models and Prompt Versions", fontsize=16, y=1.02)
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 1, 0.97])  # Adjust layout to prevent title overlap
         plt.savefig("boxplot.pdf")
         plt.show()
 
