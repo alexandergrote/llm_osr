@@ -12,7 +12,7 @@ from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.analysis.fewshot import BenchmarkAnalyser, LLMAnalyser
 from src.experiments.analysis.ood import OODAnalyser
 from src.io.data_import.mlflow_engine import QueryEngine
-from src.experiments.util.factory import ExperimentFactory
+from src.experiments.factory import ExperimentFactory
 from src.experiments.util.types import Experiment
 from src.util.caching import environ_pickle_cache
 

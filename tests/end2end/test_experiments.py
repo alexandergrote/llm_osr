@@ -2,7 +2,7 @@ import unittest
 import os
 
 from src.experiments.cli import ExperimentRunner
-from src.experiments.util.factory import ExperimentFactory
+from src.experiments.factory import ExperimentFactory
 from src.util.constants import EnvMode
 
 
