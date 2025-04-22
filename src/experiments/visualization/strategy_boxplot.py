@@ -102,11 +102,13 @@ class StrategyBoxPlot(BaseModel):
             sns.boxplot(
                 x='prompt_version',
                 y=metric,
+                hue='prompt_version',  # Add hue parameter to fix FutureWarning
                 data=self.data,
                 ax=ax,
                 palette=palette,
                 width=0.7,
-                order=sorted(prompt_versions)
+                order=sorted(prompt_versions),
+                legend=False  # Hide the legend since it's redundant with x-axis
             )
             
             # Add individual data points
