@@ -183,12 +183,14 @@ class StrategyBoxPlot(BaseModel):
             sns.boxplot(
                 x='prompt_version',
                 y=metric,
+                hue='prompt_version',  # Add hue parameter to fix FutureWarning
                 data=plot_data,
                 ax=ax,
                 palette=palette,
                 width=0.6,
                 order=prompt_versions,
                 linewidth=1.0,
+                legend=False,  # Hide legend since we're using hue
                 fliersize=3,
                 flierprops={'marker': 'o', 'markerfacecolor': 'white', 'markeredgecolor': 'black', 'markeredgewidth': 0.8}
             )
@@ -199,7 +201,7 @@ class StrategyBoxPlot(BaseModel):
                 y=metric,
                 data=plot_data,
                 ax=ax,
-                color='black',
+                color='black',  # Use solid black instead of 'gray'
                 alpha=0.4,
                 size=3,
                 jitter=True,
