@@ -322,7 +322,7 @@ class StrategyBoxPlot(BaseModel):
         # Adjust layout
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         plt.savefig(Directory.OUTPUT_DIR / filename)
-        plt.show()
+        plt.close()
         
     def plot_all_datasets(self):
         """Plot all datasets together and then each dataset separately"""
@@ -331,7 +331,7 @@ class StrategyBoxPlot(BaseModel):
 
 
 if __name__ == '__main__':
-    
+
     import pandas as pd
     from itertools import product
     import numpy as np
