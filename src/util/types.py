@@ -56,6 +56,8 @@ class MLDataFrame(BaseModel):
         # target column must be of type int
         assert pd.api.types.is_object_dtype(self.data[self.target_column].dtype), "Target column must be of type obj"
 
+        return self
+
     def hash(self) -> str:
 
         hash_list = [str(Hash.hash(v)) for _, v in self.model_dump().items()]
@@ -173,6 +175,8 @@ class MLPrediction(BaseModel):
 
         # check for classes
         assert len(self.classes_in_training) > 0, "Classes in training must be provided"
+
+        return self
 
     def error(self) -> pd.Series:
         return self.y_pred == self.y_test

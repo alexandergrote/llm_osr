@@ -218,7 +218,7 @@ class StrategyBoxPlot(BaseModel):
                     ax.set_xlabel("")
             
                 # Set y-axis limits for consistency
-                ax.set_ylim(0.65, 0.85)
+                ax.set_ylim(0, 1)
             
                 # Add statistical significance annotations
                 prompt_versions = sorted(self.get_prompts())
@@ -307,7 +307,7 @@ class StrategyBoxPlot(BaseModel):
             
             # Adjust y-axis limits to accommodate significance bars
             if bar_idx > 0:
-                ax.set_ylim(0.65, bar_positions[bar_idx-1] + text_height * 2)
+                ax.set_ylim(0.0, bar_positions[bar_idx-1] + text_height * 2)
         
         # Add overall title
         if dataset is None:
@@ -331,6 +331,7 @@ class StrategyBoxPlot(BaseModel):
 
 
 if __name__ == '__main__':
+    
     import pandas as pd
     from itertools import product
     import numpy as np

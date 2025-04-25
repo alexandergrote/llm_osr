@@ -9,7 +9,7 @@ from src.experiments.util.types import Experiment
 
 BENCHMARK_MODELS = ["naive", "hyper_simpleshot", "hyper_fastfit"]
 LLM_MODELS = ["random_llm", "two_stage_llama_8", "one_stage_llama_8", "two_stage_llama_70", "one_stage_llama_70"]
-LLM_ERROR_MODELS = ["mixed_gemma2_9", "one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
+LLM_ERROR_MODELS = ["one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
 LLM_OOD_MODELS = ["mixed_llama_8", "mixed_qwen_32", "mixed_llama_70", "mixed_gemma2_9", "one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
 DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
@@ -127,7 +127,7 @@ class ExperimentFactory(BaseModel):
         experiments = []
 
         if models is None:
-            models = ['naive', 'random_llm'] # LLM_MODELS + BENCHMARK_MODELS
+            models = LLM_ERROR_MODELS + BENCHMARK_MODELS
 
         if datasets is None:
             datasets = ['hwu'] # DATASETS
@@ -156,6 +156,9 @@ class ExperimentFactory(BaseModel):
 
                     if ('one_stage' in model) or ('two_stage' in model):
                         overrides.append('ml__classifier.params.shuffle_free_llms=true')
+
+                    if model in ["hyper_simpleshot"]:
+                        overrides.append('ml__preprocessing=rest_embedding')
 
                     overrides += [
                         'ml__datasplit.params.subset_test=100',
