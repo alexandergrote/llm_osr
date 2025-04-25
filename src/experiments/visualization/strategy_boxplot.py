@@ -321,7 +321,7 @@ class StrategyBoxPlot(BaseModel):
         
         # Add overall title with academic styling positioned above the figure
         if dataset is None:
-            title = "Performance Metrics by Prompting Strategy (All Datasets Combined)"
+            title = "Performance Metrics by Prompting Strategy"
             filename = "strategy_boxplot_combined.pdf"
         else:
             title = f"Performance Metrics for Dataset {dataset} by Prompting Strategy"
