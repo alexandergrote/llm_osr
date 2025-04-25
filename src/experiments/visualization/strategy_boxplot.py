@@ -143,24 +143,36 @@ class StrategyBoxPlot(BaseModel):
         # Perform statistical tests
         stat_results = self.perform_statistical_tests()
         
-        # Set the seaborn style
-        sns.set(style="whitegrid")
+        # Set the seaborn style for academic publication
+        sns.set_style("white")
+        plt.rcParams.update({
+            'font.family': 'serif',
+            'font.serif': ['Times New Roman', 'Times', 'DejaVu Serif'],
+            'font.size': 10,
+            'axes.titlesize': 12,
+            'axes.labelsize': 11,
+            'xtick.labelsize': 10,
+            'ytick.labelsize': 10,
+            'legend.fontsize': 10,
+            'figure.dpi': 300
+        })
         
         # Create a figure with one subplot for each metric, arranged horizontally
         fig, axes = plt.subplots(
             1,
             len(metrics),
-            figsize=(7 * len(metrics), 6),
-            sharey=True  # Share y-axis across all subplots
+            figsize=(8 * len(metrics), 5),
+            sharey=True,  # Share y-axis across all subplots
+            constrained_layout=True
         )
         
         # If there's only one subplot, make sure axes is an array
         if len(metrics) == 1:
             axes = np.array([axes])
         
-        # Define a color palette for prompt strategies
+        # Define a grayscale palette for prompt strategies
         prompt_versions = sorted(self.get_prompts())
-        palette = sns.color_palette("viridis", len(prompt_versions))
+        palette = sns.color_palette("gray", len(prompt_versions))
         
         # Iterate through metrics to create the plots
         for i, metric in enumerate(metrics):
@@ -171,37 +183,47 @@ class StrategyBoxPlot(BaseModel):
             sns.boxplot(
                 x='prompt_version',
                 y=metric,
-                hue='prompt_version',
                 data=plot_data,
                 ax=ax,
                 palette=palette,
-                width=0.7,
+                width=0.6,
                 order=prompt_versions,
-                legend=False
+                linewidth=1.0,
+                fliersize=3,
+                flierprops={'marker': 'o', 'markerfacecolor': 'white', 'markeredgecolor': 'black', 'markeredgewidth': 0.8}
             )
             
-            # Add individual data points
+            # Add individual data points with more academic styling
             sns.stripplot(
                 x='prompt_version',
                 y=metric,
                 data=plot_data,
                 ax=ax,
                 color='black',
-                alpha=0.5,
-                size=4,
+                alpha=0.4,
+                size=3,
                 jitter=True,
-                order=prompt_versions
+                order=prompt_versions,
+                edgecolor='gray',
+                linewidth=0.5
             )
+            
+            # Add grid lines for better readability
+            ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
         
-            # Set titles and labels
-            ax.set_title(f"{metric.capitalize()}", fontsize=14)
+            # Set titles and labels with academic styling
+            ax.set_title(f"{metric.capitalize()}", fontweight='bold')
             
             if i == 0:  # Only set y-labels for the first column
-                ax.set_ylabel("Score", fontsize=12)
+                ax.set_ylabel("Score", fontweight='bold')
             else:
                 ax.set_ylabel("")
                 
-            ax.set_xlabel("Prompt Strategy", fontsize=12)
+            ax.set_xlabel("Prompt Strategy", fontweight='bold')
+            
+            # Remove top and right spines for cleaner look
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
             
             # Set y-axis limits for consistency
             ax.set_ylim(0, 1)
@@ -243,24 +265,24 @@ class StrategyBoxPlot(BaseModel):
                     else:
                         sig_symbol = 'ns'
                     
-                    # Get effect size color based on interpretation
+                    # Use grayscale for effect size
                     if effect_interp == "large":
-                        effect_color = "darkred"
+                        effect_color = "black"
                     elif effect_interp == "medium":
-                        effect_color = "darkorange"
+                        effect_color = "dimgray"
                     elif effect_interp == "small":
-                        effect_color = "darkgreen"
-                    else:  # negligible
                         effect_color = "darkgray"
+                    else:  # negligible
+                        effect_color = "lightgray"
                     
                     # Get x positions
                     x1, x2 = x_coords[prompt1], x_coords[prompt2]
                     y = bar_positions[bar_idx]
                     
-                    # Draw the bar
-                    ax.plot([x1, x2], [y, y], 'k-', linewidth=1.5)
-                    ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1.5)
-                    ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1.5)
+                    # Draw the bar with academic styling
+                    ax.plot([x1, x2], [y, y], 'k-', linewidth=0.8)
+                    ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=0.8)
+                    ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=0.8)
                     
                     # Add significance symbol
                     ax.text(
@@ -270,10 +292,11 @@ class StrategyBoxPlot(BaseModel):
                         ha='center', 
                         va='bottom', 
                         color='black', 
-                        fontsize=12
+                        fontsize=9,
+                        fontweight='bold'
                     )
                     
-                    # Add p-value and effect size text
+                    # Add p-value and effect size text with academic styling
                     ax.text(
                         (x1+x2)/2, 
                         y + text_height*2,
@@ -281,8 +304,8 @@ class StrategyBoxPlot(BaseModel):
                         ha='center', 
                         va='bottom', 
                         color=effect_color,
-                        fontsize=9, 
-                        style='italic'
+                        fontsize=8, 
+                        fontstyle='italic'
                     )
                     
                     bar_idx += 1
@@ -291,18 +314,15 @@ class StrategyBoxPlot(BaseModel):
             if bar_idx > 0:
                 ax.set_ylim(0.0, bar_positions[bar_idx-1] + text_height * 3)
         
-        # Add overall title
+        # Add overall title with academic styling
         if dataset is None:
             plt.suptitle("Performance Metrics by Prompting Strategy (All Datasets Combined)", 
-                        fontsize=16, y=0.98)
+                        fontsize=14, y=0.98, fontweight='bold')
             filename = "strategy_boxplot_combined.pdf"
         else:
             plt.suptitle(f"Performance Metrics for Dataset {dataset} by Prompting Strategy", 
-                        fontsize=16, y=0.98)
+                        fontsize=14, y=0.98, fontweight='bold')
             filename = f"strategy_boxplot_dataset_{dataset}.pdf"
-        
-        # Adjust layout
-        plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.savefig(Directory.OUTPUT_DIR / filename)
         plt.close()
         
