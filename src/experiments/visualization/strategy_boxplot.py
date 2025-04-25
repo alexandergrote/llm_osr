@@ -319,20 +319,23 @@ class StrategyBoxPlot(BaseModel):
             if bar_idx > 0:
                 ax.set_ylim(0.0, bar_positions[bar_idx-1] + text_height * 3)
         
-        # Add overall title with academic styling positioned above the figure
+        # Add overall title with academic styling
         if dataset is None:
             title = "Performance Metrics by Prompting Strategy"
             filename = "strategy_boxplot_combined.pdf"
         else:
             title = f"Performance Metrics for Dataset {dataset} by Prompting Strategy"
             filename = f"strategy_boxplot_dataset_{dataset}.pdf"
-            
-        # Save figure with title above
+        
+        # Add title to the figure
+        fig.suptitle(title, fontsize=16, fontweight='bold', y=1.05)
+        
+        # Adjust layout and save
         plt.tight_layout()
         fig.savefig(Directory.OUTPUT_DIR / filename, bbox_inches='tight')
         
-        # Display title above the figure when showing
-        plt.figtext(0.5, 1.02, title, fontsize=16, fontweight='bold', ha='center')
+        # Show the plot
+        plt.show()
         plt.close()
         
     def plot_all_datasets(self):
