@@ -131,10 +131,9 @@ class StrategyBoxPlot(BaseModel):
         Create boxplots for the specified dataset or for all datasets if None.
         
         Args:
-            dataset: Optional dataset to filter by. If None, plots all datasets.
+            dataset: Optional dataset to filter by. If None, plots all datasets combined.
         """
         metrics = self.get_metrics()
-        datasets = self.get_datasets() if dataset is None else [dataset]
         
         # Filter data if a specific dataset is requested
         plot_data = self.data
@@ -147,75 +146,61 @@ class StrategyBoxPlot(BaseModel):
         # Set the seaborn style
         sns.set(style="whitegrid")
         
-        # Create a figure with subplots for each dataset and metric
+        # Create a figure with one subplot for each metric
         fig, axes = plt.subplots(
             len(metrics), 
-            len(datasets),
-            figsize=(8 * len(datasets), 5 * len(metrics)),
-            sharex='col',  # Share x-axis within columns
-            sharey='row'   # Share y-axis within rows
+            1,
+            figsize=(10, 5 * len(metrics)),
+            sharex=True  # Share x-axis across all subplots
         )
         
-        # If there's only one subplot, make sure axes is a 2D array
-        if len(metrics) == 1 and len(datasets) == 1:
-            axes = np.array([[axes]])
-        elif len(metrics) == 1:
-            axes = axes.reshape(1, -1)
-        elif len(datasets) == 1:
-            axes = axes.reshape(-1, 1)
+        # If there's only one subplot, make sure axes is an array
+        if len(metrics) == 1:
+            axes = np.array([axes])
         
         # Define a color palette for prompt strategies
-        prompt_versions = self.get_prompts()
+        prompt_versions = sorted(self.get_prompts())
         palette = sns.color_palette("viridis", len(prompt_versions))
         
-        # Iterate through datasets and metrics to create the plots
+        # Iterate through metrics to create the plots
         for i, metric in enumerate(metrics):
-            for j, ds in enumerate(datasets):
-                # Get the current axis
-                ax = axes[i, j]
-                
-                # Filter data for this dataset
-                ds_data = plot_data[plot_data['dataset'] == ds]
+            # Get the current axis
+            ax = axes[i]
             
-                # Create boxplot for this metric and dataset, grouped by prompt_version
-                sns.boxplot(
-                    x='prompt_version',
-                    y=metric,
-                    hue='prompt_version',
-                    data=ds_data,
-                    ax=ax,
-                    palette=palette,
-                    width=0.7,
-                    order=sorted(prompt_versions),
-                    legend=False
-                )
-                
-                # Add individual data points
-                sns.stripplot(
-                    x='prompt_version',
-                    y=metric,
-                    data=ds_data,
-                    ax=ax,
-                    color='black',
-                    alpha=0.5,
-                    size=4,
-                    jitter=True,
-                    order=sorted(prompt_versions)
-                )
+            # Create boxplot for this metric, grouped by prompt_version
+            sns.boxplot(
+                x='prompt_version',
+                y=metric,
+                hue='prompt_version',
+                data=plot_data,
+                ax=ax,
+                palette=palette,
+                width=0.7,
+                order=prompt_versions,
+                legend=False
+            )
             
-                # Set titles and labels
-                if i == 0:  # Add dataset title on the first row
-                    ax.set_title(f"Dataset {ds}", fontsize=14)
-                    
-                if j == 0:  # Add metric label on the first column
-                    ax.set_ylabel(f"{metric.capitalize()}", fontsize=12)
-                else:
-                    ax.set_ylabel("")
-                
-                if i == len(metrics) - 1:  # Only set x-labels for the bottom row
-                    ax.set_xlabel("Prompt Strategy", fontsize=12)
-                else:
-                    ax.set_xlabel("")
+            # Add individual data points
+            sns.stripplot(
+                x='prompt_version',
+                y=metric,
+                data=plot_data,
+                ax=ax,
+                color='black',
+                alpha=0.5,
+                size=4,
+                jitter=True,
+                order=prompt_versions
+            )
+        
+            # Set titles and labels
+            ax.set_title(f"{metric.capitalize()}", fontsize=14)
+            ax.set_ylabel(f"{metric.capitalize()} Score", fontsize=12)
+            
+            if i == len(metrics) - 1:  # Only set x-labels for the bottom row
+                ax.set_xlabel("Prompt Strategy", fontsize=12)
+            else:
+                ax.set_xlabel("")
             
                 # Set y-axis limits for consistency
                 ax.set_ylim(0, 1)
@@ -311,9 +296,9 @@ class StrategyBoxPlot(BaseModel):
         
         # Add overall title
         if dataset is None:
-            plt.suptitle("Performance Metrics by Dataset and Prompting Strategy", 
+            plt.suptitle("Performance Metrics by Prompting Strategy (All Datasets Combined)", 
                         fontsize=16, y=0.98)
-            filename = "strategy_boxplot_all_datasets.pdf"
+            filename = "strategy_boxplot_combined.pdf"
         else:
             plt.suptitle(f"Performance Metrics for Dataset {dataset} by Prompting Strategy", 
                         fontsize=16, y=0.98)
@@ -325,7 +310,7 @@ class StrategyBoxPlot(BaseModel):
         plt.close()
         
     def plot_all_datasets(self):
-        """Plot all datasets together and then each dataset separately"""
+        """Plot all datasets combined in one figure"""
         # Plot all datasets in one figure
         self.plot()
 
