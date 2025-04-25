@@ -202,97 +202,93 @@ class StrategyBoxPlot(BaseModel):
             else:
                 ax.set_xlabel("")
             
-                # Set y-axis limits for consistency
-                ax.set_ylim(0, 1)
+            # Set y-axis limits for consistency
+            ax.set_ylim(0, 1)
+        
+            # Add statistical significance annotations
+            # Get x-coordinates for each prompt version
+            x_coords = {prompt: idx for idx, prompt in enumerate(prompt_versions)}
             
-                # Add statistical significance annotations
-                prompt_versions = sorted(self.get_prompts())
-                
-                # Get x-coordinates for each prompt version
-                x_coords = {prompt: idx for idx, prompt in enumerate(prompt_versions)}
-                
-                # Add significance bars and annotations
-                bar_height = 0.02  # Height of significance bars
-                text_height = 0.01  # Height of p-value text
-                max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
-                
-                # Calculate y positions for significance bars
-                y_max = ax.get_ylim()[1]
-                bar_positions = np.linspace(
-                    y_max, 
-                    y_max + (bar_height + text_height) * max_bars, 
-                    max_bars
-                )
-                
-                bar_idx = 0
-                for p_i, prompt1 in enumerate(prompt_versions):
-                    for _, prompt2 in enumerate(prompt_versions[p_i+1:], p_i+1):
-                        comparison_key = f"{prompt1}_vs_{prompt2}"
-                        if comparison_key in stat_results[metric]:
-                            result = stat_results[metric][comparison_key]
-                            p_value = result.p_value
-                            effect_size = result.effect_size
-                            effect_interp = result.effect_size_interpretation
-                        
-                        # Determine significance level
-                        if p_value < 0.001:
-                            sig_symbol = '***'
-                        elif p_value < 0.01:
-                            sig_symbol = '**'
-                        elif p_value < 0.05:
-                            sig_symbol = '*'
-                        else:
-                            sig_symbol = 'ns'
-                        
-                        # Get effect size color based on interpretation
-                        if effect_interp == "large":
-                            effect_color = "darkred"
-                        elif effect_interp == "medium":
-                            effect_color = "darkorange"
-                        elif effect_interp == "small":
-                            effect_color = "darkgreen"
-                        else:  # negligible
-                            effect_color = "darkgray"
-                        
-                        # Only draw significance bars for significant results
-                        # if p_value < 0.05:
-                        # Get x positions
-                        x1, x2 = x_coords[prompt1], x_coords[prompt2]
-                        y = bar_positions[bar_idx]
-                        
-                        # Draw the bar
-                        ax.plot([x1, x2], [y, y], 'k-', linewidth=1.5)
-                        ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1.5)
-                        ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1.5)
-                        
-                        # Add significance symbol
-                        ax.text(
-                            (x1+x2)/2, 
-                            y + text_height/2, 
-                            sig_symbol,
-                            ha='center', 
-                            va='bottom', 
-                            color='black', 
-                            fontsize=12
-                        )
-                        
-                        # Add p-value and effect size text
-                        ax.text(
-                            (x1+x2)/2, 
-                            y + text_height*2,
-                            f"p={p_value:.3f}, d={effect_size:.2f}",
-                            ha='center', 
-                            va='bottom', 
-                            color=effect_color,
-                            fontsize=9, 
-                            style='italic'
-                        )
-                        
-                        bar_idx += 1
+            # Add significance bars and annotations
+            bar_height = 0.02  # Height of significance bars
+            text_height = 0.01  # Height of p-value text
+            max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
+            
+            # Calculate y positions for significance bars
+            y_max = ax.get_ylim()[1]
+            bar_positions = np.linspace(
+                y_max, 
+                y_max + (bar_height + text_height) * max_bars, 
+                max_bars
+            )
+            
+            bar_idx = 0
+            for p_i, prompt1 in enumerate(prompt_versions):
+                for _, prompt2 in enumerate(prompt_versions[p_i+1:], p_i+1):
+                    comparison_key = f"{prompt1}_vs_{prompt2}"
+                    if comparison_key in stat_results[metric]:
+                        result = stat_results[metric][comparison_key]
+                        p_value = result.p_value
+                        effect_size = result.effect_size
+                        effect_interp = result.effect_size_interpretation
+                    
+                    # Determine significance level
+                    if p_value < 0.001:
+                        sig_symbol = '***'
+                    elif p_value < 0.01:
+                        sig_symbol = '**'
+                    elif p_value < 0.05:
+                        sig_symbol = '*'
+                    else:
+                        sig_symbol = 'ns'
+                    
+                    # Get effect size color based on interpretation
+                    if effect_interp == "large":
+                        effect_color = "darkred"
+                    elif effect_interp == "medium":
+                        effect_color = "darkorange"
+                    elif effect_interp == "small":
+                        effect_color = "darkgreen"
+                    else:  # negligible
+                        effect_color = "darkgray"
+                    
+                    # Get x positions
+                    x1, x2 = x_coords[prompt1], x_coords[prompt2]
+                    y = bar_positions[bar_idx]
+                    
+                    # Draw the bar
+                    ax.plot([x1, x2], [y, y], 'k-', linewidth=1.5)
+                    ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1.5)
+                    ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1.5)
+                    
+                    # Add significance symbol
+                    ax.text(
+                        (x1+x2)/2, 
+                        y + text_height/2, 
+                        sig_symbol,
+                        ha='center', 
+                        va='bottom', 
+                        color='black', 
+                        fontsize=12
+                    )
+                    
+                    # Add p-value and effect size text
+                    ax.text(
+                        (x1+x2)/2, 
+                        y + text_height*2,
+                        f"p={p_value:.3f}, d={effect_size:.2f}",
+                        ha='center', 
+                        va='bottom', 
+                        color=effect_color,
+                        fontsize=9, 
+                        style='italic'
+                    )
+                    
+                    bar_idx += 1
             
             # Adjust y-axis limits to accommodate significance bars
             if bar_idx > 0:
-                ax.set_ylim(0.0, bar_positions[bar_idx-1] + text_height * 2)
+                ax.set_ylim(0.0, bar_positions[bar_idx-1] + text_height * 3)
         
         # Add overall title
         if dataset is None:
