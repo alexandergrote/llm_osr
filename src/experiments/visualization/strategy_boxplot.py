@@ -158,10 +158,11 @@ class StrategyBoxPlot(BaseModel):
         })
         
         # Create a figure with one subplot for each metric, arranged horizontally
+        # Increase figure height to make more room for title
         fig, axes = plt.subplots(
             1,
             len(metrics),
-            figsize=(8 * len(metrics), 5),
+            figsize=(8 * len(metrics), 6),  # Increased height from 5 to 6
             sharey=True,  # Share y-axis across all subplots
             constrained_layout=True
         )
@@ -318,14 +319,14 @@ class StrategyBoxPlot(BaseModel):
             if bar_idx > 0:
                 ax.set_ylim(0.0, bar_positions[bar_idx-1] + text_height * 3)
         
-        # Add overall title with academic styling
+        # Add overall title with academic styling - increased font size and adjusted position
         if dataset is None:
             plt.suptitle("Performance Metrics by Prompting Strategy (All Datasets Combined)", 
-                        fontsize=14, y=0.98, fontweight='bold')
+                        fontsize=16, y=0.95, fontweight='bold')  # Increased font size and lowered position
             filename = "strategy_boxplot_combined.pdf"
         else:
             plt.suptitle(f"Performance Metrics for Dataset {dataset} by Prompting Strategy", 
-                        fontsize=14, y=0.98, fontweight='bold')
+                        fontsize=16, y=0.95, fontweight='bold')  # Increased font size and lowered position
             filename = f"strategy_boxplot_dataset_{dataset}.pdf"
         plt.savefig(Directory.OUTPUT_DIR / filename)
         plt.close()
