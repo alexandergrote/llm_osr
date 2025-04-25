@@ -170,27 +170,29 @@ class StrategyBoxPlot(BaseModel):
         if len(metrics) == 1:
             axes = np.array([axes])
         
-        # Define a grayscale palette for prompt strategies
+        # Use a single color for all boxes
         prompt_versions = sorted(self.get_prompts())
-        palette = sns.color_palette("gray", len(prompt_versions))
+        # Create a list with the same color repeated for each prompt version
+        single_color = '#333333'  # Dark gray color
+        palette = [single_color] * len(prompt_versions)
         
         # Iterate through metrics to create the plots
         for i, metric in enumerate(metrics):
             # Get the current axis
             ax = axes[i]
             
-            # Create boxplot for this metric, grouped by prompt_version
+            # Create boxplot for this metric with same color for all boxes
             sns.boxplot(
                 x='prompt_version',
                 y=metric,
-                hue='prompt_version',  # Add hue parameter to fix FutureWarning
+                hue='prompt_version',  # Keep hue parameter to avoid FutureWarning
                 data=plot_data,
                 ax=ax,
                 palette=palette,
                 width=0.6,
                 order=prompt_versions,
                 linewidth=1.0,
-                legend=False,  # Hide legend since we're using hue
+                legend=False,  # Hide legend
                 fliersize=3,
                 flierprops={'marker': 'o', 'markerfacecolor': 'white', 'markeredgecolor': 'black', 'markeredgewidth': 0.8}
             )
