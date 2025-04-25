@@ -146,12 +146,12 @@ class StrategyBoxPlot(BaseModel):
         # Set the seaborn style
         sns.set(style="whitegrid")
         
-        # Create a figure with one subplot for each metric
+        # Create a figure with one subplot for each metric, arranged horizontally
         fig, axes = plt.subplots(
-            len(metrics), 
             1,
-            figsize=(10, 5 * len(metrics)),
-            sharex=True  # Share x-axis across all subplots
+            len(metrics),
+            figsize=(7 * len(metrics), 6),
+            sharey=True  # Share y-axis across all subplots
         )
         
         # If there's only one subplot, make sure axes is an array
@@ -195,12 +195,13 @@ class StrategyBoxPlot(BaseModel):
         
             # Set titles and labels
             ax.set_title(f"{metric.capitalize()}", fontsize=14)
-            ax.set_ylabel(f"{metric.capitalize()} Score", fontsize=12)
             
-            if i == len(metrics) - 1:  # Only set x-labels for the bottom row
-                ax.set_xlabel("Prompt Strategy", fontsize=12)
+            if i == 0:  # Only set y-labels for the first column
+                ax.set_ylabel("Score", fontsize=12)
             else:
-                ax.set_xlabel("")
+                ax.set_ylabel("")
+                
+            ax.set_xlabel("Prompt Strategy", fontsize=12)
             
             # Set y-axis limits for consistency
             ax.set_ylim(0, 1)
@@ -301,7 +302,7 @@ class StrategyBoxPlot(BaseModel):
             filename = f"strategy_boxplot_dataset_{dataset}.pdf"
         
         # Adjust layout
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.savefig(Directory.OUTPUT_DIR / filename)
         plt.close()
         
