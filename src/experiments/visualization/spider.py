@@ -72,8 +72,8 @@ class SpiderPlot(BaseModel):
         plt.subplots_adjust(hspace=1)
         
         plt.tight_layout(rect=[0, 0, 1, 0.95])
-        plt.savefig(Directory.OUTPUT_DIR / f"spider_plot.pdf")
-        #plt.show()
+        plt.savefig(Directory.OUTPUT_DIR / "spider_plot.pdf")
+        plt.close()
 
 if __name__ == '__main__':
 

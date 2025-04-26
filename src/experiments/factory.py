@@ -130,7 +130,7 @@ class ExperimentFactory(BaseModel):
             models = LLM_ERROR_MODELS + BENCHMARK_MODELS
 
         if datasets is None:
-            datasets = ['hwu'] # DATASETS
+            datasets = DATASETS
 
         if unknown_classes is None:
             unknown_classes = [0.2] #UNKNOWN_CLASSES
