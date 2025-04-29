@@ -1,10 +1,10 @@
-class: src.TwoStageLLM
+class: src.PromptFirstRandomSecond
 params:
   use_cache: true
   skip_unknown_detection: false
   shuffle_free_llms: false
   unknown_detection_scenario: 'explicit_fewshot'
-  unknown_detection_model_name: llama-3.3-8b
+  unknown_detection_model_name: gemma-2-9b
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:
@@ -12,8 +12,5 @@ params:
       n_classes: 3
       n_datapoints: 5 
   unknown_detection_model:
-    free_llms:
-      - ollama-llama-8b.yaml
-  classifier_model: 
-    free_llms:
-      - ollama-llama-8b.yaml
+    paid_llms: 
+      - groq-gemma2-9b.yaml

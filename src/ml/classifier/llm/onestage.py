@@ -13,13 +13,14 @@ from src.ml.classifier.llm.base import AbstractClassifierLLM, LLMClassifierMixin
 from src.util.constants import UnknownClassLabel
 from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
-from src.util.constants import Directory, ErrorValues, DatasetColumn
+from src.ml.classifier.llm.util.prompt import PromptCreator, PROMPT_SCENARIOS
+from src.util.constants import ErrorValues, DatasetColumn
 
 
 class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
     osr_model: Union[InferenceHandler, Dict[str, List[str]]]
-    osr_prompt: str = "osr.txt"
+    
     shuffle_free_llms: bool = False
 
     # fewshot selection of data points
@@ -73,18 +74,6 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         return data
     
-    @model_validator(mode='after')
-    def _init_model_prompts(self):
-
-        for prompt_attr_name in ["osr_prompt"]:
-
-            prompt_filename = getattr(self, prompt_attr_name)
-
-            with open(Directory.PROMPT_DIR / prompt_filename, 'r') as f:
-                setattr(self, prompt_attr_name, f.read())
-
-        return self
-    
     def fit(
         self,
         x_train: np.ndarray,
@@ -115,23 +104,25 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         
         valid_labels = list(self.classes)
         Prediction.valid_labels = valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
-        
-        parser = PydanticOutputParser(pydantic_object=Prediction)
-        instructions = parser.get_format_instructions()
 
-        examples = self._get_examples(
-            text_to_classify=text,
+        parser = PydanticOutputParser(pydantic_object=Prediction)
+
+        examples = self._get_examples(text_to_classify=text)
+
+        outlier_examples = self._get_outlier_examples(
+            outlier_value=UnknownClassLabel.UNKNOWN_STR.value
         )
 
-        classes_msg = '\n'.join([el["output"] for el in examples])
-        examples_msg = '\n'.join([f"{example['input']} -> {example['output']}" for example in examples])
+        prompt_creator = PROMPT_SCENARIOS[self.unknown_detection_scenario]
 
-        prompt = self.osr_prompt.format(
-            examples_msg=examples_msg,
-            text=text,
-            instructions=instructions,
-            classes_msg=classes_msg,
-            unknown_label=UnknownClassLabel.UNKNOWN_STR.value
+        if not isinstance(prompt_creator, PromptCreator):
+            raise ValueError("Prompt creator must be an instance of PromptCreator")
+
+        prompt = prompt_creator.create(
+            text_to_classify=text,
+            parser=parser,
+            examples=examples,
+            outlier_examples=outlier_examples,
         )
 
         if not isinstance(self.osr_model, AbstractLLM):
@@ -151,9 +142,14 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         
 if __name__ == '__main__':
 
+    import mlflow
     import numpy as np
+
     from typing import cast
     from src.util.load_hydra import get_hydra_config
+
+    mlflow.set_experiment("Onestage")
+    mlflow.tracing.enable()
 
     key = "ml__classifier"
 
@@ -166,6 +162,8 @@ if __name__ == '__main__':
     llm = DynamicImport.init_class_from_dict(
         dictionary=config[key],
     )
+
+    llm.use_cache = False
 
     # Explicitly cast llm to TwoStageLLM
     llm = cast(OneStageLLM, llm)
@@ -188,13 +186,13 @@ if __name__ == '__main__':
         y_valid=data_valid[DatasetColumn.LABEL].values,
     )
 
-    result = llm._single_predict(text="Hello", use_cache=True)
+    result = llm._single_predict(text="Hello", use_cache=False)
 
     print(result)
 
     result2 = llm.predict(
         x=np.array([["Hola"], ["Hallo du"], ["Ich möchte einen Tee bestellen"], ['Ich wohne in Bayern'], ["I like trains"]], dtype=np.object_),
-        include_outlierscore=True
+        include_outlierscore=True,
     )
 
     print(result2)

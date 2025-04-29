@@ -10,6 +10,7 @@ from tests.unit.ml.classifier.llm.helper import mock_response, data_train, data_
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.twostage import TwoStageLLM
 from src.ml.classifier.llm.util.rest import StructuredRequestLLM
+from src.ml.classifier.llm.util.outlier import OutlierValue
 from src.util.load_hydra import get_hydra_config
 from src.util.constants import DatasetColumn
 from src.util.dynamic_import import DynamicImport
@@ -22,7 +23,7 @@ LOG_DIR = Path(TMP_DIR.name) / "logs"
 
 output_binary_correct_true = [
     {
-        'generated_text': '{"label": "true", "reasoning": "trivial"}',
+        'generated_text': '{"label": "outlier", "reasoning": "trivial"}',
         'details': {
             'tokens': [
                 {'text': '{', 'logprob': 0},
@@ -40,7 +41,7 @@ output_binary_correct_true = [
 
 output_binary_correct_false = [
     {
-        'generated_text': '{"label": "false", "reasoning": "trivial"}',
+        'generated_text': '{"label": "inlier", "reasoning": "trivial"}',
         'details': {
             'tokens': [
                 {'text': '{', 'logprob': 0},
@@ -207,11 +208,11 @@ class TestTwoStage(unittest.TestCase):
 
         prediction = Prediction.from_llm_job(
             filename=job_files[0],
-            class_labels=["true", "false"],
+            class_labels=OutlierValue.list(),
             request_output_fun=rest_llm.request_output_classmethod
         )
 
-        self.assertTrue(prediction.label == "false")
+        self.assertTrue(prediction.label == OutlierValue.INLIER.value)
 
 
         # case: corrected request

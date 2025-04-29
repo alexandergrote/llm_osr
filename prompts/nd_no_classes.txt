@@ -1,0 +1,9 @@
+Given these examples, is this data point "{text}" an outlier?
+
+{examples} 
+
+{chain_of_thought}
+
+{classes}
+
+{json_instructions}

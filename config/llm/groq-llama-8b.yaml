@@ -1,7 +1,7 @@
 class: src.ml.classifier.llm.util.rest.StructuredRequestLLM
 params:
   name: groq-llama-8b
-  rest_api_model_name: llama-8b
+  rest_api_model_name: llama-3.1-8b
   url: "https://api.groq.com/openai/v1/chat/completions"
   payload:
     model: "llama-3.1-8b-instant"

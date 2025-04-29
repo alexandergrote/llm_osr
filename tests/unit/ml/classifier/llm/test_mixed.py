@@ -1,4 +1,3 @@
-import os
 import unittest
 
 from typing import cast
@@ -8,8 +7,7 @@ from pathlib import Path
 
 from tests.unit.ml.classifier.llm.helper import mock_response, data_train, data_valid
 
-
-from src.ml.classifier.llm.onestage import OneStageLLM
+from src.ml.classifier.llm.mixed import PromptFirstRandomSecond
 from src.util.load_hydra import get_hydra_config
 from src.util.constants import DatasetColumn
 from src.util.dynamic_import import DynamicImport
@@ -19,18 +17,44 @@ TMP_DIR = TemporaryDirectory()
 JOB_DIR = Path(TMP_DIR.name) / 'jobs'
 LOG_DIR = Path(TMP_DIR.name) / "logs"
 
-output_correct = [
+
+output_binary_correct_true = [
     {
-        'generated_text': '{"label": "greeting", "reasoning": "trivial"}',
+        'generated_text': '{"label": "outlier", "reasoning": "trivial"}',
         'details': {
             'tokens': [
-                {'text': '{', 'logprob': 0}
+                {'text': '{', 'logprob': 0},
+                {'text': '"', 'logprob': 0},
+                {'text': 'label', 'logprob': 0},
+                {'text': ':', 'logprob': 0},
+                {'text': '"', 'logprob': 0},
+                {'text': 'true', 'logprob': 0},
+                {'text': '"', 'logprob': 0},
+                {'text': '}', 'logprob': 0},
             ]
         }
     }
 ]
 
-output_correct_unknown = [
+output_binary_correct_false = [
+    {
+        'generated_text': '{"label": "inlier", "reasoning": "trivial"}',
+        'details': {
+            'tokens': [
+                {'text': '{', 'logprob': 0},
+                {'text': '"', 'logprob': 0},
+                {'text': 'label', 'logprob': 0},
+                {'text': ':', 'logprob': 0},
+                {'text': '"', 'logprob': 0},
+                {'text': 'false', 'logprob': 0},
+                {'text': '"', 'logprob': 0},
+                {'text': '}', 'logprob': 0},
+            ]
+        }
+    }
+]
+
+output_binary_wrong = [
     {
         'generated_text': '{"label": "unknown", "reasoning": "trivial"}',
         'details': {
@@ -42,18 +66,7 @@ output_correct_unknown = [
 ]
 
 
-output_wrong = [
-    {
-        'generated_text': '{"label_is_misspelled": "another greeting", "reasoning": "trivial"}',
-        'details': {
-            'tokens': [
-                {'text': '{', 'logprob': 0}
-            ]
-        }
-    }
-]
-
-class TestOneStage(unittest.TestCase):
+class TestMixed(unittest.TestCase):
 
     def setUp(self):
 
@@ -66,17 +79,18 @@ class TestOneStage(unittest.TestCase):
             read=lambda x: None,
             write=lambda x, obj: None
         )
-        self.mocks = self.patcher.start()        
+        
+        self.mocks = self.patcher.start()
 
-    def _get_fitted_llm(self) -> OneStageLLM:
+    def _get_fitted_llm(self) -> PromptFirstRandomSecond:
 
         key = "ml__classifier"
 
         config = get_hydra_config(
             overrides=[
-                f"{key}=one_stage_llama_8",
+                f"{key}=mixed_llama_8",
                 f"{key}.params.selector.params.mode=random_class",
-                f"{key}.params.osr_model.paid_llms=[hf-llama-8b.yaml]"
+                f"{key}.params.unknown_detection_model.paid_llms=[hf-llama-8b.yaml]",
             ]
         )
 
@@ -85,7 +99,7 @@ class TestOneStage(unittest.TestCase):
         )
 
         # Explicitly cast llm to TwoStageLLM
-        llm = cast(OneStageLLM, llm)
+        llm = cast(PromptFirstRandomSecond, llm)
 
         llm.fit(
             x_train=data_train[DatasetColumn.FEATURES].values,
@@ -96,10 +110,9 @@ class TestOneStage(unittest.TestCase):
 
         return llm
 
-    
     @patch("src.util.logger.get_log_dir")
     @patch("src.ml.util.job_queue.get_job_dir")
-    def test_error_messages(self, mock_job_dir, mock_log_dir):
+    def test_unknown_detection(self, mock_job_dir, mock_log_dir):
 
         mock_job_dir.return_value = JOB_DIR
         mock_log_dir.return_value = LOG_DIR
@@ -109,7 +122,7 @@ class TestOneStage(unittest.TestCase):
         # case: wrongly formatted request
         # should not be saved
         with patch("requests.post") as mock_post:
-            mock_post.return_value = mock_response(status_code=200, json_data=output_wrong)
+            mock_post.return_value = mock_response(status_code=200, json_data=output_binary_wrong)
             llm._single_predict(text="Hello friend", use_cache=True)
 
         job_files = list(JOB_DIR.rglob("*.json"))
@@ -121,10 +134,10 @@ class TestOneStage(unittest.TestCase):
         # case: corrected request
         # should be saved
         with patch("requests.post") as mock_post:
-            mock_post.return_value = mock_response(status_code=200, json_data=output_correct)
+            mock_post.return_value = mock_response(status_code=200, json_data=output_binary_correct_true)
             result = llm._single_predict(text="Hello friend", use_cache=True)
 
-        self.assertEqual(result, ("greeting", 0))
+        self.assertEqual(result, ("unknown", 1.0))
 
         job_files = list(JOB_DIR.rglob("*.json"))
         error_files = list(LOG_DIR.rglob("*.json"))
@@ -134,51 +147,23 @@ class TestOneStage(unittest.TestCase):
 
     @patch("src.util.logger.get_log_dir")
     @patch("src.ml.util.job_queue.get_job_dir")
-    def test__get_parsed_output(self, mock_job_dir, mock_log_dir):
+    def test_classification(self, mock_job_dir, mock_log_dir):
 
         mock_job_dir.return_value = JOB_DIR
         mock_log_dir.return_value = LOG_DIR
 
         llm = self._get_fitted_llm()
 
+        # case: llm considers it an inlier
+        # should not be saved
         with patch("requests.post") as mock_post:
-
-            os.environ["MAX_RANDOM_WAIT"] = str(0.5)  # todo: add to config
-
+            
             mock_post.side_effect = [
-                mock_response(status_code=400, json_data=output_wrong),  # first pydantic and tenacity call, api not available
-                mock_response(status_code=400, json_data=output_wrong),  # second tenacity call, api not available
-                mock_response(status_code=400, json_data=output_wrong),  # third tenacity call, api not available
-                mock_response(status_code=400, json_data=output_wrong),  # fourth tenacity call, api not available
-                mock_response(status_code=200, json_data=output_wrong),  # fifth tenacity call, api available, but wrong format
-                mock_response(status_code=200, json_data=output_wrong),  # second pydantic retry call, wrong format
-                mock_response(status_code=200, json_data=output_wrong),  # third pydantic retry call, wrong format
-                mock_response(status_code=200, json_data=output_wrong),  # forth pydantic retry call, wrong format
-                mock_response(status_code=200, json_data=output_correct), # firth pydantic retry call, correct format
+                mock_response(status_code=200, json_data=output_binary_correct_false)
             ]
 
-            llm._single_predict(text="Hello", use_cache=True)
+            llm._single_predict(text="Hello friend", use_cache=True)
 
-        job_files = list(JOB_DIR.rglob("*.json"))
-        error_files = list(LOG_DIR.rglob("*.json"))
-
-        self.assertEqual(len(job_files), 1)
-        self.assertEqual(len(error_files), 0)
-
-
-    @patch("src.util.logger.get_log_dir")
-    @patch("src.ml.util.job_queue.get_job_dir")
-    def test__get_parsed_output_with_unknown(self, mock_job_dir, mock_log_dir):
-
-        mock_job_dir.return_value = JOB_DIR
-        mock_log_dir.return_value = LOG_DIR
-
-        llm = self._get_fitted_llm()
-
-        with patch("requests.post") as mock_post:
-            mock_post.return_value = mock_response(status_code=200, json_data=output_correct_unknown)
-            llm._single_predict(text="Hello", use_cache=True)
-        
         job_files = list(JOB_DIR.rglob("*.json"))
         error_files = list(LOG_DIR.rglob("*.json"))
 
@@ -200,7 +185,6 @@ class TestOneStage(unittest.TestCase):
         TMP_DIR.cleanup()
 
         self.patcher.stop()
-
         
         
 

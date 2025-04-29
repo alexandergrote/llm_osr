@@ -13,31 +13,35 @@ from src.ml.classifier.llm.base import AbstractClassifierLLM
 from src.util.constants import UnknownClassLabel, DatasetColumn
 from src.ml.classifier.llm.util.outlier import OutlierValue
 from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
+from src.ml.classifier.llm.naive import RandomLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import ErrorValues
 from src.ml.classifier.llm.base import LLMClassifierMixin
 from src.ml.classifier.llm.util.prompt import PromptCreator, PromptScenarioName, PROMPT_SCENARIOS
 
+random_llm = RandomLLM(
+    selector=dict(),
+    unknown_detection_scenario=PromptScenarioName.EXPLICIT_WITH_LABELS,
+    unknown_detection_model_name="random",
+    fixed_random_seed=False
+)
 
-
-class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
+class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
     unknown_detection_model: Union[InferenceHandler, Dict[str, List[str]]]
     
-    classifier_model: Union[InferenceHandler, Dict[str, List[str]]]
-    
-    # skip unknown detection
-    skip_unknown_detection: bool = False
+    classifier_model: RandomLLM = random_llm
 
     # shuffle free llm apis to equal use
     shuffle_free_llms: bool = False
+    use_classes_in_examples: bool = True
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode='before')
     def _init_models(data: dict):
 
-        model_keys = ["unknown_detection_model", "classifier_model"]
+        model_keys = ["unknown_detection_model"]
 
         for model in model_keys:
 
@@ -62,7 +66,6 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
             assert isinstance(shuffle_free_llms, bool)
 
-
             data[model] = InferenceHandler(
                 free_llms=free_llms,
                 paid_llms=paid_llms,
@@ -81,7 +84,7 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             data['selector'] = DynamicImport.init_class_from_dict(data_selector)
 
         return data
-    
+
     def fit(
         self,
         x_train: np.ndarray,
@@ -98,6 +101,13 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
        self.x_valid = x_valid
 
        self.classes = np.unique(self.y_train)
+
+       self.classifier_model.x_train = self.x_train
+       self.classifier_model.y_train = self.y_train
+       self.classifier_model.x_valid = self.x_valid
+       self.classifier_model.y_valid = self.y_valid
+       self.classifier_model.classes = self.classes
+
 
     def _detect_unknown_class(self, text: str, use_cache: bool = False, **kwargs) -> Optional[LogProbScore]:
 
@@ -155,62 +165,10 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         )
         
         return logprob_score
-    
-    def _classify_known_classes(self, text: str, use_cache: bool = False, **kwargs) -> Optional[LogProbScore]:
-
-        if self.y_train is None:
-            raise ValueError("Not fitted")
-        
-        if self.x_train is None:
-            raise ValueError("Not fitted")
-        
-        if self.classes is None:
-            raise ValueError("Not fitted")
-
-        if 'pbar' in kwargs:
-            pbar = kwargs['pbar']
-
-            if hasattr(pbar, 'write'):
-                pbar.write("Classifying Known Class")
-        
-        # Example usage
-        valid_labels = list(self.classes)
-        Prediction.valid_labels = valid_labels
-        
-        parser = PydanticOutputParser(pydantic_object=Prediction)
-    
-        examples = self._get_examples(
-            text_to_classify=text,
-        )
-
-        prompt_creator = PROMPT_SCENARIOS[PromptScenarioName.MULTICLASS]
-
-        if not isinstance(prompt_creator, PromptCreator):
-            raise ValueError("Prompt creator must be an instance of PromptCreator")
-
-        prompt = prompt_creator.create(
-            text_to_classify=text,
-            parser=parser,
-            examples=examples,
-            outlier_examples=None,
-        )
-
-        if not isinstance(self.classifier_model, AbstractLLM):
-            raise ValueError("Classifier model must be an AbstractLLM")
-
-        logprob_score = self._get_parsed_output(
-            model=self.classifier_model,
-            valid_labels=Prediction.valid_labels,
-            text=prompt,
-            use_cache=use_cache,
-            retries=5,
-            **kwargs 
-        )
-
-        return logprob_score
 
     def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
 
+        # checks for first model
         if self.y_train is None:
             raise ValueError("Not fitted")
         
@@ -220,24 +178,26 @@ class TwoStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         if self.classes is None:
             raise ValueError("Not fitted")
 
-        if not self.skip_unknown_detection:
-            
-            unknown_prediction = self._detect_unknown_class(text=text, use_cache=use_cache, **kwargs)
-
-            if unknown_prediction is None:
-                return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
-
-            if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:            
-                return UnknownClassLabel.UNKNOWN_STR.value, 1
+        # checks for second model
+        if self.classifier_model.y_train is None:
+            raise ValueError("Not fitted")
         
-        known_prediction = self._classify_known_classes(text=text, use_cache=use_cache, **kwargs)
+        if self.classifier_model.x_train is None:
+            raise ValueError("Not fitted")
+        
+        if self.classifier_model.classes is None:
+            raise ValueError("Not fitted")
 
-        if known_prediction is None:
+        unknown_prediction = self._detect_unknown_class(text=text, use_cache=use_cache, **kwargs)
+
+        if unknown_prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
-        
-        return known_prediction.answer.label, 0.0
-        
 
+        if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:            
+            return UnknownClassLabel.UNKNOWN_STR.value, 1
+
+        return self.classifier_model.single_predict(text=text, use_cache=use_cache, **kwargs)
+        
 
 if __name__ == '__main__':
 
@@ -246,14 +206,14 @@ if __name__ == '__main__':
     from typing import cast
     from src.util.load_hydra import get_hydra_config
 
-    mlflow.set_experiment("Twostage")
+    mlflow.set_experiment("PromptFirstRandomSecond")
     mlflow.tracing.enable()
 
     key = "ml__classifier"
 
     config = get_hydra_config(
         overrides=[
-            f"{key}=two_stage_llama_8"
+            f"{key}=mixed_llama_8"
         ]
     )
 
@@ -261,19 +221,17 @@ if __name__ == '__main__':
         dictionary=config[key],
     )
 
-    # Explicitly cast llm to TwoStageLLM
-    llm = cast(TwoStageLLM, llm)
-
-    llm.use_cache = False
-
+    # Explicitly cast llm
+    llm = cast(PromptFirstRandomSecond, llm)
+    
     data_train = pd.DataFrame({
-        DatasetColumn.FEATURES: ["Ich heiße Alex", "Auf Wiedersehen!", "Hallo", "Wo kann ich Kekse kaufen?", "Die Apfelsaftschorle finde ich wo?", "Das Essen ist sehr lecker", "München ist eine große Stadt."],
-        DatasetColumn.LABEL: ['Greeting', 'Farewell', "Greeting", "Food", "Food", "Food", "City"]
+        DatasetColumn.FEATURES: ["Erdbeeren sind lecker", "Auf Wiedersehen!", "Hallo", "Wo kann ich Kekse kaufen?", "Die Apfelsaftschorle finde ich wo?", "Das Essen ist sehr lecker", "München ist eine große Stadt."],
+        DatasetColumn.LABEL: ['Food', 'Farewell', "Greeting", "Food", "Food", "Food", "City"]
     })
 
     data_valid = pd.DataFrame({
-        DatasetColumn.FEATURES: ["Ich bin ein Mensch", "Ich war noch nie in Berlin"],
-        DatasetColumn.LABEL: ['Mensch', 'City']
+        DatasetColumn.FEATURES: ["Kartoffeln sind was feines", "Ich war noch nie in Berlin", "Ich spiele gerne Fußball"],
+        DatasetColumn.LABEL: ['Food', 'City', 'Outlier']
     })
 
     llm.fit(
@@ -283,13 +241,24 @@ if __name__ == '__main__':
         y_valid=data_valid[DatasetColumn.LABEL].values,
     )
 
-    result = llm._single_predict(text="Hello")
+    x_test = np.array([['Pfirsiche sind lecker'], ["Ich morgen in die Schule"], ["Ich möchte einen Tee bestellen"], ['Ich mag Züge'], ["I like trains"]], dtype=np.object_)
+    y_test = np.array(["food", "unknown", "unknown", "unknown", "unknown"])
 
-    print(result)
+    for use_class in [True, False]:
 
-    result2 = llm.predict(
-        x=np.array([["Hola"], ["Hallo ich heiße Alex"], ["Ich möchte einen Tee bestellen"], ['Ich wohne in Bayern'], ["I like trains"]], dtype=np.object_),
-        include_outlierscore=True
-    )
+        llm.use_cache = False
+        llm.use_classes_in_examples = use_class
 
-    print(result2)
+        result = llm._single_predict(text="Hello")
+
+        print(result)
+
+        result2 = llm.predict(
+            x=x_test,
+            include_outlierscore=True
+        )
+
+        y_pred = result2[0]
+        
+        print(y_pred)
+        

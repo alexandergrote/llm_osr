@@ -3,24 +3,19 @@ params:
   name: groq-llama-8b
   rate_limits:
     num_req_minute:
-      limit: 30
+      limit: 1000
       increment_level: "frequency"
       agg_level: "%Y-%m-%d %H:%M"
-      action: "raise"
+      action: "wait"
       waiting_time: 60
     num_token_minute:
-      limit: 20000
+      limit: 250000
       increment_level: "token"
       agg_level: "%Y-%m-%d %H:%M"
-      action: "raise"
+      action: "wait"
       waiting_time: 60
     num_req_day:
-      limit: 14400
-      increment_level: "frequency"
-      agg_level: "%Y-%m-%d"
-      action: "raise"
-    num_token_day:
       limit: 500000
-      increment_level: "token"
+      increment_level: "frequency"
       agg_level: "%Y-%m-%d"
       action: "raise"

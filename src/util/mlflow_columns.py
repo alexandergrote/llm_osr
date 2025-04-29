@@ -41,6 +41,21 @@ class IDColumns(ColumnMixin, BaseModel):
     )
 
 
+class PromptColumns(ColumnMixin, BaseModel):
+
+    unknown_prompt: MLFlowColumn = MLFlowColumn(
+        column_name="params.ml__classifier.params.unknown_detection_scenario",
+        yaml_keys=["ml__classifier", "params", "unknown_detection_scenario"],
+        verbose_str="unknown_prompt"
+    )
+
+    unknown_prompt_model_name: MLFlowColumn = MLFlowColumn(
+        column_name="params.ml__classifier.params.unknown_detection_model_name",
+        yaml_keys=["ml__classifier", "params", "unknown_detection_model_name"],
+        verbose_str="unknown_prompt_model_name"
+    )
+
+
 class F1AnalysisColumns(ColumnMixin, BaseModel):
 
     f1_avg: MLFlowColumn = MLFlowColumn(
@@ -50,6 +65,7 @@ class F1AnalysisColumns(ColumnMixin, BaseModel):
     )
 
 class UnknownAUCAnalysisColumns(ColumnMixin, BaseModel):
+
     auc: MLFlowColumn = MLFlowColumn(
         column_name="metrics.unknown_scores_auc",
         yaml_keys=["metrics", "unknown_scores_auc"],
@@ -62,9 +78,23 @@ class UnknownAUCAnalysisColumns(ColumnMixin, BaseModel):
         verbose_str="unknown_scores_f1"
     )
 
+    recall: MLFlowColumn = MLFlowColumn(
+        column_name="metrics.recall_unknown_class_-1", 
+        yaml_keys=["metrics", "recall_unknown_class_-1"],
+        verbose_str="unknown_scores_recall"
+    )
+
+    precision: MLFlowColumn = MLFlowColumn(
+        column_name="metrics.precision_unknown_class_-1", 
+        yaml_keys=["metrics", "precision_unknown_class_-1"],
+        verbose_str="unknown_scores_precision"
+    )
+
+
 id_columns = IDColumns()
 f1_analysis_columns = F1AnalysisColumns()
 unknown_auc_analysis_columns = UnknownAUCAnalysisColumns()
+prompt_columns = PromptColumns()
 
 
 __all__ = [
@@ -72,4 +102,5 @@ __all__ = [
     "f1_analysis_columns",
     "unknown_auc_analysis_columns",
     "MLFlowColumn",
+    "prompt_columns"
 ]

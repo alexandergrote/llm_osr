@@ -1,14 +1,14 @@
 class: src.ml.classifier.llm.util.rest.StructuredRequestLLM
 params:
-  name: groq-llama-70b
-  rest_api_model_name: llama-3.3-70b
+  name: groq-gemma2-9b
+  rest_api_model_name: gemma2-9b
   url: "https://api.groq.com/openai/v1/chat/completions"
   payload:
-    model: "llama-3.3-70b-versatile"
+    model: "gemma2-9b-it"
     temperature: 0.0
     top_p: 1.0
   request_input_classmethod: "create_groq_request_input"
   request_output_classmethod: "from_groq_request"
   request_input_data_extraction: "get_prompt_from_openai_data"
-  rate_limit_manager: "groq-llama-70b.yaml"
+  rate_limit_manager: "groq-gemma2-9b.yaml"
     

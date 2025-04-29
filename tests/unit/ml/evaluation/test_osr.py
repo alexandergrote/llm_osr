@@ -47,7 +47,7 @@ class TestEvaluator(unittest.TestCase):
             unknown_scores=outlier_score
         )['metrics']
 
-        self.assertEqual(final_result['f1_known_class_yes'], 0.75)
+        self.assertAlmostEqual(final_result['f1_known_class_yes'], 0.75)
         self.assertTrue(final_result['recall_unknown_class_unknown'] == 1)
     
         

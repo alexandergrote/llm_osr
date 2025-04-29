@@ -1,15 +1,9 @@
-You are a classifier that assigns an incoming text the most probable class.
+Given these examples and their classes, which class does "{text}" belong to?
 
-Your task is to classify "{text}" with the help of the following examples and their classes:
+{examples}
 
-{examples_msg}
+{chain_of_thought}
 
-First, think step by step of the overall concept behind the incoming data point.
-Second, think step by step about the concepts of each class.
-Third, compare the overall concept of the incoming data point with the concepts of each class and answer with the more probable answer.
+{classes}
 
-You must follow these instructions:
-Provide the reasoning containing your thought process first and then the most probable label.
-The label must be one of those values: {classes_msg}
-
-{instructions}
+{json_instructions}
