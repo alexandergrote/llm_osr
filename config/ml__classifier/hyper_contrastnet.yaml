@@ -1,0 +1,17 @@
+class: src.HyperTunerUnknownThreshold
+params:
+  model:
+    class: src.ContrastNetWrapper
+    params: 
+      unknown_threshold: -0.05
+      patience: 20
+      n_classes: 5
+      n_query: 1
+      n_support: 1
+      evaluate_every: 100
+      max_iter: 10000
+      n_test_episodes: 600
+  n_trials: 100
+  evaluator: 
+    class: src.Evaluator
+    params:

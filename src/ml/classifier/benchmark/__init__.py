@@ -6,6 +6,7 @@ from .hyperopt import HyperTuner, HyperTunerUnknownThreshold
 from .setfit import SetFit
 from .simpleshot import SimpleShot
 from .fastfitwrapper import FastFitWrapper
+from .contrastnetwrapper import ContrastNetWrapper
 
 __all__ = [
     "DOC",
@@ -16,5 +17,6 @@ __all__ = [
     "SetFit",
     "SimpleShot",
     "FastFitWrapper",
-    "HyperTunerUnknownThreshold"
+    "HyperTunerUnknownThreshold",
+    "ContrastNetWrapper"
 ]

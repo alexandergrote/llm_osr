@@ -1,8 +1,10 @@
+import os
 import numpy as np
+import pandas as pd
 from typing import Tuple
 from sklearn.datasets import fetch_20newsgroups_vectorized, fetch_20newsgroups
 
-from src.util.constants import Directory
+from src.util.constants import Directory, DatasetColumn
 from src.util.caching import PickleCacheHandler
 
 class Data:
@@ -39,3 +41,12 @@ class Data:
         cache.write((x, y))
 
         return x, y
+
+
+class BANKING77Dataset:
+
+    @staticmethod
+    def get_data(n_rows: int = 100):
+        parquet_file = Directory.INPUT_DIR / os.path.join("Banking77", "banking77.parquet")
+        data = pd.read_parquet(parquet_file).sample(n_rows, random_state=42)
+        return data[DatasetColumn.TEXT].values, data[DatasetColumn.LABEL].values
