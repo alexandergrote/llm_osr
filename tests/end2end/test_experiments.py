@@ -1,9 +1,15 @@
+import concurrent.futures
 import unittest
 import os
 
-from src.experiments.cli import ExperimentRunner
+from src.experiments.cli import ExperimentRunner, Experiment
 from src.experiments.factory import ExperimentFactory
 from src.util.constants import EnvMode
+
+
+def run_experiment(experiment: Experiment):
+    result = ExperimentRunner.run_process(experiment.command)
+    return experiment.name, result.returncode == 0
 
 
 class TestExperimentYamls(unittest.TestCase):
@@ -25,12 +31,13 @@ class TestExperimentYamls(unittest.TestCase):
             unknown_classes=[0, 0.6],
         )
 
-
-        for experiment in experiments:
-            with self.subTest(msg=f"Testing experiment: {experiment.name}"):
-                result = ExperimentRunner.run_process(experiment.command)
-                self.assertTrue(result.returncode == 0)
-
+        with self.subTest(msg="Testing experiments in parallel"):
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                results = list(executor.map(run_experiment, experiments))
+                for name, success in results:
+                    with self.subTest(msg=f"Testing experiment: {name}"):
+                        self.assertTrue(success)
+                        
     def tearDown(self) -> None:
         del os.environ[self.dryrun_key]
 
