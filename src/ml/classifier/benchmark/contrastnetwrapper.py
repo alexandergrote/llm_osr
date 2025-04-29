@@ -101,7 +101,7 @@ class ContrastNetWrapper(BaseModel, BaseBenchmark):
         return params
 
     @staticmethod
-    def _create_fewshot_dataset(x: np.ndarray, y: np.ndarray, n_class: int, n_support: int, n_query: int, n_task: Optional[int] = None, n_unlabeled: Optional[int] = None) -> Union[FewShotDataset, FewShotSSLFileDataset]:
+    def _create_fewshot_dataset(x: np.ndarray, y: np.ndarray, n_class: int, n_support: int, n_query: int, experiment_name: str, n_task: Optional[int] = None, n_unlabeled: Optional[int] = None) -> Union[FewShotDataset, FewShotSSLFileDataset]:
         
         is_validation_mode = (n_unlabeled is None) and (n_task is None)
 
@@ -146,17 +146,9 @@ class ContrastNetWrapper(BaseModel, BaseBenchmark):
                 f.write('\n')
     
 
-        augment_data_file = str(Directory.SRC / os.path.join(
-            'ml',
-            'classifier',
-            'benchmark',
-            'contrastnet',
-            'data',
-            'BANKING77',
-            'paraphrases',
-            'DBS-unigram-flat-1.0',
-            'paraphrases.json'
-        ))
+        augment_data_file = ContrastNetWrapper._get_paraphrase_filename(
+            experiment_name=experiment_name
+        )
 
         train_dataset = FewShotSSLFileDataset(
             data_path=data_file,
@@ -170,6 +162,37 @@ class ContrastNetWrapper(BaseModel, BaseBenchmark):
         )
 
         return train_dataset
+
+    @staticmethod
+    def _get_paraphrase_filename(experiment_name: str) -> str:
+
+        name = None
+
+        if "banking" in experiment_name.lower():
+            name = 'BANKING77'
+
+        if "hwu" in experiment_name.lower():
+            name = 'HWU64'
+
+        if "clinc" in experiment_name.lower():
+            name = 'OOS'
+
+        assert name is not None, f"Experiment {experiment_name} not supported."
+
+        filename = str(Directory.SRC / os.path.join(
+            'ml',
+            'classifier',
+            'benchmark',
+            'contrastnet',
+            'data',
+            name,
+            'paraphrases',
+            'DBS-unigram-flat-1.0',
+            'paraphrases.json'
+        ))
+
+        return filename
+
 
     @staticmethod
     def _get_tuned_model_name(experiment_name: str) -> str:
@@ -217,6 +240,7 @@ class ContrastNetWrapper(BaseModel, BaseBenchmark):
             n_query=self.n_query,
             n_task=self.n_task,
             n_unlabeled=self.n_unlabeled,
+            experiment_name=exp_name,
         )
 
         valid_dataset = self._create_fewshot_dataset(
@@ -225,6 +249,7 @@ class ContrastNetWrapper(BaseModel, BaseBenchmark):
             n_class=self.n_classes,
             n_support=self.n_support,
             n_query=self.n_query,
+            experiment_name=exp_name,
         )
 
         model_name_or_path = self.model_name_or_path
@@ -248,9 +273,11 @@ class ContrastNetWrapper(BaseModel, BaseBenchmark):
 
         checkpoint_file = tempfile.NamedTemporaryFile().name + "_contrastnet_checkpoint.pth"
 
+        patience = self.max_iter if self.patience is None else self.patience
+
         # prepare early stopping
         early_stopping = EarlyStopping(
-            patience=self.patience,
+            patience=patience,
             delta=0,
             path=checkpoint_file,
             verbose=True,
@@ -352,7 +379,7 @@ class ContrastNetWrapper(BaseModel, BaseBenchmark):
                predictions_proba.append(proba_vector)
 
                # Predict the class with the highest weighted vote
-               predicted_class = max(weighted_votes, key=weighted_votes.get)
+               predicted_class = max(weighted_votes, key=lambda x: weighted_votes[x])
                predictions.append(predicted_class)            
 
         y_pred = np.array([self.idx2label[prediction] for prediction in predictions])

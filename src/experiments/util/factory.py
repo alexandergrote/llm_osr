@@ -7,7 +7,7 @@ from src.ml.classifier.llm.util.prompt import PromptDataScenario, PromptOODScena
 from src.experiments.util.types import Experiment
 
 
-BENCHMARK_MODELS = ["naive", "hyper_simpleshot", "hyper_fastfit"]
+BENCHMARK_MODELS = ["naive", "hyper_simpleshot", "hyper_fastfit", "hyper_contrastnet"]
 LLM_MODELS = ["random_llm", "two_stage_llama_8", "one_stage_llama_8", "two_stage_llama_70", "one_stage_llama_70"]
 LLM_OOD_MODELS = ["mixed_llama_8", "mixed_qwen_32", "mixed_llama_70", "mixed_gemma2_9", "one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
 DATASETS = ['banking', 'clinc', 'hwu']

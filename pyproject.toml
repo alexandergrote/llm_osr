@@ -13,3 +13,10 @@ unfixable = ["B"]
 # 4. Ignore `E402` (import violations) in all `__init__.py` files, and in select subdirectories.
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "F403"]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]                                                                                                                                                                                                                           
+module = "src.ml.classifier.benchmark.contrastnet.*"                                                                                                                                                                                              
+ignore_errors = true
