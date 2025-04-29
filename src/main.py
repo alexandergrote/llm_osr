@@ -10,6 +10,8 @@ from src.util.constants import DictConfigNames, Directory, File, get_hydra_outpu
 from src.util.logger import console
 from src.util.environment import PydanticEnvironment
 from src.util.mlflow_checks import get_experiment, get_results_as_str
+from src.util.mlflow_columns import id_columns
+from src.util.dict_extraction import get_nested_dict_values
 
 env = PydanticEnvironment.from_environment()
 
@@ -52,11 +54,14 @@ def main(cfg: DictConfig) -> None:
         'io__export'
     ]
 
+    experiment_name = get_nested_dict_values(list_of_keys=[id_columns.experiment_name.yaml_keys], dictionary=cfg)[0]
+
     # output placeholder
     output = {
         DictConfigNames.RANDOM_SEED: cfg[DictConfigNames.RANDOM_SEED],
         'config': cfg,
-        'output_dir': get_hydra_output_dir()
+        'output_dir': get_hydra_output_dir(),
+        'experiment_name': experiment_name,
     }
 
     # init sequence

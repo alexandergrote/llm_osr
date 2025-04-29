@@ -1,5 +1,5 @@
 from .benchmark.naive import NaiveClf
-from .benchmark import DOC, MLP, HyperTuner, SimpleShot, Oslo, SetFit, FastFitWrapper, HyperTunerUnknownThreshold
+from .benchmark import DOC, MLP, HyperTuner, SimpleShot, Oslo, SetFit, FastFitWrapper, HyperTunerUnknownThreshold, ContrastNetWrapper
 from .llm import RandomLLM, TwoStageLLM, OneStageLLM
 
 __all__ = [
@@ -14,5 +14,6 @@ __all__ = [
     "TwoStageLLM",
     "OneStageLLM",
     "FastFitWrapper",
-    "HyperTunerUnknownThreshold"
+    "HyperTunerUnknownThreshold",
+    "ContrastNetWrapper"
 ]

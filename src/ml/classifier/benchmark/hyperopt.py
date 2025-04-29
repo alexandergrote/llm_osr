@@ -166,7 +166,8 @@ class HyperTuner(BaseModel, BaseClassifier):
             x_train=x_train,
             y_train=y_train,
             x_valid=x_valid,
-            y_valid=y_valid
+            y_valid=y_valid,
+            **kwargs
         )
 
         # store best params in kwargs
@@ -325,7 +326,8 @@ class HyperTunerUnknownThreshold(BaseModel, BaseClassifier):
             x_train=x_train,
             y_train=y_train,
             x_valid=x_valid,
-            y_valid=y_valid
+            y_valid=y_valid,
+            **kwargs
         )
 
         study = self._run_hyperparameter_search(
