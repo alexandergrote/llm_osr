@@ -32,8 +32,9 @@ for cmd in "${LESS_INTENSIVE_COMMANDS[@]}"; do
     
     # Start the command in a new terminal window and capture its PID
     open_terminal "$cmd" &
-    pids+=($!)
-    echo "Started: $cmd (PID: ${pids[-1]})"
+    current_pid=$!
+    pids+=($current_pid)
+    echo "Started: $cmd (PID: $current_pid)"
     
     # Increment the counter
     ((running++))
