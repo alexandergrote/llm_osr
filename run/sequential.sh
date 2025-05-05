@@ -5,8 +5,8 @@ source run/util.sh
 
 # Define an array of memory-intensive commands
 MEMORY_INTENSIVE_COMMANDS=(
-    "python run/long_process.py"
-    "python run/long_process.py"
+    "$PYTHON_PATH run/long_process.py"
+    "$PYTHON_PATH run/long_process.py"
 )
 
 # Run memory-intensive commands sequentially, each in a new terminal window

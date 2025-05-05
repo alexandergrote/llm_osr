@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Define the Python path
+PYTHON_PATH="/Users/alex/Code/llm_osr/venv/bin/python"
+
 # Maximum number of parallel less intensive processes
 MAX_PARALLEL=2
 

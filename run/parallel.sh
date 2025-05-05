@@ -5,11 +5,11 @@ source run/util.sh
 
 # Define an array of less intensive commands
 LESS_INTENSIVE_COMMANDS=(
-    "python run/short_process.py"
-    "python run/short_process.py"
-    "python run/short_process.py"
-    "python run/short_process.py"
-    "python run/short_process.py"
+    "$PYTHON_PATH run/short_process.py"
+    "$PYTHON_PATH run/short_process.py"
+    "$PYTHON_PATH run/short_process.py"
+    "$PYTHON_PATH run/short_process.py"
+    "$PYTHON_PATH run/short_process.py"
 )
 
 # Run less intensive commands with parallelism limit, each in a new terminal window
