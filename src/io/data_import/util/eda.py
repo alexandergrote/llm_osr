@@ -11,6 +11,7 @@ from src.util.dynamic_import import DynamicImport
 from src.io.data_import.base import BaseDataset
 from src.util.constants import DatasetColumn as dfc
 from src.util.logger import console
+from src.util.constants import Directory
 
 datasets = [
     "clinc", "hwu", "banking"
@@ -120,15 +121,12 @@ if __name__ == "__main__":
     console.print("\nLaTeX Table Format:")
     latex_table = tabulate(stats_df, headers='keys', tablefmt='latex', showindex=False)
     console.print(latex_table)
+
+    target_dir = Directory.OUTPUT_DIR / "eda"
+    target_dir.mkdir(exist_ok=True, parents=True)
     
-    # Save tables to files
-    os.makedirs("results", exist_ok=True)
-    
-    with open("results/dataset_statistics_markdown.md", "w") as f:
-        f.write(tabulate(stats_df, headers='keys', tablefmt='pipe', showindex=False))
-    
-    with open("results/dataset_statistics_latex.tex", "w") as f:
+    with open(target_dir / "dataset_statistics_latex.tex", "w") as f:
         f.write(tabulate(stats_df, headers='keys', tablefmt='latex', showindex=False))
     
-    console.print(f"\nTables saved to results/dataset_statistics_markdown.md and results/dataset_statistics_latex.tex")
+    console.print(f"\nTables saved to {target_dir}/dataset_statistics_latex.tex")
 
