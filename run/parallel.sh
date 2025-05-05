@@ -18,18 +18,28 @@ MAX_PARALLEL=2
 # Run less intensive commands with parallelism limit, each in a new terminal window
 echo "Starting less intensive processes with parallelism limit of $MAX_PARALLEL..."
 running=0
+pids=()
+
 for cmd in "${LESS_INTENSIVE_COMMANDS[@]}"; do
-    # Start the command in a new terminal window
-    open_terminal "$cmd"
-    echo "Started: $cmd"
+    # If we've reached the maximum number of parallel processes, wait for one to finish
+    if [ $running -ge $MAX_PARALLEL ]; then
+        echo "Maximum parallel processes reached. Waiting for a process to finish..."
+        # Wait for any process to finish
+        wait -n "${pids[@]}" 2>/dev/null || true
+        # Decrement the counter
+        ((running--))
+    fi
+    
+    # Start the command in a new terminal window and capture its PID
+    open_terminal "$cmd" &
+    pids+=($!)
+    echo "Started: $cmd (PID: ${pids[-1]})"
     
     # Increment the counter
     ((running++))
-    
-    # If we've reached the maximum number of parallel processes, wait a bit before continuing
-    if [ $running -ge $MAX_PARALLEL ]; then
-        echo "Maximum parallel processes reached. Waiting before starting more..."
-        sleep 3  # Wait 3 seconds before starting more processes
-        running=0
-    fi
 done
+
+# Wait for all remaining processes to finish
+echo "Waiting for all remaining processes to finish..."
+wait "${pids[@]}" 2>/dev/null || true
+echo "All processes completed."
