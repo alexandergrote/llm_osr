@@ -118,9 +118,6 @@ if __name__ == "__main__":
     stats_df = pd.DataFrame(all_stats)
     
     # Print table in different formats
-    console.print("Markdown Table Format:")
-    console.print(tabulate(stats_df, headers='keys', tablefmt='pipe', showindex=False))
-    
     console.print("\nLaTeX Table Format:")
     latex_table = tabulate(stats_df, headers='keys', tablefmt='latex', showindex=False)
     console.print(latex_table)
