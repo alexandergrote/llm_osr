@@ -18,10 +18,10 @@ class DataSplitter(BaseModel, BaseDatasplit):
 
     @validate_call(config={"arbitrary_types_allowed": True})
     def _determine_known_classes(
-        self, y: np.ndarray, n_known_classes: int
+        self, y: np.ndarray, n_known_classes: int, random_seed: int
     ) -> np.ndarray:
         y = y.flatten()
-        rng = np.random.default_rng(seed=42) 
+        rng = np.random.default_rng(seed=random_seed) 
         known_classes = rng.choice(y, n_known_classes, replace=False)
 
         return known_classes
@@ -72,7 +72,8 @@ class DataSplitter(BaseModel, BaseDatasplit):
         number_of_known_classes = np.ceil(perc_known * len(unique_classes))
 
         known_classes = self._determine_known_classes(
-            y=unique_classes, n_known_classes=number_of_known_classes
+            y=unique_classes, n_known_classes=number_of_known_classes,
+            random_seed=random_seed
         )
 
         mask_known_classes = self._get_subset_mask(
@@ -110,7 +111,8 @@ class DataSplitter(BaseModel, BaseDatasplit):
             number_of_known_classes = len(unique_classes)
 
         known_classes = self._determine_known_classes(
-            y=unique_classes, n_known_classes=number_of_known_classes
+            y=unique_classes, n_known_classes=number_of_known_classes,
+            random_seed=random_seed
         )
 
         mask_known_classes = self._get_subset_mask(
