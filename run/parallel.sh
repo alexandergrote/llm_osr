@@ -30,8 +30,9 @@ for cmd in "${LESS_INTENSIVE_COMMANDS[@]}"; do
         ((running--))
     fi
     
-    # Start the command in a new terminal window and capture its PID
-    open_terminal "$cmd" &
+    # Execute the command in the same shell but in the background
+    echo "Starting: $cmd"
+    eval "$cmd" &
     current_pid=$!
     pids+=($current_pid)
     echo "Started: $cmd (PID: $current_pid)"
