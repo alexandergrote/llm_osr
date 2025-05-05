@@ -1,29 +1,38 @@
 #!/bin/bash
 
-# Number of short processes to run
-NUM_SHORT_PROCESSES=5
+# Define the memory-intensive command
+MEMORY_INTENSIVE_COMMAND="python run/long_process.py"
+
+# Define an array of less intensive commands
+LESS_INTENSIVE_COMMANDS=(
+    "python src/experiments/cli.py bench --filter-name \".*simple.*\""
+    "python run/short_process.py"
+    "python run/short_process.py --param1 value1"
+    "python run/short_process.py --param2 value2"
+)
 
 # Run the memory-intensive process first
 echo "Starting memory-intensive process..."
-python run/long_process.py &
+eval "$MEMORY_INTENSIVE_COMMAND" &
 LONG_PID=$!
 
-# Run multiple short processes
-echo "Starting $NUM_SHORT_PROCESSES short processes..."
-for i in $(seq 1 $NUM_SHORT_PROCESSES); do
-    echo "Starting short process $i..."
-    python run/short_process.py &
-    SHORT_PIDS[$i]=$!
+# Run all less intensive processes
+echo "Starting ${#LESS_INTENSIVE_COMMANDS[@]} less intensive processes..."
+SHORT_PIDS=()
+for cmd in "${LESS_INTENSIVE_COMMANDS[@]}"; do
+    echo "Starting process: $cmd"
+    eval "$cmd" &
+    SHORT_PIDS+=($!)
 done
 
-# Wait for the long process to complete
+# Wait for the memory-intensive process to complete
 echo "Waiting for memory-intensive process to complete..."
 wait $LONG_PID
 echo "Memory-intensive process completed."
 
-# Wait for all short processes to complete
-echo "Waiting for short processes to complete..."
-for pid in ${SHORT_PIDS[@]}; do
+# Wait for all less intensive processes to complete
+echo "Waiting for less intensive processes to complete..."
+for pid in "${SHORT_PIDS[@]}"; do
     wait $pid
 done
 
