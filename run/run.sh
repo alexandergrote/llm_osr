@@ -63,11 +63,6 @@ for cmd in "${LESS_INTENSIVE_COMMANDS[@]}"; do
     
     # If we've reached the maximum number of parallel processes, wait for one to finish
     if [ $running -ge $MAX_PARALLEL ]; then
-        echo "Maximum parallel processes reached. Press Enter to continue with the next batch..."
-        read
         running=0
     fi
 done
-
-echo "All processes have been started. Press Enter when all terminal windows are closed..."
-read
