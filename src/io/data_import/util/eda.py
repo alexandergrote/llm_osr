@@ -50,6 +50,9 @@ if __name__ == "__main__":
     # Dictionary to store statistics for all datasets
     all_stats = []
 
+    target_dir = Directory.OUTPUT_DIR / "eda"
+    target_dir.mkdir(exist_ok=True, parents=True)
+    
     for dataset in datasets:
 
         config = get_hydra_config(overrides=[f"io__import={dataset}"])
@@ -102,7 +105,7 @@ if __name__ == "__main__":
         for label in temp:
             label.set_visible(False)
         plt.tight_layout()
-        plt.show()
+        plt.savefig(target_dir / f"{dataset}_class_distribution.png")
         
         # Calculate statistics for this dataset
         dataset_stats = calculate_dataset_statistics(data, classes, dataset)
@@ -122,9 +125,6 @@ if __name__ == "__main__":
     latex_table = tabulate(stats_df, headers='keys', tablefmt='latex', showindex=False)
     console.print(latex_table)
 
-    target_dir = Directory.OUTPUT_DIR / "eda"
-    target_dir.mkdir(exist_ok=True, parents=True)
-    
     with open(target_dir / "dataset_statistics_latex.tex", "w") as f:
         f.write(tabulate(stats_df, headers='keys', tablefmt='latex', showindex=False))
     
