@@ -13,13 +13,29 @@ LESS_INTENSIVE_COMMANDS=(
     "python run/short_process.py"
 )
 
-# Start all less intensive processes in parallel
-echo "Starting ${#LESS_INTENSIVE_COMMANDS[@]} less intensive processes in parallel..."
+# Maximum number of parallel less intensive processes
+MAX_PARALLEL=2
+
+# Start less intensive processes with parallelism limit
+echo "Starting ${#LESS_INTENSIVE_COMMANDS[@]} less intensive processes with max $MAX_PARALLEL in parallel..."
 SHORT_PIDS=()
+RUNNING=0
 for cmd in "${LESS_INTENSIVE_COMMANDS[@]}"; do
+    # If we've reached the maximum number of parallel processes, wait for one to finish
+    if [ $RUNNING -ge $MAX_PARALLEL ]; then
+        # Wait for any process to finish
+        if [ ${#SHORT_PIDS[@]} -gt 0 ]; then
+            echo "Reached max parallel processes, waiting for one to complete..."
+            wait -n ${SHORT_PIDS[@]}
+            RUNNING=$((RUNNING - 1))
+        fi
+    fi
+    
+    # Start a new process
     echo "Starting process: $cmd"
     eval "$cmd" &
     SHORT_PIDS+=($!)
+    RUNNING=$((RUNNING + 1))
 done
 
 # Run memory-intensive processes sequentially
