@@ -1,6 +1,10 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pylab as plt
+import numpy as np
+import os
+from tabulate import tabulate
+from collections import defaultdict
 
 from src.util.load_hydra import get_hydra_config
 from src.util.dynamic_import import DynamicImport
@@ -12,7 +16,38 @@ datasets = [
     "clinc", "hwu", "banking"
 ]
 
+def calculate_dataset_statistics(data, classes, dataset_name):
+    """Calculate common statistics for text datasets."""
+    stats = {}
+    stats["Dataset"] = dataset_name
+    stats["Samples"] = len(data)
+    stats["Classes"] = len(classes)
+    stats["Avg. samples per class"] = round(data.groupby(dfc.LABEL).size().mean(), 1)
+    stats["Min samples per class"] = data.groupby(dfc.LABEL).size().min()
+    stats["Max samples per class"] = data.groupby(dfc.LABEL).size().max()
+    
+    # Text statistics
+    data['text_length'] = data['text'].apply(len)
+    data['word_count'] = data['text'].apply(lambda x: len(x.split()))
+    
+    stats["Avg. text length (chars)"] = round(data['text_length'].mean(), 1)
+    stats["Avg. word count"] = round(data['word_count'].mean(), 1)
+    stats["Min text length"] = data['text_length'].min()
+    stats["Max text length"] = data['text_length'].max()
+    
+    # Class distribution statistics
+    class_distribution = data.groupby(dfc.LABEL).size()
+    stats["Class imbalance ratio"] = round(class_distribution.max() / class_distribution.min(), 2)
+    
+    # Calculate vocabulary size (unique words)
+    all_words = ' '.join(data['text']).lower().split()
+    stats["Vocabulary size"] = len(set(all_words))
+    
+    return stats
+
 if __name__ == "__main__":
+    # Dictionary to store statistics for all datasets
+    all_stats = []
 
     for dataset in datasets:
 
@@ -67,4 +102,33 @@ if __name__ == "__main__":
             label.set_visible(False)
         plt.tight_layout()
         plt.show()
+        
+        # Calculate statistics for this dataset
+        dataset_stats = calculate_dataset_statistics(data, classes, dataset)
+        all_stats.append(dataset_stats)
+    
+    # Create a table with all dataset statistics
+    console.rule("Dataset Statistics Table")
+    
+    # Convert to DataFrame for easier manipulation
+    stats_df = pd.DataFrame(all_stats)
+    
+    # Print table in different formats
+    console.print("Markdown Table Format:")
+    console.print(tabulate(stats_df, headers='keys', tablefmt='pipe', showindex=False))
+    
+    console.print("\nLaTeX Table Format:")
+    latex_table = tabulate(stats_df, headers='keys', tablefmt='latex', showindex=False)
+    console.print(latex_table)
+    
+    # Save tables to files
+    os.makedirs("results", exist_ok=True)
+    
+    with open("results/dataset_statistics_markdown.md", "w") as f:
+        f.write(tabulate(stats_df, headers='keys', tablefmt='pipe', showindex=False))
+    
+    with open("results/dataset_statistics_latex.tex", "w") as f:
+        f.write(tabulate(stats_df, headers='keys', tablefmt='latex', showindex=False))
+    
+    console.print(f"\nTables saved to results/dataset_statistics_markdown.md and results/dataset_statistics_latex.tex")
 
