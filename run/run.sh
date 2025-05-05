@@ -11,6 +11,9 @@ LESS_INTENSIVE_COMMANDS=(
     "python run/short_process.py"
     "python run/short_process.py"
     "python run/short_process.py"
+    "python run/short_process.py"
+    "python run/short_process.py"
+    "python run/short_process.py"
 )
 
 # Maximum number of parallel less intensive processes
