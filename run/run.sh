@@ -31,10 +31,12 @@ RUNNING=0
 for cmd in "${LESS_INTENSIVE_COMMANDS[@]}"; do
     # If we've reached the maximum number of parallel processes, wait for one to finish
     if [ $RUNNING -ge $MAX_PARALLEL ]; then
-        # Wait for any process to finish
+        # Wait for the first process to finish
         if [ ${#SHORT_PIDS[@]} -gt 0 ]; then
             echo "Reached max parallel processes, waiting for one to complete..."
-            wait -n ${SHORT_PIDS[@]}
+            wait ${SHORT_PIDS[0]}
+            # Remove the first PID from the array
+            SHORT_PIDS=("${SHORT_PIDS[@]:1}")
             RUNNING=$((RUNNING - 1))
         fi
     fi
