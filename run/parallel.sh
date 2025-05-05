@@ -12,6 +12,9 @@ LESS_INTENSIVE_COMMANDS=(
     "$PYTHON_PATH run/short_process.py"
 )
 
+# Maximum number of parallel less intensive processes
+MAX_PARALLEL=2
+
 # Run less intensive commands with parallelism limit, each in a new terminal window
 echo "Starting less intensive processes with parallelism limit of $MAX_PARALLEL..."
 running=0
