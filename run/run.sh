@@ -16,15 +16,7 @@ LESS_INTENSIVE_COMMANDS=(
 # Maximum number of parallel less intensive processes
 MAX_PARALLEL=2
 
-# Run memory-intensive processes sequentially first
-echo "Running ${#MEMORY_INTENSIVE_COMMANDS[@]} memory-intensive processes sequentially..."
-for cmd in "${MEMORY_INTENSIVE_COMMANDS[@]}"; do
-    echo "Starting memory-intensive process: $cmd"
-    eval "$cmd"
-    echo "Memory-intensive process completed: $cmd"
-done
-
-# Start less intensive processes with parallelism limit
+# Start less intensive processes with parallelism limit first
 echo "Starting ${#LESS_INTENSIVE_COMMANDS[@]} less intensive processes with max $MAX_PARALLEL in parallel..."
 SHORT_PIDS=()
 RUNNING=0
@@ -42,14 +34,22 @@ for cmd in "${LESS_INTENSIVE_COMMANDS[@]}"; do
     fi
     
     # Start a new process
-    echo "Starting process: $cmd"
+    echo "Starting short process: $cmd"
     eval "$cmd" &
     SHORT_PIDS+=($!)
     RUNNING=$((RUNNING + 1))
 done
 
+# Run memory-intensive processes sequentially while short processes are running
+echo "Running ${#MEMORY_INTENSIVE_COMMANDS[@]} memory-intensive processes sequentially..."
+for cmd in "${MEMORY_INTENSIVE_COMMANDS[@]}"; do
+    echo "Starting memory-intensive process: $cmd"
+    eval "$cmd"
+    echo "Memory-intensive process completed: $cmd"
+done
+
 # Wait for all less intensive processes to complete
-echo "Waiting for less intensive processes to complete..."
+echo "Waiting for any remaining short processes to complete..."
 for pid in "${SHORT_PIDS[@]}"; do
     wait $pid
 done
