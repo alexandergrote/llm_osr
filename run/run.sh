@@ -3,16 +3,14 @@
 # Define an array of memory-intensive commands
 MEMORY_INTENSIVE_COMMANDS=(
     "python run/long_process.py"
-    "python run/long_process.py --param heavy1"
-    "python run/long_process.py --param heavy2"
+    "python run/long_process.py"
 )
 
 # Define an array of less intensive commands
 LESS_INTENSIVE_COMMANDS=(
-    "python src/experiments/cli.py bench --filter-name \".*simple.*\""
     "python run/short_process.py"
-    "python run/short_process.py --param1 value1"
-    "python run/short_process.py --param2 value2"
+    "python run/short_process.py"
+    "python run/short_process.py"
 )
 
 # Start all less intensive processes in parallel
