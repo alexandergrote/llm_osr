@@ -28,6 +28,17 @@ def add_prompt_to_data_openai(*, data: dict, prompt_value: str, **kwargs) -> dic
     return data
 
 
+
+def add_prompt_to_data_openai_no_prefilling(*, data: dict, prompt_value: str, **kwargs) -> dict:
+    """
+    Add the prompt to the data dictionary
+    """
+
+    data['messages'] = [{"role": "user", "content": prompt_value}]
+
+    return data
+
+
 def get_prompt_from_data_hf(*, data: dict, **kwargs) -> str:
 
     return data["data"]['inputs']
@@ -262,6 +273,39 @@ class RequestInput(BaseModel):
         )
 
     @classmethod
+    def create_nebius_request_input(cls, prompt: str, url: str = 'https://api.studio.nebius.com/v1/chat/completions', payload: Optional[dict] = None) -> "RequestInput":
+
+        if payload is None:
+            payload = {}
+
+        assert 'model' in payload, "Payload must contain a 'model' key"
+
+        headers={
+            "Content-Type": "application/json", 
+            "Authorization": f"Bearer {env.nebius_key}"
+        }
+
+        final_payload = {
+            "temperature": 0,
+            "max_tokens": 1000,
+        }
+
+        for k, v in payload.items():
+            final_payload[k] = v    
+
+        request_dict = RequestInput.get_request_dict(
+            url=url,
+            headers=headers,
+            prompt=prompt,
+            data=final_payload,
+            data_modifying_function=add_prompt_to_data_openai_no_prefilling
+        )    
+
+        return RequestInput(
+            data=request_dict
+        )
+
+    @classmethod
     def create_ollama_request_input(cls, prompt: str, url: str = 'http://localhost:11434/api/chat', payload: Optional[dict] = None) -> "RequestInput":
 
         if payload is None:
@@ -469,4 +513,22 @@ class RequestOutput(BaseModel):
             text=text,
             logprobas=logprob_list,
             num_tokens=total_tokens
+        )
+
+    
+    @classmethod
+    def from_nebius_request(cls, x: dict, **kwargs) -> "RequestOutput":
+
+        assert 'choices' in x, 'Completion does not have choices'
+        assert len(x['choices']) == 1, 'Completion does not have one choice'
+        assert 'message' in x['choices'][0], 'Completion choice does not have message'
+        assert 'content' in x['choices'][0]['message'] , 'Completion choice message does not have content'
+
+        text = x['choices'][0]['message']['content']
+        logprob_list = [LogProb(text='{"label": "LogProb not supported by Nebius"}', logprob=0)]
+
+        return cls(
+            text=text,
+            logprobas=logprob_list,
+            num_tokens=x["usage"]["completion_tokens"]
         )

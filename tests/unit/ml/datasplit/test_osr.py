@@ -23,7 +23,7 @@ class TestDataSplitter(unittest.TestCase):
         unique_classes = np.unique(y)
         n_known_classes = 3
 
-        known_classes = self.splitter._determine_known_classes(y, n_known_classes)
+        known_classes = self.splitter._determine_known_classes(y, n_known_classes, random_seed=42)
         self.assertEqual(len(known_classes), n_known_classes)
         self.assertTrue(all([c in unique_classes for c in known_classes]))
 

@@ -19,6 +19,7 @@ class PydanticEnvironment(BaseModel):
     _sambanova_key: Optional[str]
     _openrouter_key: Optional[str]
     _cerebras_key: Optional[str]
+    _nebius_key: Optional[str]
 
     model_config = ConfigDict(extra = 'forbid')
 
@@ -94,6 +95,16 @@ class PydanticEnvironment(BaseModel):
     def cerebras_key(self, value: str):
         self._cerebras_key = value
 
+    @property
+    def nebius_key(self) -> str:
+        if self._nebius_key is None:
+            raise ValueError("nebius token not set")
+
+        return self._nebius_key
+    
+    @nebius_key.setter
+    def nebius_key(self, value: str):
+        self._nebius_key = value
 
     @property
     def mode(self) -> str:
@@ -123,6 +134,7 @@ class PydanticEnvironment(BaseModel):
         instance.sambanova_key = os.environ.get('SAMBANOVA')  # type: ignore
         instance.openrouter_key = os.environ.get('OPENROUTER')  # type: ignore
         instance.cerebras_key = os.environ.get('CEREBRAS')  # type: ignore
+        instance.nebius_key = os.environ.get("NEBIUS")  # type: ignore
 
         return instance
 

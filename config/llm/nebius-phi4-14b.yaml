@@ -1,0 +1,13 @@
+class: src.ml.classifier.llm.util.rest.StructuredRequestLLM
+params:
+  name: nebius-phi4-14b
+  rest_api_model_name: phi4-14b
+  url: "https://api.studio.nebius.com/v1/chat/completions"
+  payload:
+    model: microsoft/phi-4
+    temperature: 0.01
+    top_p: 0.99
+  request_input_classmethod: "create_nebius_request_input"
+  request_output_classmethod: "from_nebius_request"
+  request_input_data_extraction: "get_prompt_from_openai_data"
+  rate_limit_manager: nebius-phi4-14b.yaml

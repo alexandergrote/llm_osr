@@ -9,8 +9,8 @@ from src.experiments.util.types import Experiment
 
 BENCHMARK_MODELS = ["naive", "hyper_simpleshot", "hyper_fastfit", "hyper_contrastnet"]
 LLM_MODELS = ["random_llm", "two_stage_llama_8", "one_stage_llama_8", "two_stage_llama_70", "one_stage_llama_70"]
-LLM_ERROR_MODELS = ["one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
-LLM_OOD_MODELS = ["mixed_llama_8", "mixed_qwen_32", "mixed_llama_70", "mixed_gemma2_9", "one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma2_9", "one_stage_qwen_32"]
+LLM_ERROR_MODELS = ["one_stage_llama_8", "one_stage_llama_70", "one_stage_gemma3_27", "one_stage_phi4_14"]
+LLM_OOD_MODELS = ["mixed_llama_8", "mixed_llama_70", "mixed_gemma3_27", "mixed_phi4_14"] + LLM_ERROR_MODELS
 DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
 RANDOM_SEEDS = [0, 1, 2, 3, 4]
@@ -114,7 +114,7 @@ class ExperimentFactory(BaseModel):
                         overrides.append('ml__classifier.params.shuffle_free_llms=true')
 
                     overrides += [
-                        'ml__datasplit.params.subset_test=100',
+                        'ml__datasplit.params.subset_test=10',
                     ]
 
                     experiments.append(Experiment(name=exp_name, overrides=overrides))

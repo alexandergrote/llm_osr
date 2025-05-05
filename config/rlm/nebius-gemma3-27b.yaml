@@ -1,0 +1,16 @@
+class: "src.ml.classifier.llm.util.rate_limit.RateLimitManager"
+params:
+  name: "nebius-gemma3-27b"
+  rate_limits:
+    num_req_minute:
+      limit: 600
+      increment_level: "frequency"
+      agg_level: "%Y-%m-%d %H:%M"
+      action: "wait"
+      waiting_time: 60     
+    num_token_minute:
+      limit: 400000
+      increment_level: "token"
+      agg_level: "%Y-%m-%d %H:%M"
+      action: "wait"
+      waiting_time: 60

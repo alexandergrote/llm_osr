@@ -471,6 +471,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
 if __name__ == '__main__':
 
+    from datetime import datetime
     from src.ml.classifier.llm.util.request import RequestOutput
 
     prompt_template = """
@@ -486,6 +487,8 @@ if __name__ == '__main__':
 
     Prediction.valid_labels = ["question", "answer"]
 
+    start = datetime.now()
+
     model = StructuredRequestLLM(
         name="ollama-phi4-14b",
         rest_api_model_name="phi4-14b",
@@ -500,6 +503,59 @@ if __name__ == '__main__':
     )
 
     prompt = prompt_template.format("What is the meaning of life?")
+
     result = model(prompt, use_cache=False, pydantic_model=Prediction)
 
+    end = datetime.now()
+
+    elapsed_time_in_seconds = (end - start).total_seconds()
+    print(f"Elapsed time: {elapsed_time_in_seconds} seconds")
+    print(result.answer)
+
+    start = datetime.now()
+
+    model = StructuredRequestLLM(
+        name="nebius-phi4-14b",
+        rest_api_model_name="phi4-14b",
+        url='https://api.studio.nebius.com/v1/chat/completions',
+        payload={
+            "model": "microsoft/phi-4",
+        },
+        request_input_classmethod="create_nebius_request_input",
+        request_output_classmethod="from_nebius_request",
+        request_input_data_extraction="get_prompt_from_openai_data",
+        rate_limit_manager="nebius-phi4-14b.yaml"
+    )
+
+    prompt = prompt_template.format("What is the meaning of life?")
+
+    result = model(prompt, use_cache=False, pydantic_model=Prediction)
+
+    end = datetime.now()
+
+    elapsed_time_in_seconds = (end - start).total_seconds()
+    print(f"Elapsed time: {elapsed_time_in_seconds} seconds")
+    print(result.answer)
+
+    model = StructuredRequestLLM(
+        name="nebius-gemma3-27b",
+        rest_api_model_name="gemma3-27b",
+        url='https://api.studio.nebius.com/v1/chat/completions',
+        payload={
+            "model": "google/gemma-3-27b-it",
+        },
+        request_input_classmethod="create_nebius_request_input",
+        request_output_classmethod="from_nebius_request",
+        request_input_data_extraction="get_prompt_from_openai_data",
+        rate_limit_manager="nebius-gemma3-27b.yaml"
+    )
+
+    prompt = prompt_template.format("What is the meaning of life?")
+
+    result = model(prompt, use_cache=False, pydantic_model=Prediction)
+
+    end = datetime.now()
+
+    elapsed_time_in_seconds = (end - start).total_seconds()
+    print(f"Elapsed time: {elapsed_time_in_seconds} seconds")
     print(result.answer)
