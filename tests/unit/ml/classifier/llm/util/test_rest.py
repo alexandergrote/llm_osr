@@ -7,11 +7,12 @@ from pathlib import Path
 from src.util.constants import LLMModels, RESTAPI_URLS
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.rest import StructuredRequestLLM
-from src.ml.classifier.llm.util.rate_limit import RateLimit, RateLimitError, RateLimitManager
+from src.ml.classifier.llm.util.rate_limit import RateLimit, RateLimitError, RateLimitManager, DatabaseManager
 from tests.unit.ml.classifier.llm.helper import mock_response
 
 TMP_DIR = TemporaryDirectory()
 RL_DIR = Path(TMP_DIR.name) / 'rate_limits'
+DB_PATH = RL_DIR / 'rl.db'
 ERROR_DIR = Path(TMP_DIR.name) / 'errors'
 
 
@@ -58,6 +59,8 @@ class TestStructuredRestLLM(unittest.TestCase):
         llm = StructuredRequestLLM.create_from_yaml_file(
             "groq-llama-8b.yaml"
         )
+
+        llm.rate_limit_manager.db_manager = DatabaseManager(path=DB_PATH)
 
         # dummy query
         query = "hello world is wonderful"
@@ -119,6 +122,7 @@ class TestStructuredRestLLM(unittest.TestCase):
 
         rate_limit_manager = RateLimitManager(
             name="my_rlm",
+
             rate_limits={
                 "num_req_minute": RateLimit(
                     limit=0,
@@ -160,7 +164,7 @@ class TestStructuredRestLLM(unittest.TestCase):
         # unlink all files in job and log dir
         # cleanup alone does not do the job 
         # todo: find better solution
-        for file in RL_DIR.glob("*.json"):
+        for file in RL_DIR.glob("*.db"):
             file.unlink()
 
         TMP_DIR.cleanup()
