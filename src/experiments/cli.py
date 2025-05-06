@@ -146,7 +146,7 @@ class ExperimentRunner(BaseModel):
         return executeable_list    
     
 
-def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False):
+def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: bool = False, skip_execution: bool = False, skip_visualization: bool = False, skip_confirmation: bool = False):
 
     experiments = ExperimentRunner.get_all_runners()
 
@@ -178,7 +178,7 @@ def execute(analyser: str, filter_name: Optional[str] = None, run_in_parallel: b
 
         experiment_analyser.experiments = selected_exp_clean
 
-    if len(experiment_analyser.experiments) > 1:
+    if (len(experiment_analyser.experiments) > 1) and not skip_confirmation:
         
         tmp_names = '\n'.join([el.name for el in experiment_analyser.experiments])
         console.print(f"You are about to run these experiments:\n{tmp_names}")
