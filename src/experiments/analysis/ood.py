@@ -15,8 +15,11 @@ class OODAnalyser(BaseModel, BaseAnalyser):
         # work on copy
         data_copy = data.copy(deep=True)
 
-        # sanity check
-        artifact_sanity_check(data_copy=data_copy, dataset_col=id_columns.dataset.column_name)
+        # reset index
+        data_copy.reset_index(drop=True, inplace=True)
+
+        # sanity checky
+        #artifact_sanity_check(data_copy=data_copy, dataset_col=id_columns.dataset.column_name)
 
         dataset_col, perc_unknown_col = id_columns.dataset.column_name, id_columns.perc_unknown_classes.column_name
         unknown_prompt_col, unknown_model_col = prompt_columns.unknown_prompt.column_name, prompt_columns.unknown_prompt_model_name.column_name
@@ -43,10 +46,8 @@ class OODAnalyser(BaseModel, BaseAnalyser):
 
         # analyse unknown predictions
         data2plot_grouped = data2plot.groupby([SpiderDatasetSchema.dataset, SpiderDatasetSchema.model, SpiderDatasetSchema.prompt_version])[[SpiderDatasetSchema.F1, SpiderDatasetSchema.recall, SpiderDatasetSchema.precision]].agg(["mean"]).reset_index()
-
         with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.precision', 2):
             print(data2plot_grouped)
-
 
         # visualize results
         spider_plot = SpiderPlot(

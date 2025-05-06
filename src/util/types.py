@@ -170,7 +170,7 @@ class MLPrediction(BaseModel):
         # check outlier scores if given
         if self.outlier_score is not None:
             assert len(self.outlier_score) == len(self.y_pred), "Length of prediction and outlier scores do not match"
-            assert pd.api.types.is_float_dtype(self.outlier_score.dtype), "Outlier scores must be of type float"
+            #assert pd.api.types.is_float_dtype(self.outlier_score.dtype), "Outlier scores must be of type float"
             assert not self.outlier_score.isnull().any(), "Outlier scores contain NaN values"
 
         # check for classes

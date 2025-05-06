@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from src.util.types import MLPrediction
 from src.util.mlflow_columns import id_columns, f1_analysis_columns, unknown_auc_analysis_columns
+from src.util.logger import console
 from src.util.constants import Directory
 from src.experiments.util.artifacts import get_artifacts
 from src.experiments.analysis.base import BaseAnalyser
@@ -40,6 +41,11 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         data_copy['model_col'] = data_copy[exp_name_col].apply(lambda x: x[x.index('model__')+7:x.index('__unkn')])
 
+        # temporary fix for dev phase - remove later
+        length: int = 10
+        errors = [error[:length] for error in errors]
+        console.print("TEMPORARY FIX FOR DEBUGGING - REMOVE LATER")
+
         named_errors = dict(zip(data_copy['model_col'].to_list(), errors))
 
         ## pearson
@@ -68,6 +74,8 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         )
 
         mcnemar_heatmap.plot()
+
+        data_copy.reset_index(drop=True, inplace=True)
     
         # analyse f1 scores with boxplot
         plt.figure()

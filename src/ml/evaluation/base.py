@@ -23,6 +23,17 @@ class BaseEvaluator(ABC):
     ) -> dict:
         
         all_classes = kwargs['all_classes']
+
+        # make sure every class is lowercase
+        all_classes = [c.lower() for c in all_classes]
+
+        # make sure predictios are lower case as well
+        if isinstance(prediction.y_pred, pd.Series):
+            prediction.y_pred = prediction.y_pred.str.lower()
+        
+        # make sure truth is lower case
+        if isinstance(prediction.y_test, pd.Series):
+            prediction.y_test = prediction.y_test.str.lower()
         
         mapper = ClassMapper()
         
@@ -40,6 +51,19 @@ class BaseEvaluator(ABC):
         unique_classes = set(mapper.transform(
             data=pd.Series(list(prediction.classes_in_training))
         ).values)
+
+        # check if both arrays contain numbers
+        are_numbers = all([np.issubdtype(y_pred.dtype, np.number), np.issubdtype(y_true.dtype, np.number)])
+        are_str = all([np.issubdtype(y_pred.dtype, np.str_), np.issubdtype(y_true.dtype, np.str_)])
+
+        if not are_numbers and not are_str:
+
+            msg: str = """
+            Both, y_pred and y_true, must be consistently typed. 
+            They must be either of type number or string
+            """.strip()
+
+            raise ValueError(msg)
 
         # evaluate
         result = self.evaluate(

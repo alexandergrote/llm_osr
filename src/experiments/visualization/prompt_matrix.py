@@ -8,10 +8,10 @@ from src.util.constants import Directory
 
 class PromptMatrix(BaseModel):
 
-    top_left: str
-    top_right: str
-    bottom_left: str
-    bottom_right: str
+    top_left: str  # implicit zeroshot
+    top_right: str  # implicit fewshot
+    bottom_left: str  # explicit zeroshot
+    bottom_right: str  # explicit fewshot
 
     def to_matrix(self) -> List[List[str]]:
         return [
@@ -30,7 +30,7 @@ class PromptMatrixPlot(BaseModel):
         assert len(matrix[0]) == 2, "Matrix must be 2x2"
         assert len(matrix[1]) == 2, "Matrix must be 2x2"
 
-        fig, ax = plt.subplots(figsize=(10, 8))
+        fig, ax = plt.subplots(figsize=(14, 8))
 
         # Hide axes
         ax.axis('off')
@@ -47,13 +47,13 @@ class PromptMatrixPlot(BaseModel):
                     matrix[i][j], 
                     ha='center', 
                     va='center', 
-                    fontsize=12, 
-                    bbox=dict(boxstyle="round", facecolor="wheat", edgecolor="gray"),
+                    fontsize=16, 
+                    #bbox=dict(boxstyle="round", facecolor="wheat", edgecolor="gray"),
                     wrap=True
                 )
                 # Set the width for text wrapping (adjust as needed)
-                text_box.set_linespacing(1.5)  # Increase line spacing for wrapped text
-                text_box._get_wrap_line_width = lambda: 200  # Adjust this value to control wrap width
+                text_box.set_linespacing(1.)  # Increase line spacing for wrapped text
+                text_box._get_wrap_line_width = lambda: 380  # Adjust this value to control wrap width
 
         # Draw grid
         for x in range(3):
@@ -71,16 +71,48 @@ class PromptMatrixPlot(BaseModel):
         # Save the plot
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / "text_matrix_plot.pdf", bbox_inches='tight', dpi=300)
-        plt.show()
 
 if __name__ == "__main__":
 
-    top_left = """Given these examples and their classes, which class does "{text}" belong to? If unsure, answer {unknown_label}. {examples} {chain_of_thought} {classes} {json_instructions}"""
+    top_left = """Given these examples and their classes, which class does "{text}" belong to? If unsure, answer {unknown_label}. \n\n{examples} {chain_of_thought} {classes} {json_instructions}"""
     top_right = """Given these examples and their classes, which class does "{text}" belong to? If unsure, answer {unknown_label}. {examples} {chain_of_thought} {classes} {json_instructions}"""
 
     bottom_left = """Given these examples, is this data point "{text}" an outlier? {examples} {chain_of_thought} {classes} {json_instructions}"""
     bottom_right = """Given these examples, is this data point "{text}" an outlier? {examples} {chain_of_thought} {classes} {json_instructions}"""
 
+    bottom_right = """Given these examples and their classes, is this data point "What is the capital of France?" an outlier that differs in its intent?
+
+    The president signed a new law. -> inlier
+    The final score was 3-1. -> inlier
+    The cake is delicious. -> outlier
+    It's raining heavily. -> inlier 
+    """
+
+    bottom_left = """Given these examples and their classes, is this data point "What is the capital of France?" an outlier that differs in its intent?
+
+    The final score was 3-1. -> inlier
+    It's raining heavily. -> inlier
+    The president signed a new law. -> inlier 
+    """
+
+    top_right = """Given these examples and their classes, which class does "What is the capital of France?" belong to?
+    If unsure, answer unknown. 
+
+    The president signed a new law. -> politics
+    The final score was 3-1. -> sports
+    The cake is delicious. -> unknown
+    It's raining heavily. -> weather
+    """
+
+    top_left = """Given these examples and their classes, which class does "What is the capital of France?" belong to?
+    If unsure, answer unknown. 
+
+    The final score was 3-1. -> sports
+    It's raining heavily. -> weather
+    The president signed a new law. -> politics
+    """
+    
+    
     prompt_matrix = {
         "top_left": top_left,
         "top_right": top_right,
