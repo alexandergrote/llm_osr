@@ -54,7 +54,7 @@ class ExperimentFactory(BaseModel):
             unknown_classes = UNKNOWN_CLASSES
 
         if random_seeds is None:
-            random_seeds = RANDOM_SEEDS
+            random_seeds = [0] #RANDOM_SEEDS
 
         for dataset in datasets:
 
@@ -71,6 +71,11 @@ class ExperimentFactory(BaseModel):
                         random_seeds=random_seeds,
                         exp_name=exp_name
                     )
+
+                    overrides += ["io__import.params.n_classes=10"]
+
+                    if model in ["hyper_contrastnet"]:
+                        overrides.append('ml__classifier.params.model.params.max_iter=5')
                     
                     # all the benchmark models need
                     # 1) encoding of text features
