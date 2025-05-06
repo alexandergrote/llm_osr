@@ -278,7 +278,7 @@ class ContrastNetWrapper(BaseModel, BaseBenchmark):
         # prepare early stopping
         early_stopping = EarlyStopping(
             patience=patience,
-            delta=0,
+            delta=0.001,
             path=checkpoint_file,
             verbose=True,
             trace_func=pbar.write

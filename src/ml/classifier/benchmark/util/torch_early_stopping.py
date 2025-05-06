@@ -13,7 +13,7 @@ class EarlyStopping:
     def __init__(
         self,
         patience: int,
-        delta: int,
+        delta: float,
         path: str,
         verbose=False,
         trace_func=print,
