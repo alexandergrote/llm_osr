@@ -89,7 +89,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
             PromptExample(text=el, label=outlier_value) for el in x_valid_unknown
         ]
 
-        if len(examples) == 0:
+        if (len(examples) == 0):
             raise ValueError("No unknown classes found in validation set")
 
         if len(examples) > self.n_unknown_examples:

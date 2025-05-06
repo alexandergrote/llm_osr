@@ -42,6 +42,10 @@ class PromptScenarioName(Enum):
     @classmethod
     def create_from_enums(cls, ood_scenario: PromptOODScenario, data_scenario: PromptDataScenario) -> "PromptScenarioName":
         return cls(f"{ood_scenario.value}_{data_scenario.value}")
+
+    @classmethod
+    def is_implict(cls, value: str) -> bool:
+        return PromptOODScenario.IMPLICIT.value in value.lower()
     
 
 class PromptTemplate(Enum):

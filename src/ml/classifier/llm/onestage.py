@@ -109,9 +109,12 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         examples = self._get_examples(text_to_classify=text)
 
-        outlier_examples = self._get_outlier_examples(
-            outlier_value=UnknownClassLabel.UNKNOWN_STR.value
-        )
+        try:
+            outlier_examples = self._get_outlier_examples(
+                outlier_value=UnknownClassLabel.UNKNOWN_STR.value
+            )
+        except ValueError:
+            outlier_examples = None
 
         prompt_creator = PROMPT_SCENARIOS[self.unknown_detection_scenario]
 

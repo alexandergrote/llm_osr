@@ -125,10 +125,10 @@ class ExperimentRunner(BaseModel):
         executeable_list = []
 
         combinations = [
-            (ExperimentFactory.create_benchmark_experiments(), BenchmarkAnalyser()),
-            (ExperimentFactory.create_llm_fewshot_experiments(), LLMAnalyser()),
+            (ExperimentFactory.create_all_fewshot_experiments(), BenchmarkAnalyser()),
+            (ExperimentFactory.create_all_fewshot_experiments(), ErrorAnalyser()),
             (ExperimentFactory.create_llm_ood_experiments(), OODAnalyser()),
-            (ExperimentFactory.create_llm_error_experiments(), ErrorAnalyser())
+            (ExperimentFactory.create_all_llm_experiments(), LLMAnalyser())
         ]
 
         for experiments, analyser in combinations:
