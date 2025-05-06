@@ -22,10 +22,21 @@ ax.axis('off')
 ax.set_xlim(0, 2)
 ax.set_ylim(0, 2)
 
-# Add text to each cell
+# Add text to each cell with wrapping
 for i in range(2):
     for j in range(2):
-        ax.text(j + 0.5, 1.5 - i, matrix[i][j], ha='center', va='center', fontsize=12, bbox=dict(boxstyle="round", facecolor="wheat", edgecolor="gray"))
+        text_box = ax.text(
+            j + 0.5, 1.5 - i, 
+            matrix[i][j], 
+            ha='center', 
+            va='center', 
+            fontsize=12, 
+            bbox=dict(boxstyle="round", facecolor="wheat", edgecolor="gray"),
+            wrap=True
+        )
+        # Set the width for text wrapping (adjust as needed)
+        text_box.set_linespacing(1.5)  # Increase line spacing for wrapped text
+        text_box._get_wrap_line_width = lambda: 200  # Adjust this value to control wrap width
 
 # Draw grid
 for x in range(3):
