@@ -11,11 +11,6 @@ params:
       n_classes: 3
       n_datapoints: 5
   osr_model:
-    free_llms:
-      - groq-llama-70b.yaml
-      - cerebras-llama-70b.yaml
-      - sambanova-llama-70b.yaml
     paid_llms:
-      - hf-llama-70b.yaml
-      - openrouter-llama-70b.yaml
+      - groq-llama-70b.yaml
     
