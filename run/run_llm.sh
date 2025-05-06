@@ -29,3 +29,5 @@ tell application "Terminal"
     do script "bash $SCRIPT_DIR/run_llm_llama70.sh"
 end tell
 EOF
+
+exit 0
