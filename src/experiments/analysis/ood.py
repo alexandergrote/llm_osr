@@ -5,7 +5,6 @@ from src.util.mlflow_columns import id_columns, unknown_auc_analysis_columns, pr
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.visualization.spider import SpiderPlot, SpiderDatasetSchema
 from src.experiments.visualization.strategy_boxplot import StrategyBoxPlot
-from src.experiments.util.artifacts import artifact_sanity_check
 
 
 class OODAnalyser(BaseModel, BaseAnalyser):
