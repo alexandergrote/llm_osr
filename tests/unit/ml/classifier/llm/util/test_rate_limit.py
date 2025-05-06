@@ -4,10 +4,11 @@ from unittest.mock import patch
 from tempfile import TemporaryDirectory
 from pathlib import Path
 
-from src.ml.classifier.llm.util.rate_limit import RateLimit, RateLimitManager
+from src.ml.classifier.llm.util.rate_limit import DatabaseManager, RateLimit, RateLimitManager
 
 TMP_DIR = TemporaryDirectory()
 RL_DIR = Path(TMP_DIR.name) / 'rate_limits'
+RL_DB_PATH = RL_DIR / 'rate_limits.db'
 
 
 class TestRLM(unittest.TestCase):
@@ -18,6 +19,7 @@ class TestRLM(unittest.TestCase):
 
         self.rlm = RateLimitManager(
             name="test",
+            db_manager=DatabaseManager(path=RL_DB_PATH),
             rate_limits= {
                 "num_req_min": RateLimit(limit=5, agg_level="%Y-%m-%d %H:%M", increment_level="frequency", action="exit"),
                 "num_token_min": RateLimit(limit=1000, agg_level="%Y-%m-%d %H:%M", increment_level="token"),
@@ -81,14 +83,15 @@ class TestRLM(unittest.TestCase):
     def test_load(self):
         self.assertIsInstance(self.rlm.load(), RateLimitManager)
 
-    @patch("src.ml.classifier.llm.util.rate_limit.get_rate_limit_dir")
+    @patch("src.ml.classifier.llm.util.rate_limit.get_rate_limit_db_path")
     def test_save_and_load(self, mock_rate_limit_dir):
 
-        mock_rate_limit_dir.return_value = RL_DIR
+        mock_rate_limit_dir.return_value = RL_DB_PATH
         num_tokens = 5
 
         saved_rlm = RateLimitManager(
             name="test",
+            db_manager=DatabaseManager(path=RL_DB_PATH),
             rate_limits= {
                 "num_req_min": RateLimit(limit=5, agg_level="%Y-%m-%d %H:%M", increment_level="frequency"),
                 "num_token_min": RateLimit(limit=1000, agg_level="%Y-%m-%d %H:%M", increment_level="token"),
@@ -98,15 +101,15 @@ class TestRLM(unittest.TestCase):
         saved_rlm.update(tokens=num_tokens)
         saved_rlm.save()
 
-        loaded_rlm = RateLimitManager(name="test").load()
-        self.assertEqual(saved_rlm, loaded_rlm)
+        loaded_rlm = RateLimitManager(name="test", db_manager=DatabaseManager(path=RL_DB_PATH)).load()
+        self.assertEqual(saved_rlm.dict(exclude=["db_manager"]), loaded_rlm.dict(exclude=["db_manager"]))
 
     def tearDown(self):
 
         # unlink all files in job and log dir
         # cleanup alone does not do the job 
         # todo: find better solution
-        for file in RL_DIR.glob("*.json"):
+        for file in RL_DIR.glob("*.db"):
             file.unlink()
 
         TMP_DIR.cleanup()

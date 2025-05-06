@@ -244,9 +244,14 @@ class ExperimentFactory(BaseModel):
 
         # filter duplicates by experiment name
         seen_names = set()
-        experiments = [exp for exp in experiments if not (exp.name in seen_names or seen_names.add(exp.name))]
+        unique_experiments = []
 
-        return experiments
+        for exp in experiments:
+            if exp.name not in seen_names:
+                seen_names.add(exp.name)
+                unique_experiments.append(exp)
+        
+        return unique_experiments
 
 if __name__ == "__main__":
 
@@ -265,7 +270,7 @@ if __name__ == "__main__":
     print("Mixed - explicit")
 
     # Dictionary to store counts: {model: {scenario: count}}
-    counts = defaultdict(lambda: defaultdict(int))
+    counts = defaultdict(lambda: defaultdict(int))  # type: ignore
 
     # Extract model and scenario from each string
     for entry in [exp.name for exp in all_experiments]:

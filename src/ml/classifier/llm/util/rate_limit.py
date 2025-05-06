@@ -1,14 +1,14 @@
 import sys
-import json
 import time
 import os
+import sqlite3
 
 from enum import Enum
 from collections import defaultdict
 from datetime import datetime
 from abc import abstractmethod
 from pydantic import BaseModel, ConfigDict, model_validator, field_validator
-from typing import Dict, Any
+from typing import Dict, Any, List, Union, Optional
 from pathlib import Path
 
 from src.util.logger import get_logging_fun, console
@@ -19,6 +19,13 @@ from src.util.error import RateLimitException as RateLimitError
 
 def get_rate_limit_dir() -> Path:
     return Directory.RATE_LIMITS_DIR
+
+
+def get_rate_limit_db_path() -> Path:
+    """Returns the path to the rate limit database."""
+    db_dir = get_rate_limit_dir()
+    db_dir.mkdir(parents=True, exist_ok=True)
+    return db_dir / "rate_limits.db"
 
 
 class BaseRateLimit(BaseModel):
@@ -87,18 +94,167 @@ class RateLimit(BaseRateLimit):
         else:
             raise ValueError(f"Invalid increment level {self.increment_level}")
         
-    def save(self, path: str):
+    def get_record_data(self) -> List[Dict[str, Any]]:
+        """Convert records to a list of dicts for database storage."""
+        return [{"timestamp": ts, "usage": usage} for ts, usage in self.records.items()]
 
-        with open(path, "w") as f:
-            json.dump(self.model_dump(), f, indent=4)
 
-    @classmethod
-    def load(cls, path: str) -> "RateLimit":
 
-        with open(path, "r") as f:
-            data = json.load(f)
+class DatabaseManager:
+    """
+    Class to handle database operations for rate limits.
+    """
+    def __init__(self, path: Optional[Union[str, Path]] = None):
+        self.db_path = path or get_rate_limit_db_path()
+        self._init_db()
 
-        return cls(**data)
+    def _init_db(self):
+        """Initialize database tables if they don't exist."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Create rate limit configurations table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS rate_limit_configs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            manager_name TEXT NOT NULL,
+            limit_name TEXT NOT NULL,
+            limit_value INTEGER NOT NULL,
+            increment_level TEXT NOT NULL,
+            agg_level TEXT NOT NULL,
+            action TEXT NOT NULL,
+            waiting_time INTEGER DEFAULT 0,
+            UNIQUE(manager_name, limit_name)
+        )
+        ''')
+        
+        # Create usage records table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS rate_limit_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            manager_name TEXT NOT NULL,
+            limit_name TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            usage INTEGER DEFAULT 0,
+            UNIQUE(manager_name, limit_name, timestamp)
+        )
+        ''')
+        
+        conn.commit()
+        conn.close()
+
+    def save_rate_limit_config(self, manager_name: str, limit_name: str, rate_limit: RateLimit):
+        """Save rate limit configuration to database."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        INSERT OR REPLACE INTO rate_limit_configs 
+        (manager_name, limit_name, limit_value, increment_level, agg_level, action, waiting_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            manager_name,
+            limit_name,
+            rate_limit.limit,
+            rate_limit.increment_level,
+            rate_limit.agg_level,
+            rate_limit.action,
+            rate_limit.waiting_time
+        ))
+        
+        conn.commit()
+        conn.close()
+
+    def save_rate_limit_records(self, manager_name: str, limit_name: str, records: List[Dict[str, Any]]):
+        """Save rate limit usage records to database."""
+        if not records:
+            return
+            
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        for record in records:
+            cursor.execute('''
+            INSERT OR REPLACE INTO rate_limit_records
+            (manager_name, limit_name, timestamp, usage)
+            VALUES (?, ?, ?, ?)
+            ''', (
+                manager_name,
+                limit_name,
+                record["timestamp"],
+                record["usage"]
+            ))
+        
+        conn.commit()
+        conn.close()
+
+    def load_rate_limit_config(self, manager_name: str, limit_name: str) -> Optional[Dict[str, Any]]:
+        """Load rate limit configuration from database."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT * FROM rate_limit_configs
+        WHERE manager_name = ? AND limit_name = ?
+        ''', (manager_name, limit_name))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return dict(row)
+        return None
+
+    def load_rate_limit_records(self, manager_name: str, limit_name: str) -> Dict[str, int]:
+        """Load rate limit usage records from database."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT timestamp, usage FROM rate_limit_records
+        WHERE manager_name = ? AND limit_name = ?
+        ''', (manager_name, limit_name))
+        
+        records = defaultdict(int)
+        for row in cursor.fetchall():
+            records[row[0]] = row[1]
+        
+        conn.close()
+        return records
+
+    def get_all_rate_limit_names(self, manager_name: str) -> List[str]:
+        """Get all rate limit names for a manager."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT DISTINCT limit_name FROM rate_limit_configs
+        WHERE manager_name = ?
+        ''', (manager_name,))
+        
+        names = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return names
+
+    def delete_rate_limit(self, manager_name: str, limit_name: str):
+        """Delete a rate limit configuration and its records."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        DELETE FROM rate_limit_configs
+        WHERE manager_name = ? AND limit_name = ?
+        ''', (manager_name, limit_name))
+        
+        cursor.execute('''
+        DELETE FROM rate_limit_records
+        WHERE manager_name = ? AND limit_name = ?
+        ''', (manager_name, limit_name))
+        
+        conn.commit()
+        conn.close()
+
 
 
 class RateLimitManager(BaseModel):
@@ -106,7 +262,7 @@ class RateLimitManager(BaseModel):
     name: str
 
     rate_limits: Dict[str, RateLimit] = {}
-    _filetype: str = "json"
+    db_manager: DatabaseManager = DatabaseManager()
     
     model_config: ConfigDict = ConfigDict(
         arbitrary_types_allowed=True
@@ -141,11 +297,6 @@ class RateLimitManager(BaseModel):
 
         """This function creates a rate limit manager from rate limit files in json format"""
 
-        full_filename = get_rate_limit_dir() / name
-
-        if not full_filename.exists():
-            raise ValueError(f"Rate limit file {full_filename} does not exist")
-        
         rlm = RateLimitManager(
             name=name
         )
@@ -155,7 +306,7 @@ class RateLimitManager(BaseModel):
         return rlm
 
     @classmethod
-    def create_from_config_file(cls, filename: str, init_from_disk: bool = True) -> "RateLimitManager":
+    def create_from_config_file(cls, filename: str, init_from_db: bool = True) -> "RateLimitManager":
 
         """This function creates a rate limit manager from a config file"""
 
@@ -170,7 +321,7 @@ class RateLimitManager(BaseModel):
 
         assert isinstance(rlm, RateLimitManager)
 
-        if init_from_disk:
+        if init_from_db:
             rlm.load()
             rlm.save()
 
@@ -199,31 +350,41 @@ class RateLimitManager(BaseModel):
                 rate_limit.update(tokens)
 
                 if save:
-                    rate_limit.save(
-                        path=str(self.directory / f"{name}.{self._filetype}")
-                    )
+                    self._save_rate_limit(name, rate_limit)
 
             except Exception as e:
                 console.log(f"Error updating rate limit {name}: {e}")
     
     def load(self) -> "RateLimitManager":
 
-        json_files = self.directory.glob(f"*.{self._filetype}")
+        """Load all rate limits from database."""
 
-        for json_file in json_files:
+        if self.db_manager is None:
+            raise ValueError("Database manager not set.")
 
-            rate_limit_name = json_file.stem
-            rate_limit = RateLimit.load(str(json_file))
-
-            self.rate_limits[rate_limit_name] = rate_limit
+        limit_names = self.db_manager.get_all_rate_limit_names(self.name)
+        
+        for limit_name in limit_names:
+            config = self.db_manager.load_rate_limit_config(self.name, limit_name)
+            records = self.db_manager.load_rate_limit_records(self.name, limit_name)
+            if config:
+                self.rate_limits[limit_name] = RateLimit(
+                    limit=config["limit_value"],
+                    increment_level=config["increment_level"],
+                    agg_level=config["agg_level"],
+                    action=config["action"],
+                    waiting_time=config["waiting_time"],
+                    records=records
+                )
 
         return self
     
     def _save_rate_limit(self, name: str, rate_limit: RateLimit):
 
-        filename = str(self.directory / f"{name}.{self._filetype}")
-
-        rate_limit.save(filename)
+        """Save a single rate limit to database."""
+        self.db_manager.save_rate_limit_config(self.name, name, rate_limit)
+        records = rate_limit.get_record_data()
+        self.db_manager.save_rate_limit_records(self.name, name, records)
 
     def save(self):
 

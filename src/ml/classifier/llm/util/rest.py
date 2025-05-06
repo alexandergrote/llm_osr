@@ -110,7 +110,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
             obj = RateLimitManager.create_from_config_file(
                 filename=rate_limit_manager_params,
-                init_from_disk=True
+                init_from_db=True
             )
 
         elif is_rlm:
