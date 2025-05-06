@@ -399,6 +399,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
         # check if cache is enabled
         if use_cache:
+
             result = cache.read()
             
         if result is not None:
@@ -406,6 +407,12 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             assert isinstance(result, dict)
 
             result = LogProbScore(**result)
+
+            if 'pbar' in kwargs:
+                pbar = kwargs['pbar']
+
+                if hasattr(pbar, 'write'):
+                    pbar.write(f"Using cache")
 
             return result
 
