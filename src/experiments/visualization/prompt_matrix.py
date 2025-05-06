@@ -13,7 +13,7 @@ matrix = [
     ["Bottom Left", "Bottom Right"]
 ]
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(10, 8))
 
 # Hide axes
 ax.axis('off')
@@ -32,6 +32,15 @@ for x in range(3):
     ax.axvline(x, color='black', lw=1)
     ax.axhline(x, color='black', lw=1)
 
+# Add x-axis labels
+ax.text(0.5, -0.1, "Zero-shot", ha='center', va='center', fontsize=14, fontweight='bold')
+ax.text(1.5, -0.1, "Few-shot", ha='center', va='center', fontsize=14, fontweight='bold')
+
+# Add y-axis labels
+ax.text(-0.1, 1.5, "Implicit", ha='center', va='center', fontsize=14, fontweight='bold', rotation=90)
+ax.text(-0.1, 0.5, "Explicit", ha='center', va='center', fontsize=14, fontweight='bold', rotation=90)
+
 # Save the plot
 plt.savefig("text_matrix_plot.png", bbox_inches='tight')
+plt.tight_layout()
 plt.show()
