@@ -10,6 +10,8 @@ from src.util.validation import DataFrameValidator
 
 class BaseDataset(BaseExecutionBlock):
 
+    n_classes: Optional[int] = None
+
     @abstractmethod
     def _load(self, *args, **kwargs) -> pd.DataFrame:
         raise NotImplementedError()
@@ -29,6 +31,10 @@ class BaseDataset(BaseExecutionBlock):
 
         if n_rows is not None:
             data = data.head(n_rows)
+
+        if self.n_classes is not None:
+            classes = data[DatasetColumn.LABEL].unique()[:self.n_classes]
+            data = data[data[DatasetColumn.LABEL].isin(classes)]
 
         DataFrameValidator.assert_non_zero_dataframe(
             data=data, 

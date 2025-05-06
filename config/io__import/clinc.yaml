@@ -1,5 +1,6 @@
 class: src.Clinc150Dataset
 params:
+  n_classes: null
   integer_mapping:
     0: restaurant_reviews
     1: nutrition_info

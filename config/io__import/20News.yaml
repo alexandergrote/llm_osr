@@ -1,2 +1,3 @@
 class: src.NewsDataset
 params:
+  n_classes: null

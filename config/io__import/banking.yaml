@@ -1,6 +1,7 @@
 class: src.BankingDataset
 params:
   filter: null
+  n_classes: null
   mapping:
     0: activate_my_card
     1: age_limit
