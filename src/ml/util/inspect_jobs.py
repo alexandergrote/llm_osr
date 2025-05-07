@@ -82,6 +82,7 @@ if __name__ == "__main__":
     
     # For testing - remove this line in production
     args.text = "What are the currency exchange fees?"
+    args.workers = 8
     
     print(f"Searching for text: '{args.text}' in {len(files)} files")
     matching_files = process_files_in_parallel(files, args.text, args.workers)
