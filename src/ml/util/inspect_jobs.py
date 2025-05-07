@@ -3,6 +3,7 @@ This is a utility script to see in which json files a supplied text appears
 """
 
 import concurrent.futures
+import os
 from pathlib import Path
 from tqdm import tqdm
 from typing import List, Tuple
@@ -45,11 +46,18 @@ def process_files_in_parallel(files: List[Path], text: str, max_workers: int = N
     """
     Process files in parallel using threading.
     Returns a list of files where the text was found.
+    
+    Args:
+        files: List of file paths to search
+        text: Text to search for
+        max_workers: Number of worker threads (default: CPU count * 2)
     """
     matching_files = []
     
-    # If max_workers is None, ThreadPoolExecutor will use a default value
-    # based on the number of processors on the machine
+    # If max_workers is None, use CPU count * 2 for optimal I/O-bound performance
+    if max_workers is None:
+        max_workers = os.cpu_count() * 2
+        
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Create a dictionary of futures to their file paths
         future_to_file = {
@@ -74,7 +82,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Inspect jobs for a given text")
     parser.add_argument("text", type=str, help="The text to search for")
     parser.add_argument("--workers", type=int, default=None, 
-                        help="Number of worker threads (default: auto)")
+                        help=f"Number of worker threads (default: CPU count * 2 = {os.cpu_count() * 2})")
     args = parser.parse_args()
 
     directory_path = Path(Directory.JOB_DIR)
@@ -82,7 +90,6 @@ if __name__ == "__main__":
     
     # For testing - remove this line in production
     args.text = "What are the currency exchange fees?"
-    args.workers = 8
     
     print(f"Searching for text: '{args.text}' in {len(files)} files")
     matching_files = process_files_in_parallel(files, args.text, args.workers)
