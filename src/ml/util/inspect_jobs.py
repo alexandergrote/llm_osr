@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from tqdm import tqdm
 from typing import List, Tuple
-
+from collections import defaultdict
 
 from src.ml.util.job_queue import Job
 from src.util.constants import Directory
@@ -17,7 +17,17 @@ def get_json_files() -> List[Path]:
     """
     Get all JSON files in the specified directory.
     """
-    return list(Path(Directory.JOB_DIR).rglob("*.json"))
+
+    result = []
+
+    for el in Path(Directory.JOB_DIR).rglob("*.json"): 
+
+        if "HFEmbeddingPreprocessor" in str(el):
+            continue
+
+        result.append(el)
+
+    return result
 
 
 def get_json_content(file: Path) -> Job:
@@ -72,12 +82,12 @@ def process_files_in_parallel(files: List[Path], text: str, max_workers: int = N
             file_path, found = future.result()
             if found:
                 matching_files.append(file_path)
-                print(f"Text found in {file_path}")
     
     return matching_files
 
 
 if __name__ == "__main__":
+
     import argparse
     parser = argparse.ArgumentParser(description="Inspect jobs for a given text")
     parser.add_argument("text", type=str, help="The text to search for")
@@ -88,10 +98,27 @@ if __name__ == "__main__":
     directory_path = Path(Directory.JOB_DIR)
     files = get_json_files()
     
-    # For testing - remove this line in production
-    args.text = "What are the currency exchange fees?"
-    
     print(f"Searching for text: '{args.text}' in {len(files)} files")
     matching_files = process_files_in_parallel(files, args.text, args.workers)
     
     print(f"\nFound text in {len(matching_files)} files")
+
+    # group matching files by parent directory
+    matching_files_by_parent_dir = defaultdict(list)
+    for file_path in matching_files:
+        parent_dir = file_path.parent
+        matching_files_by_parent_dir[parent_dir].append(file_path)
+
+    for parent_dir, files in matching_files_by_parent_dir.items():
+        print(parent_dir, len(files))
+
+    # print the results
+    for parent_dir, files in matching_files_by_parent_dir.items():
+        print('---'*20)
+        print(f"\nFiles in directory '{parent_dir}':")
+        for file_path in files:
+            job = Job.from_json_file(file_path)
+            data = job.request_dict['data']["messages"][0]["content"]
+            end_index = data.find("Let's")
+            print("***"*5)
+            print(data[:end_index] if end_index != -1 else data)
