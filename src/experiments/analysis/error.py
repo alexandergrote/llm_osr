@@ -8,6 +8,7 @@ from src.util.types import MLPrediction
 from src.util.mlflow_columns import id_columns, f1_analysis_columns, unknown_auc_analysis_columns
 from src.util.logger import console
 from src.util.constants import Directory
+from src.experiments.util.naming_conventions import get_model_name_from_exp_name
 from src.experiments.util.artifacts import get_artifacts
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.visualization.heatmap import PearsonHeatmap, JaccardHeatmap, McNemarHeatmap
@@ -39,7 +40,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         for col in all_columns:
             assert col in data_copy.columns, f"'{col}' must be present in the analysis DataFrame."
 
-        data_copy['model_col'] = data_copy[exp_name_col].apply(lambda x: x[x.index('model__')+7:x.index('__unkn')])
+        data_copy['model_col'] = data_copy[exp_name_col].apply(lambda x: get_model_name_from_exp_name(x))
 
         # temporary fix for dev phase - remove later
         length: int = 10
