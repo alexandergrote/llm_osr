@@ -3,10 +3,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from pydantic import BaseModel
+from collections import defaultdict
 
 from src.util.types import MLPrediction
 from src.util.mlflow_columns import id_columns, f1_analysis_columns, unknown_auc_analysis_columns
-from src.util.logger import console
 from src.util.constants import Directory
 from src.experiments.util.naming_conventions import get_model_name_from_exp_name
 from src.experiments.util.artifacts import get_artifacts
@@ -23,13 +23,14 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         #artifact_sanity_check(data_copy=data_copy, dataset_col=id_columns.dataset.column_name)
 
-        predictions, _, _, _ = get_artifacts(data_copy=data_copy)
+        predictions, _, _, data_test_list = get_artifacts(data_copy=data_copy)
 
         assert len(predictions) == len(data_copy), 'The number of predictions does not match the number of rows in the dataset.'
         assert any(isinstance(prediction, MLPrediction) for prediction in predictions), 'All predictions must be of type MLPrediction.'
 
         # calculate errors
-        errors = [prediction.error().values for prediction in predictions]
+        errors_list = [prediction.error().values for prediction in predictions]
+        raw_text = [mldf.raw_text() for mldf in data_test_list]
 
         metric_col, dataset_col, perc_unknown_col = f1_analysis_columns.f1_avg.column_name, id_columns.dataset.column_name, id_columns.perc_unknown_classes.column_name
         unknown_f1_col = unknown_auc_analysis_columns.f1.column_name
@@ -41,13 +42,23 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             assert col in data_copy.columns, f"'{col}' must be present in the analysis DataFrame."
 
         data_copy['model_col'] = data_copy[exp_name_col].apply(lambda x: get_model_name_from_exp_name(x))
+        model_names = data_copy['model_col'].to_list()
 
-        # temporary fix for dev phase - remove later
-        length: int = 10
-        errors = [error[:length] for error in errors]
-        console.print("TEMPORARY FIX FOR DEBUGGING - REMOVE LATER")
 
-        named_errors = dict(zip(data_copy['model_col'].to_list(), errors))
+        error_dict = defaultdict(dict)  # type: ignore
+
+        for model, errors, texts in zip(model_names, errors_list, raw_text):
+            for i in range(min(len(errors), len(texts))):  # handle length mismatches safely
+                text = texts[i]
+                error = errors[i]
+                error_dict[text][model] = error
+
+        # Now create the DataFrame
+        df = pd.DataFrame.from_dict(error_dict, orient='index')
+        df.index.name = 'raw_text'
+        df.reset_index(inplace=True)
+        
+        named_errors = df.dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
 
         ## pearson
         pearson = PearsonHeatmap(
