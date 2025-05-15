@@ -365,9 +365,11 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         """
         plt.figure(figsize=(8, 6))
         
-        # Create labels for the axes
-        row_labels = ['ML Correct', 'ML Error']
-        col_labels = ['LLM Correct', 'LLM Error']
+        # Calculate chi-square and p-value
+        chi2, p, _, _ = stats.chi2_contingency(contingency_table)
+        
+        # Calculate phi coefficient
+        phi = self._calculate_phi_coefficient(contingency_table)
         
         # Create the heatmap
         sns.heatmap(
@@ -375,62 +377,16 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             annot=True, 
             fmt='d',
             cmap='Blues',
-            xticklabels=col_labels,
-            yticklabels=row_labels,
+            xticklabels=['LLM Correct', 'LLM Error'],
+            yticklabels=['ML Correct', 'ML Error'],
             cbar=False
         )
         
-        # Add percentages to each cell
-        total = np.sum(contingency_table)
-        for i in range(2):
-            for j in range(2):
-                percentage = (contingency_table[i, j] / total) * 100
-                plt.text(
-                    j + 0.5, 
-                    i + 0.7, 
-                    f'({percentage:.1f}%)', 
-                    ha='center', 
-                    va='center',
-                    fontsize=9
-                )
+        # Add title with statistics
+        plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, p = {p:.3g}, Chi² = {chi2:.2f}", fontsize=14)
+        plt.xlabel("LLM Error Vector")
+        plt.ylabel("ML Error Vector")
         
-        # Add marginal sums
-        row_sums = contingency_table.sum(axis=1)
-        col_sums = contingency_table.sum(axis=0)
-        
-        # Add row sums
-        for i in range(2):
-            plt.text(
-                2.1, 
-                i + 0.5, 
-                f'{row_sums[i]} ({(row_sums[i]/total)*100:.1f}%)', 
-                ha='left', 
-                va='center',
-                fontweight='bold'
-            )
-        
-        # Add column sums
-        for j in range(2):
-            plt.text(
-                j + 0.5, 
-                2.1, 
-                f'{col_sums[j]}\n({(col_sums[j]/total)*100:.1f}%)', 
-                ha='center', 
-                va='top',
-                fontweight='bold'
-            )
-        
-        # Add total
-        plt.text(
-            2.1, 
-            2.1, 
-            f'Total:\n{total}', 
-            ha='left', 
-            va='top',
-            fontweight='bold'
-        )
-        
-        plt.title('Contingency Table - ML vs LLM Errors', fontsize=14)
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / 'contingency_table.pdf')
         plt.close()
