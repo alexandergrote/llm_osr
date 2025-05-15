@@ -42,6 +42,12 @@ class RegressionPlot(BaseModel):
         
         sns.set_style("whitegrid")
         
+        # Create a common legend for all subplots
+        # First, get all unique model names across all datasets
+        all_models = set()
+        for dataset_name, df in datasets.items():
+            all_models.update(df[self.hue_column].unique())
+        
         # Plot each dataset in its own subplot
         for i, (dataset_name, df) in enumerate(datasets.items()):
             # Ensure data types are correct
@@ -79,16 +85,20 @@ class RegressionPlot(BaseModel):
             else:
                 axes[i].set_ylabel("")
             
-            # Only show legend for the last subplot
-            if i < len(datasets) - 1:
-                if axes[i].get_legend() is not None:
-                    axes[i].get_legend().remove()
+            # Remove all legends from subplots
+            if axes[i].get_legend() is not None:
+                axes[i].get_legend().remove()
         
         # Add a main title
         fig.suptitle(self.title, fontsize=16, y=1.05)
         
+        # Create a common legend above the plots
+        handles, labels = axes[-1].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.0), 
+                  ncol=min(len(labels), 4), title=self.hue_column, fontsize=10, title_fontsize=12)
+        
         # Adjust layout
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 1, 0.95])  # Make room for the legend at the top
         
         # Save the plot if output path is provided
         if self.output_path:
