@@ -20,8 +20,7 @@ class RegressionPlot(BaseModel):
     figsize: tuple = (12, 8)
     output_path: Optional[str] = None
 
-    class Config:
-        model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def plot(self) -> None:
         """
