@@ -381,7 +381,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         bars = plt.bar(
             test_results.keys(),
             test_results.values(),
-            color=['skyblue', 'lightgreen', 'salmon', 'lightpurple']
+            color=['skyblue', 'lightgreen', 'salmon', 'plum']
         )
         
         # Add value labels on top of bars
