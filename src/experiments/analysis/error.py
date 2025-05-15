@@ -187,34 +187,64 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         
         # Calculate cross-group correlations
         if traditional_ml_errors and llm_errors:
-            # Create a combined dictionary with one representative from each group
-            # Use the first model from each group for simplicity
-            cross_group_errors = {}
-            for model in traditional_ml_errors:
-                cross_group_errors[f"ML: {model}"] = traditional_ml_errors[model]
-                break
-            for model in llm_errors:
-                cross_group_errors[f"LLM: {model}"] = llm_errors[model]
-                break
+            # Combine all models from each group to create aggregate error patterns
+            # For each text, if ANY model in the group made an error, count it as an error for the group
+            ml_combined_errors = []
+            llm_combined_errors = []
+            
+            # Get all texts that have predictions from both groups
+            common_texts = set()
+            for model, errors in named_errors.items():
+                if model in traditional_ml_models or model in llm_models:
+                    if not common_texts:
+                        common_texts = set(range(len(errors)))
+                    else:
+                        common_texts &= set(range(len(errors)))
+            
+            common_texts = sorted(common_texts)
+            
+            # Create combined error lists
+            for idx in common_texts:
+                # For traditional ML models
+                ml_error = False
+                for model in traditional_ml_errors:
+                    if traditional_ml_errors[model][idx]:  # If True, there was an error
+                        ml_error = True
+                        break
+                ml_combined_errors.append(ml_error)
+                
+                # For LLM models
+                llm_error = False
+                for model in llm_errors:
+                    if llm_errors[model][idx]:  # If True, there was an error
+                        llm_error = True
+                        break
+                llm_combined_errors.append(llm_error)
+            
+            # Create a dictionary with combined errors
+            cross_group_errors = {
+                "Traditional ML (combined)": ml_combined_errors,
+                "LLMs (combined)": llm_combined_errors
+            }
                 
             # Plot cross-group correlation matrices
             pearson_cross = PearsonHeatmap(
                 data=cross_group_errors,
-                title="Pearson Correlation - ML vs LLM",
+                title="Pearson Correlation - ML vs LLM (Combined)",
                 filename="pearson_correlation_cross.pdf"
             )
             pearson_cross.plot()
 
             jaccard_cross = JaccardHeatmap(
                 data=cross_group_errors,
-                title="Jaccard Similarity - ML vs LLM",
+                title="Jaccard Similarity - ML vs LLM (Combined)",
                 filename="jaccard_similarity_cross.pdf"
             )
             jaccard_cross.plot()
 
             mcnemar_cross = McNemarHeatmap(
                 data=cross_group_errors,
-                title="McNemar's Test - ML vs LLM",
+                title="McNemar's Test - ML vs LLM (Combined)",
                 filename="mcnemar_test_cross.pdf"
             )
             mcnemar_cross.plot()
