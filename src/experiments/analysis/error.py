@@ -236,6 +236,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 title="Pearson Correlation - ML vs LLM (Combined)",
                 filename="pearson_correlation_cross.pdf"
             )
+            
             pearson_cross.plot()
 
             jaccard_cross = JaccardHeatmap(
@@ -263,16 +264,6 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             
             # Visualize the contingency table
             self._plot_contingency_table(contingency_table)
-            
-            # Plot the statistical test results
-            self._plot_statistical_tests(
-                {
-                    "Chi-Square": chi2,
-                    "p-value": p_value,
-                    "Phi Coefficient": phi_coef
-                },
-                "Statistical Tests - ML vs LLM Error Correlation"
-            )
 
         data_copy.reset_index(drop=True, inplace=True)
     
@@ -443,65 +434,3 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / 'contingency_table.pdf')
         plt.close()
-    
-    def _plot_statistical_tests(self, test_results: Dict[str, float], title: str) -> None:
-        """
-        Plot the results of statistical tests.
-        
-        Args:
-            test_results: Dictionary mapping test names to their values
-            title: Title for the plot
-        """
-        plt.figure(figsize=(10, 6))
-        
-        # Create bar plot
-        bars = plt.bar(
-            test_results.keys(),
-            test_results.values(),
-            color=['skyblue', 'lightgreen', 'salmon']
-        )
-        
-        # Add value labels on top of bars
-        for bar in bars:
-            height = bar.get_height()
-            plt.text(
-                bar.get_x() + bar.get_width()/2.,
-                height + 0.02,
-                f'{height:.4f}',
-                ha='center',
-                va='bottom',
-                fontsize=10
-            )
-        
-        # Add significance indicator for p-value
-        if 'p-value' in test_results:
-            p_value = test_results['p-value']
-            significance = ""
-            if p_value < 0.001:
-                significance = "***"
-            elif p_value < 0.01:
-                significance = "**"
-            elif p_value < 0.05:
-                significance = "*"
-            
-            if significance:
-                plt.text(
-                    list(test_results.keys()).index('p-value'),
-                    test_results['p-value'] + 0.08,
-                    significance,
-                    ha='center',
-                    va='bottom',
-                    fontsize=16
-                )
-        
-        # Customize plot
-        plt.title(title, fontsize=14)
-        plt.ylabel('Value', fontsize=12)
-        plt.ylim(0, max(test_results.values()) * 1.2)  # Add some space above bars
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-        plt.tight_layout()
-        
-        # Save the plot
-        plt.savefig(Directory.OUTPUT_DIR / 'statistical_tests_correlation.pdf')
-        plt.close()
-        
