@@ -6,6 +6,7 @@ from src.experiments.util.naming_conventions import get_model_name_from_exp_name
 from src.util.mlflow_columns import id_columns, f1_analysis_columns, unknown_auc_analysis_columns
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.visualization.f1_table import F1ScoreTable
+from src.experiments.visualization.regression_plot import RegressionPlot
 
 
 class FewShotAnalyser(BaseModel, BaseAnalyser):
@@ -64,6 +65,24 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         table = F1ScoreTable(data=data_copy.groupby([id_columns.dataset.verbose_str, 'Openness', model_col])[metric_col].agg(['mean', 'std']).reset_index())
 
         table.print()
+        
+        # Create regression plot for each dataset
+        for dataset in data_copy[id_columns.dataset.verbose_str].unique():
+            dataset_data = data_copy[data_copy[id_columns.dataset.verbose_str] == dataset]
+            
+            # Create a pivot table for the regression plot
+            plot_data = dataset_data.groupby(['Openness', model_col])[metric_col].mean().reset_index()
+            
+            # Create and display the regression plot
+            regression_plot = RegressionPlot(
+                data=plot_data,
+                x_column='Openness',
+                y_column=metric_col,
+                hue_column=model_col,
+                title=f'F1 Score vs. Openness Degree - {dataset}',
+                output_path=f'regression_plot_{dataset}.png'
+            )
+            regression_plot.plot()
 
         # Example usage:
         # df = pd.read_csv("your_data.csv")
