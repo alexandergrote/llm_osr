@@ -8,4 +8,4 @@ echo "Running benchmark..."
 echo $CLI_FILE
 echo $PYTHON_PATH
 
-$PYTHON_PATH "$CLI_FILE" benchmark --skip-confirmation
+$PYTHON_PATH "$CLI_FILE" benchmark --filter-name ".*hyper.*" --skip-confirmation
