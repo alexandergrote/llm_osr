@@ -251,6 +251,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 title="McNemar's Test - ML vs LLM (Combined)",
                 filename="mcnemar_test_cross.pdf"
             )
+
             mcnemar_cross.plot()
             
             # Perform additional statistical tests on the correlation
