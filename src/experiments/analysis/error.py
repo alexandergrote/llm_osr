@@ -191,7 +191,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         # Calculate cross-group correlations
         if traditional_ml_errors and llm_errors:
             # Combine all models from each group to create aggregate error patterns
-            # For each text, if ANY model in the group made an error, count it as an error for the group
+            # For each text, use the majority vote of errors across models in each group
             ml_combined_errors = []
             llm_combined_errors = []
             
@@ -206,22 +206,16 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             
             common_texts = sorted(common_texts)
             
-            # Create combined error lists
+            # Create combined error lists using majority vote
             for idx in common_texts:
-                # For traditional ML models
-                ml_error = False
-                for model in traditional_ml_errors:
-                    if traditional_ml_errors[model][idx]:  # If True, there was an error
-                        ml_error = True
-                        break
+                # For traditional ML models - count errors and use majority vote
+                ml_votes = [traditional_ml_errors[model][idx] for model in traditional_ml_errors]
+                ml_error = sum(ml_votes) > len(ml_votes) / 2  # True if majority made errors
                 ml_combined_errors.append(ml_error)
                 
-                # For LLM models
-                llm_error = False
-                for model in llm_errors:
-                    if llm_errors[model][idx]:  # If True, there was an error
-                        llm_error = True
-                        break
+                # For LLM models - count errors and use majority vote
+                llm_votes = [llm_errors[model][idx] for model in llm_errors]
+                llm_error = sum(llm_votes) > len(llm_votes) / 2  # True if majority made errors
                 llm_combined_errors.append(llm_error)
             
             # Create a dictionary with combined errors
