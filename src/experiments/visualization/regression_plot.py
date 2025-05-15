@@ -75,13 +75,11 @@ class RegressionPlot(BaseModel):
                 # Sort by x_column for proper line plotting
                 group = group.sort_values(by=self.x_column)
                 
-                # Plot mean with error bars
+                # Plot mean with error bars (without markers)
                 axes[i].errorbar(
                     group[self.x_column], 
                     group['mean'], 
                     yerr=group['std'],
-                    marker=marker,
-                    markersize=8,
                     capsize=5,
                     capthick=1.5,
                     linewidth=2,
