@@ -1,5 +1,5 @@
 import pandas as pd
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from src.util.logger import console
 from src.experiments.util.naming_conventions import get_model_name_from_exp_name
@@ -74,15 +74,15 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             # Group by Openness and Model to get both mean and std
             plot_data = dataset_data.groupby(['Openness', model_col])[metric_col].agg(['mean', 'std']).reset_index()
             datasets_dict[dataset] = plot_data
-        
+
         # Create and display a single regression plot with all datasets
         regression_plot = RegressionPlot(
             data=datasets_dict,
             x_column='Openness',
-            y_column=metric_col,
+            y_column='mean',
             hue_column=model_col,
             title='Known F1 Score vs. Openness Degree',
-            output_path=str(Directory.OUTPUT_DIR / 'regression_plot_known_all_datasets.png')
+            output_path=str(Directory.OUTPUT_DIR / 'regression_plot_known_all_datasets.pdf')
         )
         regression_plot.plot()
 
@@ -97,16 +97,12 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         regression_plot = RegressionPlot(
             data=datasets_dict,
             x_column='Openness',
-            y_column=unknown_f1_col,
+            y_column='mean',
             hue_column=model_col,
             title='Known F1 Score vs. Openness Degree',
-            output_path=str(Directory.OUTPUT_DIR / 'regression_plot_unknown_all_datasets.png')
+            output_path=str(Directory.OUTPUT_DIR / 'regression_plot_unknown_all_datasets.pdf')
         )
         regression_plot.plot()
-
-        # Example usage:
-        # df = pd.read_csv("your_data.csv")
-        # validated_df: DataFrame[BankingModel] = BankingModel.validate(df)
 
 
 class BenchmarkAnalyser(FewShotAnalyser):
