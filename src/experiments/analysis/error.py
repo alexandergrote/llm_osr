@@ -100,7 +100,6 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 
                 error_dict[text][model] = most_common_response
 
-            
 
         # Now create the DataFrame
         df = pd.DataFrame.from_dict(error_dict, orient='index')
@@ -109,6 +108,55 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         named_errors = df.dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
 
+        self.plot_matrices(named_errors)
+
+        data_copy.reset_index(drop=True, inplace=True)
+    
+        # analyse f1 scores with boxplot
+        plt.figure()
+        sns.barplot(
+            x=model_col, y=metric_col, data=data_copy,
+        )
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(Directory.OUTPUT_DIR / 'f1_scores.pdf')
+        plt.close()
+
+        # analyse f1 scores with boxplot
+        plt.figure()
+        sns.barplot(
+            x=model_col, y=unknown_f1_col, data=data_copy,
+        )
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(Directory.OUTPUT_DIR / 'f1_scores_unknown.pdf')
+        plt.close()
+        
+        _, recall_col, precision_col = unknown_auc_analysis_columns.f1.column_name, unknown_auc_analysis_columns.recall.column_name, unknown_auc_analysis_columns.precision.column_name
+        
+        # precision
+        plt.figure()
+        sns.barplot(
+            x=model_col, y=precision_col, data=data_copy,
+        )
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(Directory.OUTPUT_DIR / 'precision_scores_unknown.pdf')
+        plt.close()
+
+        # recall
+        plt.figure()
+        sns.barplot(
+            x=model_col, y=recall_col, data=data_copy,
+        )
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(Directory.OUTPUT_DIR / 'recall_scores_unknown.pdf')
+        plt.close()
+
+
+    def plot_matrices(self, named_errors):
+
         # Define model groups
         traditional_ml_models = ['SimpleShot', 'FastFit', 'ContrastNet']
         llm_models = ['LLaMA 8', 'LLaMA 70', 'GEMMA3 27', 'Phi4 14']
@@ -116,6 +164,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         # Create separate error dictionaries for each group
         traditional_ml_errors = {model: named_errors[model] for model in traditional_ml_models if model in named_errors}
         llm_errors = {model: named_errors[model] for model in llm_models if model in named_errors}
+
         
         # Plot correlation matrices for all models
         ## pearson
@@ -260,49 +309,6 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             # Visualize the contingency table
             self._plot_contingency_table(contingency_table)
 
-        data_copy.reset_index(drop=True, inplace=True)
-    
-        # analyse f1 scores with boxplot
-        plt.figure()
-        sns.barplot(
-            x=model_col, y=metric_col, data=data_copy,
-        )
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'f1_scores.pdf')
-        plt.close()
-
-        # analyse f1 scores with boxplot
-        plt.figure()
-        sns.barplot(
-            x=model_col, y=unknown_f1_col, data=data_copy,
-        )
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'f1_scores_unknown.pdf')
-        plt.close()
-        
-        _, recall_col, precision_col = unknown_auc_analysis_columns.f1.column_name, unknown_auc_analysis_columns.recall.column_name, unknown_auc_analysis_columns.precision.column_name
-        
-        # precision
-        plt.figure()
-        sns.barplot(
-            x=model_col, y=precision_col, data=data_copy,
-        )
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'precision_scores_unknown.pdf')
-        plt.close()
-
-        # recall
-        plt.figure()
-        sns.barplot(
-            x=model_col, y=recall_col, data=data_copy,
-        )
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'recall_scores_unknown.pdf')
-        plt.close()
     
     def _create_contingency_table(self, ml_errors: List[bool], llm_errors: List[bool]) -> np.ndarray:
         """
