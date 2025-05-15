@@ -366,11 +366,23 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         # Calculate phi coefficient
         phi = self._calculate_phi_coefficient(contingency_table)
         
+        # Calculate total number of samples
+        total = contingency_table.sum()
+        
+        # Calculate percentages
+        percentages = contingency_table / total * 100
+        
+        # Create annotation text with counts and percentages
+        annot_text = np.array([
+            [f"{val}\n({perc:.1f}%)" for val, perc in zip(row, perc_row)]
+            for row, perc_row in zip(contingency_table, percentages)
+        ])
+        
         # Create the heatmap
         sns.heatmap(
             contingency_table, 
-            annot=True, 
-            fmt='d',
+            annot=annot_text, 
+            fmt='',
             cmap='Blues',
             xticklabels=['LLM Correct', 'LLM Error'],
             yticklabels=['ML Correct', 'ML Error'],
