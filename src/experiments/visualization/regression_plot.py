@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class RegressionPlot(BaseModel):
     """
@@ -19,6 +19,9 @@ class RegressionPlot(BaseModel):
     y_label: str = "F1 Score"
     figsize: tuple = (12, 8)
     output_path: Optional[str] = None
+
+    class Config:
+        model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def plot(self) -> None:
         """
