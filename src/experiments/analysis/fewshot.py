@@ -71,8 +71,8 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         datasets_dict = {}
         for dataset in data_copy[id_columns.dataset.verbose_str].unique():
             dataset_data = data_copy[data_copy[id_columns.dataset.verbose_str] == dataset]
-            # Create a pivot table for the regression plot
-            plot_data = dataset_data.groupby(['Openness', model_col])[metric_col].mean().reset_index()
+            # Group by Openness and Model to get both mean and std
+            plot_data = dataset_data.groupby(['Openness', model_col])[metric_col].agg(['mean', 'std']).reset_index()
             datasets_dict[dataset] = plot_data
         
         # Create and display a single regression plot with all datasets
@@ -90,8 +90,8 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         datasets_dict = {}
         for dataset in data_copy[id_columns.dataset.verbose_str].unique():
             dataset_data = data_copy[data_copy[id_columns.dataset.verbose_str] == dataset]
-            # Create a pivot table for the regression plot
-            plot_data = dataset_data.groupby(['Openness', model_col])[unknown_f1_col].mean().reset_index()
+            # Group by Openness and Model to get both mean and std
+            plot_data = dataset_data.groupby(['Openness', model_col])[unknown_f1_col].agg(['mean', 'std']).reset_index()
             datasets_dict[dataset] = plot_data
 
         regression_plot = RegressionPlot(

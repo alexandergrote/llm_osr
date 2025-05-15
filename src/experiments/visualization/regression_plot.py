@@ -59,31 +59,34 @@ class RegressionPlot(BaseModel):
             markers = ['o', 's', 'D', '^', 'v', '<', '>', 'p', '*', 'h', 'H', '+', 'x', 'd']
             colors = plt.cm.tab10.colors
             
-            # Plot each model group with different markers
-            for idx, (name, group) in enumerate(data_copy.groupby(self.hue_column)):
+            # Calculate mean and std for each openness degree and model
+            if 'std' not in data_copy.columns:
+                # Group by x_column and hue_column to calculate mean and std
+                summary_data = data_copy.groupby([self.x_column, self.hue_column])[self.y_column].agg(['mean', 'std']).reset_index()
+            else:
+                # If std is already in the dataframe, use it directly
+                summary_data = data_copy.rename(columns={self.y_column: 'mean'})
+            
+            # Plot for each model
+            for idx, (name, group) in enumerate(summary_data.groupby(self.hue_column)):
                 marker = markers[idx % len(markers)]
                 color = colors[idx % len(colors)]
                 
-                # Plot points with markers
-                axes[i].scatter(
+                # Sort by x_column for proper line plotting
+                group = group.sort_values(by=self.x_column)
+                
+                # Plot mean with error bars
+                axes[i].errorbar(
                     group[self.x_column], 
-                    group[self.y_column], 
+                    group['mean'], 
+                    yerr=group['std'],
                     marker=marker,
-                    s=80, 
-                    alpha=0.7,
+                    markersize=8,
+                    capsize=5,
+                    capthick=1.5,
+                    linewidth=2,
                     color=color,
                     label=name
-                )
-                
-                # Add regression lines
-                sns.regplot(
-                    x=self.x_column,
-                    y=self.y_column,
-                    data=group,
-                    scatter=False,
-                    ax=axes[i],
-                    color=color,
-                    line_kws={"linewidth": 2}
                 )
             
             # Customize the subplot
