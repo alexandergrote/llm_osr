@@ -66,23 +66,24 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
 
         table.print()
         
-        # Create regression plot for each dataset
+        # Create a dictionary of datasets for the regression plot
+        datasets_dict = {}
         for dataset in data_copy[id_columns.dataset.verbose_str].unique():
             dataset_data = data_copy[data_copy[id_columns.dataset.verbose_str] == dataset]
-            
             # Create a pivot table for the regression plot
             plot_data = dataset_data.groupby(['Openness', model_col])[metric_col].mean().reset_index()
-            
-            # Create and display the regression plot
-            regression_plot = RegressionPlot(
-                data=plot_data,
-                x_column='Openness',
-                y_column=metric_col,
-                hue_column=model_col,
-                title=f'F1 Score vs. Openness Degree - {dataset}',
-                output_path=f'regression_plot_{dataset}.png'
-            )
-            regression_plot.plot()
+            datasets_dict[dataset] = plot_data
+        
+        # Create and display a single regression plot with all datasets
+        regression_plot = RegressionPlot(
+            data=datasets_dict,
+            x_column='Openness',
+            y_column=metric_col,
+            hue_column=model_col,
+            title='F1 Score vs. Openness Degree',
+            output_path='regression_plot_all_datasets.png'
+        )
+        regression_plot.plot()
 
         # Example usage:
         # df = pd.read_csv("your_data.csv")
