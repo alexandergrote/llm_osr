@@ -5,6 +5,7 @@ from src.util.logger import console
 from src.experiments.util.naming_conventions import get_model_name_from_exp_name
 from src.util.mlflow_columns import id_columns, f1_analysis_columns, unknown_auc_analysis_columns
 from src.experiments.analysis.base import BaseAnalyser
+from src.experiments.visualization.f1_table import F1ScoreTable
 
 
 class FewShotAnalyser(BaseModel, BaseAnalyser):
@@ -17,6 +18,8 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         metric_col, dataset_col, perc_unknown_col = f1_analysis_columns.f1_avg.column_name, id_columns.dataset.column_name, id_columns.perc_unknown_classes.column_name
         unknown_f1_col = unknown_auc_analysis_columns.f1.column_name
         exp_name_col = id_columns.experiment_name.column_name
+        
+        data_copy.dropna(subset=[exp_name_col], inplace=True)
 
         all_columns = [metric_col, perc_unknown_col, dataset_col, exp_name_col]
 
@@ -56,42 +59,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
         # veritcally the models and degree of unknown classes
         data_copy.replace(rename_dict, inplace=True)
         data_copy.rename(columns=rename_dict, inplace=True)
-        data_copy_pivot = data_copy.pivot_table(index=['Openness', model_col], columns=[id_columns.dataset.verbose_str], values=metric_col, aggfunc=['mean', 'std'])
-        
-        import pandera as pa
-        from pandera import Field
-        from pandera.typing import DataFrame
-        from typing import Optional
-        import pandas as pd
-
-
-        class MetricData(pa.DataFrameModel):
-            dataset: str = Field()
-            Openness: float = Field(coerce=True)
-            Model: str = Field()
-            mean: float = Field(ge=0, le=1)
-            std: Optional[float] = Field(nullable=True)
-
-            @pa.check(name="unique_except_mean_std", element_wise=False)
-            def unique_except_mean_std(cls, df: pd.DataFrame) -> bool:
-                # Check uniqueness of dataset + Openness + Model
-                return df[["dataset", "Openness", "Model"]].drop_duplicates().shape[0] == df.shape[0]
-
-
-        class F1ScoreTable(BaseModel):
-            data: DataFrame[MetricData]
-
-            model_config = ConfigDict(arbitrary_types_allowed=True)
-
-            def print(self, **kwargs) -> None:
-                data_copy = self.data.copy()
-                mean_str = data_copy[MetricData.mean].round(4).astype(str)
-                std_str = data_copy[MetricData.std].round(4).astype(str)
-                data_copy['metric'] = mean_str + " ± " + std_str
-                data_copy_pivot = data_copy.pivot_table(index=[MetricData.Openness, MetricData.Model], columns=[id_columns.dataset.verbose_str], values='metric', aggfunc="first")
-                print(data_copy_pivot.to_latex())
-        
-                
+        data_copy_pivot = data_copy.pivot_table(index=['Openness', model_col], columns=[id_columns.dataset.verbose_str], values=metric_col, aggfunc=['mean', 'std'])                
 
         table = F1ScoreTable(data=data_copy.groupby([id_columns.dataset.verbose_str, 'Openness', model_col])[metric_col].agg(['mean', 'std']).reset_index())
 

@@ -63,3 +63,41 @@ class FewShotDataSplitter(DataSplitter):
         test = MLDataFrame.from_raw_pandas_dataframe(test_df)
 
         return train, valid, test
+
+
+if __name__ == '__main__':
+
+    import os
+    import yaml
+    import numpy as np
+
+    from src.util.constants import Directory
+    from src.io.data_import.Clinc150 import Clinc150Dataset
+
+    config_name = Directory.CONFIG / os.path.join("io__import", "banking.yaml")
+
+    filepath = Directory.CONFIG / os.path.join('io__import', 'clinc.yaml')
+    with open(filepath, 'r') as file:
+        config = yaml.safe_load(file)['params']
+
+    dataset = Clinc150Dataset(**config)
+
+    filepath = Directory.CONFIG / os.path.join('ml__datasplit', 'fewshot_osr.yaml')
+    with open(filepath, 'r') as file:
+        config = yaml.safe_load(file)['params']
+
+    splitter = FewShotDataSplitter(
+        **config
+    )
+
+    data = dataset._load()
+
+    df_train, df_valid, df_test = splitter._split_data(data=data, random_seed=0)    
+
+    classes_train = np.unique(df_train.target())
+    classes_valid = np.unique(df_valid.target())
+    classes_test = np.unique(df_test.target())
+
+    # get unknown classes
+    unknown_classes = set(classes_test) - set(classes_train)
+    print(f"Unknown classes: {unknown_classes}")

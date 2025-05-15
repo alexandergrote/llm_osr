@@ -48,12 +48,17 @@ class OODAnalyser(BaseModel, BaseAnalyser):
         with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.precision', 2):
             print(data2plot_grouped)
 
-        # visualize results
-        spider_plot = SpiderPlot(
-            data=data2plot
-        )
+        try:
 
-        spider_plot.plot()
+            # visualize results
+            spider_plot = SpiderPlot(
+                data=data2plot
+            )
+
+            spider_plot.plot()
+
+        except Exception as e:
+            print("Could not print Spider Plot. Error: {e}")
 
         boxplot = StrategyBoxPlot(
             data=data2plot,
