@@ -67,15 +67,30 @@ class RegressionPlot(BaseModel):
                 # If std is already in the dataframe, use it directly
                 summary_data = data_copy.rename(columns={self.y_column: 'mean'})
             
-            # Plot for each model
-            for idx, (name, group) in enumerate(summary_data.groupby(self.hue_column)):
+            # Get original data points for scatter plot
+            for idx, (name, group) in enumerate(data_copy.groupby(self.hue_column)):
+                color = colors[idx % len(colors)]
                 marker = markers[idx % len(markers)]
+                
+                # Plot individual data points
+                axes[i].scatter(
+                    group[self.x_column],
+                    group[self.y_column],
+                    color=color,
+                    marker='o',
+                    s=30,
+                    alpha=0.5,
+                    edgecolors='none'
+                )
+            
+            # Plot for each model (summary statistics)
+            for idx, (name, group) in enumerate(summary_data.groupby(self.hue_column)):
                 color = colors[idx % len(colors)]
                 
                 # Sort by x_column for proper line plotting
                 group = group.sort_values(by=self.x_column)
                 
-                # Plot mean with error bars (without markers)
+                # Plot mean with error bars
                 axes[i].errorbar(
                     group[self.x_column], 
                     group['mean'], 
