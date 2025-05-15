@@ -7,6 +7,7 @@ from src.util.mlflow_columns import id_columns, f1_analysis_columns, unknown_auc
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.visualization.f1_table import F1ScoreTable
 from src.experiments.visualization.regression_plot import RegressionPlot
+from src.util.constants import Directory
 
 
 class FewShotAnalyser(BaseModel, BaseAnalyser):
@@ -80,8 +81,26 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             x_column='Openness',
             y_column=metric_col,
             hue_column=model_col,
-            title='F1 Score vs. Openness Degree',
-            output_path='regression_plot_all_datasets.png'
+            title='Known F1 Score vs. Openness Degree',
+            output_path=str(Directory.OUTPUT_DIR / 'regression_plot_known_all_datasets.png')
+        )
+        regression_plot.plot()
+
+        # Create a dictionary of datasets for the regression plot
+        datasets_dict = {}
+        for dataset in data_copy[id_columns.dataset.verbose_str].unique():
+            dataset_data = data_copy[data_copy[id_columns.dataset.verbose_str] == dataset]
+            # Create a pivot table for the regression plot
+            plot_data = dataset_data.groupby(['Openness', model_col])[unknown_f1_col].mean().reset_index()
+            datasets_dict[dataset] = plot_data
+
+        regression_plot = RegressionPlot(
+            data=datasets_dict,
+            x_column='Openness',
+            y_column=unknown_f1_col,
+            hue_column=model_col,
+            title='Known F1 Score vs. Openness Degree',
+            output_path=str(Directory.OUTPUT_DIR / 'regression_plot_unknown_all_datasets.png')
         )
         regression_plot.plot()
 
