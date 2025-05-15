@@ -55,25 +55,34 @@ class RegressionPlot(BaseModel):
             data_copy[self.x_column] = pd.to_numeric(data_copy[self.x_column], errors='coerce')
             data_copy[self.y_column] = pd.to_numeric(data_copy[self.y_column], errors='coerce')
             
-            # Create scatter plot
-            sns.scatterplot(
-                data=data_copy,
-                x=self.x_column,
-                y=self.y_column,
-                hue=self.hue_column,
-                s=80,
-                alpha=0.7,
-                ax=axes[i]
-            )
+            # Define markers for each model
+            markers = ['o', 's', 'D', '^', 'v', '<', '>', 'p', '*', 'h', 'H', '+', 'x', 'd']
+            colors = plt.cm.tab10.colors
             
-            # Add regression lines for each group
-            for name, group in data_copy.groupby(self.hue_column):
+            # Plot each model group with different markers
+            for idx, (name, group) in enumerate(data_copy.groupby(self.hue_column)):
+                marker = markers[idx % len(markers)]
+                color = colors[idx % len(colors)]
+                
+                # Plot points with markers
+                axes[i].scatter(
+                    group[self.x_column], 
+                    group[self.y_column], 
+                    marker=marker,
+                    s=80, 
+                    alpha=0.7,
+                    color=color,
+                    label=name
+                )
+                
+                # Add regression lines
                 sns.regplot(
                     x=self.x_column,
                     y=self.y_column,
                     data=group,
                     scatter=False,
                     ax=axes[i],
+                    color=color,
                     line_kws={"linewidth": 2}
                 )
             
