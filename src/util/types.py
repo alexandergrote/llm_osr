@@ -179,7 +179,7 @@ class MLPrediction(BaseModel):
         return self
 
     def error(self) -> pd.Series:
-        return self.y_pred == self.y_test
+        return self.y_pred != self.y_test
 
     def save(self, directory: Path):
 
