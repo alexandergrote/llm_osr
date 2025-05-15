@@ -1,6 +1,9 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+from typing import Dict, List, Tuple
 
 from pydantic import BaseModel
 from collections import defaultdict, Counter
@@ -248,6 +251,30 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 filename="mcnemar_test_cross.pdf"
             )
             mcnemar_cross.plot()
+            
+            # Perform additional statistical tests on the correlation
+            # Chi-square test of independence
+            contingency_table = self._create_contingency_table(ml_combined_errors, llm_combined_errors)
+            chi2_result = stats.chi2_contingency(contingency_table)
+            chi2, p_value, dof, expected = chi2_result
+            
+            # Calculate Cramer's V (effect size for chi-square)
+            n = np.sum(contingency_table)
+            cramer_v = np.sqrt(chi2 / (n * (min(contingency_table.shape) - 1)))
+            
+            # Calculate phi coefficient (for 2x2 tables)
+            phi_coef = self._calculate_phi_coefficient(contingency_table)
+            
+            # Plot the statistical test results
+            self._plot_statistical_tests(
+                {
+                    "Chi-Square": chi2,
+                    "p-value": p_value,
+                    "Cramer's V": cramer_v,
+                    "Phi Coefficient": phi_coef
+                },
+                "Statistical Tests - ML vs LLM Error Correlation"
+            )
 
         data_copy.reset_index(drop=True, inplace=True)
     
@@ -292,5 +319,112 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / 'recall_scores_unknown.pdf')
         plt.close()
-
+    
+    def _create_contingency_table(self, ml_errors: List[bool], llm_errors: List[bool]) -> np.ndarray:
+        """
+        Create a contingency table for chi-square test from two lists of boolean error indicators.
+        
+        Args:
+            ml_errors: List of boolean values indicating errors for traditional ML models
+            llm_errors: List of boolean values indicating errors for LLM models
+            
+        Returns:
+            2x2 numpy array contingency table
+        """
+        # Count occurrences of each combination
+        ml_correct_llm_correct = sum(1 for ml, llm in zip(ml_errors, llm_errors) if not ml and not llm)
+        ml_correct_llm_error = sum(1 for ml, llm in zip(ml_errors, llm_errors) if not ml and llm)
+        ml_error_llm_correct = sum(1 for ml, llm in zip(ml_errors, llm_errors) if ml and not llm)
+        ml_error_llm_error = sum(1 for ml, llm in zip(ml_errors, llm_errors) if ml and llm)
+        
+        # Create the contingency table
+        return np.array([
+            [ml_correct_llm_correct, ml_correct_llm_error],
+            [ml_error_llm_correct, ml_error_llm_error]
+        ])
+    
+    def _calculate_phi_coefficient(self, contingency_table: np.ndarray) -> float:
+        """
+        Calculate the phi coefficient from a 2x2 contingency table.
+        
+        Args:
+            contingency_table: 2x2 numpy array contingency table
+            
+        Returns:
+            Phi coefficient value
+        """
+        if contingency_table.shape != (2, 2):
+            return 0.0
+            
+        a, b = contingency_table[0]
+        c, d = contingency_table[1]
+        
+        numerator = (a * d) - (b * c)
+        denominator = np.sqrt((a + b) * (c + d) * (a + c) * (b + d))
+        
+        if denominator == 0:
+            return 0.0
+            
+        return numerator / denominator
+    
+    def _plot_statistical_tests(self, test_results: Dict[str, float], title: str) -> None:
+        """
+        Plot the results of statistical tests.
+        
+        Args:
+            test_results: Dictionary mapping test names to their values
+            title: Title for the plot
+        """
+        plt.figure(figsize=(10, 6))
+        
+        # Create bar plot
+        bars = plt.bar(
+            test_results.keys(),
+            test_results.values(),
+            color=['skyblue', 'lightgreen', 'salmon', 'lightpurple']
+        )
+        
+        # Add value labels on top of bars
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(
+                bar.get_x() + bar.get_width()/2.,
+                height + 0.02,
+                f'{height:.4f}',
+                ha='center',
+                va='bottom',
+                fontsize=10
+            )
+        
+        # Add significance indicator for p-value
+        if 'p-value' in test_results:
+            p_value = test_results['p-value']
+            significance = ""
+            if p_value < 0.001:
+                significance = "***"
+            elif p_value < 0.01:
+                significance = "**"
+            elif p_value < 0.05:
+                significance = "*"
+            
+            if significance:
+                plt.text(
+                    list(test_results.keys()).index('p-value'),
+                    test_results['p-value'] + 0.08,
+                    significance,
+                    ha='center',
+                    va='bottom',
+                    fontsize=16
+                )
+        
+        # Customize plot
+        plt.title(title, fontsize=14)
+        plt.ylabel('Value', fontsize=12)
+        plt.ylim(0, max(test_results.values()) * 1.2)  # Add some space above bars
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.tight_layout()
+        
+        # Save the plot
+        plt.savefig(Directory.OUTPUT_DIR / 'statistical_tests_correlation.pdf')
+        plt.close()
         
