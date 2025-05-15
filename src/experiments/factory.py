@@ -18,7 +18,7 @@ DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
 RANDOM_SEEDS = [0, 1, 2, 3, 4]
 
-N_SUBSET_TEST = 10
+N_SUBSET_TEST = 1000
 
 
 def get_default_overrides(dataset: str, model: str, unknown_class: float, random_seeds: List[int], exp_name: str) -> List[str]:
@@ -71,11 +71,6 @@ class ExperimentFactory(BaseModel):
                         random_seeds=random_seeds,
                         exp_name=exp_name
                     )
-
-                    overrides += ["io__import.params.n_classes=10"]
-
-                    if model in ["hyper_contrastnet"]:
-                        overrides.append('ml__classifier.params.model.params.max_iter=5')
                     
                     # all the benchmark models need
                     # 1) encoding of text features
