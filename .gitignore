@@ -26,6 +26,7 @@ mlruns
 multirun
 outputs
 venv
+.venv
 notebooks
 checkpoints
 rate_limits
