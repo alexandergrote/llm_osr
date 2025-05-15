@@ -30,5 +30,5 @@ class F1ScoreTable(BaseModel):
         mean_str = data_copy[MetricData.mean].round(4).astype(str)
         std_str = data_copy[MetricData.std].round(4).astype(str)
         data_copy['metric'] = mean_str + " ± " + std_str
-        data_copy_pivot = data_copy.pivot_table(index=[MetricData.Openness, MetricData.Model], columns=[id_columns.dataset.verbose_str], values='metric', aggfunc="first")
+        data_copy_pivot = data_copy.pivot_table(index=[MetricData.Openness, MetricData.Model], columns=[MetricData.dataset], values='metric', aggfunc="first")
         print(data_copy_pivot.to_latex())
