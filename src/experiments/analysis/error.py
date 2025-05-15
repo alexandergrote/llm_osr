@@ -106,32 +106,118 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         named_errors = df.dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
 
+        # Define model groups
+        traditional_ml_models = ['SimpleShot', 'FastFit', 'ContrastNet']
+        llm_models = ['LLaMA 8', 'LLaMA 70', 'GEMMA3 27', 'Phi4 14']
+        
+        # Create separate error dictionaries for each group
+        traditional_ml_errors = {model: named_errors[model] for model in traditional_ml_models if model in named_errors}
+        llm_errors = {model: named_errors[model] for model in llm_models if model in named_errors}
+        
+        # Plot correlation matrices for all models
         ## pearson
         pearson = PearsonHeatmap(
             data=named_errors,
-            title="Pearson Correlation Matrix",
-            filename="pearson_correlation.pdf"
+            title="Pearson Correlation Matrix - All Models",
+            filename="pearson_correlation_all.pdf"
         )
-
         pearson.plot()
 
         ## jaccard
         jaccard = JaccardHeatmap(
             data=named_errors,
-            title="Jaccard Similarity Matrix",
-            filename="jaccard_similarity.pdf"
+            title="Jaccard Similarity Matrix - All Models",
+            filename="jaccard_similarity_all.pdf"
         )
-
         jaccard.plot()
 
         ## mcnemar
         mcnemar_heatmap = McNemarHeatmap(
             data=named_errors,
-            title="McNemar's Test Matrix",
-            filename="mcnemar_test.pdf"
+            title="McNemar's Test Matrix - All Models",
+            filename="mcnemar_test_all.pdf"
         )
-
         mcnemar_heatmap.plot()
+        
+        # Plot correlation matrices for traditional ML models
+        if len(traditional_ml_errors) > 1:
+            pearson_trad = PearsonHeatmap(
+                data=traditional_ml_errors,
+                title="Pearson Correlation Matrix - Traditional ML",
+                filename="pearson_correlation_traditional.pdf"
+            )
+            pearson_trad.plot()
+
+            jaccard_trad = JaccardHeatmap(
+                data=traditional_ml_errors,
+                title="Jaccard Similarity Matrix - Traditional ML",
+                filename="jaccard_similarity_traditional.pdf"
+            )
+            jaccard_trad.plot()
+
+            mcnemar_trad = McNemarHeatmap(
+                data=traditional_ml_errors,
+                title="McNemar's Test Matrix - Traditional ML",
+                filename="mcnemar_test_traditional.pdf"
+            )
+            mcnemar_trad.plot()
+        
+        # Plot correlation matrices for LLM models
+        if len(llm_errors) > 1:
+            pearson_llm = PearsonHeatmap(
+                data=llm_errors,
+                title="Pearson Correlation Matrix - LLMs",
+                filename="pearson_correlation_llm.pdf"
+            )
+            pearson_llm.plot()
+
+            jaccard_llm = JaccardHeatmap(
+                data=llm_errors,
+                title="Jaccard Similarity Matrix - LLMs",
+                filename="jaccard_similarity_llm.pdf"
+            )
+            jaccard_llm.plot()
+
+            mcnemar_llm = McNemarHeatmap(
+                data=llm_errors,
+                title="McNemar's Test Matrix - LLMs",
+                filename="mcnemar_test_llm.pdf"
+            )
+            mcnemar_llm.plot()
+        
+        # Calculate cross-group correlations
+        if traditional_ml_errors and llm_errors:
+            # Create a combined dictionary with one representative from each group
+            # Use the first model from each group for simplicity
+            cross_group_errors = {}
+            for model in traditional_ml_errors:
+                cross_group_errors[f"ML: {model}"] = traditional_ml_errors[model]
+                break
+            for model in llm_errors:
+                cross_group_errors[f"LLM: {model}"] = llm_errors[model]
+                break
+                
+            # Plot cross-group correlation matrices
+            pearson_cross = PearsonHeatmap(
+                data=cross_group_errors,
+                title="Pearson Correlation - ML vs LLM",
+                filename="pearson_correlation_cross.pdf"
+            )
+            pearson_cross.plot()
+
+            jaccard_cross = JaccardHeatmap(
+                data=cross_group_errors,
+                title="Jaccard Similarity - ML vs LLM",
+                filename="jaccard_similarity_cross.pdf"
+            )
+            jaccard_cross.plot()
+
+            mcnemar_cross = McNemarHeatmap(
+                data=cross_group_errors,
+                title="McNemar's Test - ML vs LLM",
+                filename="mcnemar_test_cross.pdf"
+            )
+            mcnemar_cross.plot()
 
         data_copy.reset_index(drop=True, inplace=True)
     
