@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import List, Optional
+from typing import List, Optional, Dict, Union
 from pydantic import BaseModel, Field, ConfigDict
 
 class RegressionPlot(BaseModel):
@@ -10,15 +10,16 @@ class RegressionPlot(BaseModel):
     and F1 scores (y-axis) for different models.
     """
 
-    data: pd.DataFrame
+    data: Union[pd.DataFrame, Dict[str, pd.DataFrame]]
     x_column: str = "Openness"
     y_column: str = "mean"
     hue_column: str = "Model"
     title: str = "F1 Score vs. Openness Degree"
     x_label: str = "Openness Degree"
     y_label: str = "F1 Score"
-    figsize: tuple = (12, 8)
+    figsize: tuple = (16, 6)
     output_path: Optional[str] = None
+    dataset_titles: Optional[List[str]] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -26,36 +27,67 @@ class RegressionPlot(BaseModel):
         """
         Generate and display the regression plot.
         """
-        # Ensure data types are correct
-        data_copy = self.data.copy()
-        data_copy[self.x_column] = pd.to_numeric(data_copy[self.x_column], errors='coerce')
-        data_copy[self.y_column] = pd.to_numeric(data_copy[self.y_column], errors='coerce')
+        # Handle both single dataframe and dictionary of dataframes
+        if isinstance(self.data, pd.DataFrame):
+            datasets = {"Dataset": self.data}
+            titles = ["Dataset"]
+        else:
+            datasets = self.data
+            titles = self.dataset_titles or list(datasets.keys())
         
-        plt.figure(figsize=self.figsize)
+        # Create a figure with subplots in one row
+        fig, axes = plt.subplots(1, len(datasets), figsize=self.figsize)
+        if len(datasets) == 1:
+            axes = [axes]  # Make axes iterable if only one subplot
         
-        # Create the regression plot using seaborn
         sns.set_style("whitegrid")
-        ax = sns.lmplot(
-            data=data_copy,
-            x=self.x_column,
-            y=self.y_column,
-            hue=self.hue_column,
-            height=8,
-            aspect=1.5,
-            scatter_kws={"s": 80, "alpha": 0.7},
-            line_kws={"linewidth": 2},
-            legend=False
-        )
         
-        # Customize the plot
-        plt.title(self.title, fontsize=16)
-        plt.xlabel(self.x_label, fontsize=14)
-        plt.ylabel(self.y_label, fontsize=14)
+        # Plot each dataset in its own subplot
+        for i, (dataset_name, df) in enumerate(datasets.items()):
+            # Ensure data types are correct
+            data_copy = df.copy()
+            data_copy[self.x_column] = pd.to_numeric(data_copy[self.x_column], errors='coerce')
+            data_copy[self.y_column] = pd.to_numeric(data_copy[self.y_column], errors='coerce')
+            
+            # Create scatter plot
+            sns.scatterplot(
+                data=data_copy,
+                x=self.x_column,
+                y=self.y_column,
+                hue=self.hue_column,
+                s=80,
+                alpha=0.7,
+                ax=axes[i]
+            )
+            
+            # Add regression lines for each group
+            for name, group in data_copy.groupby(self.hue_column):
+                sns.regplot(
+                    x=self.x_column,
+                    y=self.y_column,
+                    data=group,
+                    scatter=False,
+                    ax=axes[i],
+                    line_kws={"linewidth": 2}
+                )
+            
+            # Customize the subplot
+            axes[i].set_title(titles[i], fontsize=14)
+            axes[i].set_xlabel(self.x_label, fontsize=12)
+            if i == 0:  # Only add y-label to the first subplot
+                axes[i].set_ylabel(self.y_label, fontsize=12)
+            else:
+                axes[i].set_ylabel("")
+            
+            # Only show legend for the last subplot
+            if i < len(datasets) - 1:
+                if axes[i].get_legend() is not None:
+                    axes[i].get_legend().remove()
         
-        # Add legend with better positioning
-        plt.legend(title=self.hue_column, title_fontsize=12, fontsize=10, 
-                  loc='best', bbox_to_anchor=(1.05, 1), borderaxespad=0.)
+        # Add a main title
+        fig.suptitle(self.title, fontsize=16, y=1.05)
         
+        # Adjust layout
         plt.tight_layout()
         
         # Save the plot if output path is provided
