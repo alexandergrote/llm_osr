@@ -26,12 +26,17 @@ class RegressionPlot(BaseModel):
         """
         Generate and display the regression plot.
         """
+        # Ensure data types are correct
+        data_copy = self.data.copy()
+        data_copy[self.x_column] = pd.to_numeric(data_copy[self.x_column], errors='coerce')
+        data_copy[self.y_column] = pd.to_numeric(data_copy[self.y_column], errors='coerce')
+        
         plt.figure(figsize=self.figsize)
         
         # Create the regression plot using seaborn
         sns.set_style("whitegrid")
         ax = sns.lmplot(
-            data=self.data,
+            data=data_copy,
             x=self.x_column,
             y=self.y_column,
             hue=self.hue_column,
