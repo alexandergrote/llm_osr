@@ -258,19 +258,17 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             chi2_result = stats.chi2_contingency(contingency_table)
             chi2, p_value, dof, expected = chi2_result
             
-            # Calculate Cramer's V (effect size for chi-square)
-            n = np.sum(contingency_table)
-            cramer_v = np.sqrt(chi2 / (n * (min(contingency_table.shape) - 1)))
-            
             # Calculate phi coefficient (for 2x2 tables)
             phi_coef = self._calculate_phi_coefficient(contingency_table)
+            
+            # Visualize the contingency table
+            self._plot_contingency_table(contingency_table)
             
             # Plot the statistical test results
             self._plot_statistical_tests(
                 {
                     "Chi-Square": chi2,
                     "p-value": p_value,
-                    "Cramer's V": cramer_v,
                     "Phi Coefficient": phi_coef
                 },
                 "Statistical Tests - ML vs LLM Error Correlation"
@@ -367,6 +365,85 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             
         return numerator / denominator
     
+    def _plot_contingency_table(self, contingency_table: np.ndarray) -> None:
+        """
+        Visualize the contingency table as a heatmap.
+        
+        Args:
+            contingency_table: 2x2 numpy array contingency table
+        """
+        plt.figure(figsize=(8, 6))
+        
+        # Create labels for the axes
+        row_labels = ['ML Correct', 'ML Error']
+        col_labels = ['LLM Correct', 'LLM Error']
+        
+        # Create the heatmap
+        sns.heatmap(
+            contingency_table, 
+            annot=True, 
+            fmt='d',
+            cmap='Blues',
+            xticklabels=col_labels,
+            yticklabels=row_labels,
+            cbar=False
+        )
+        
+        # Add percentages to each cell
+        total = np.sum(contingency_table)
+        for i in range(2):
+            for j in range(2):
+                percentage = (contingency_table[i, j] / total) * 100
+                plt.text(
+                    j + 0.5, 
+                    i + 0.7, 
+                    f'({percentage:.1f}%)', 
+                    ha='center', 
+                    va='center',
+                    fontsize=9
+                )
+        
+        # Add marginal sums
+        row_sums = contingency_table.sum(axis=1)
+        col_sums = contingency_table.sum(axis=0)
+        
+        # Add row sums
+        for i in range(2):
+            plt.text(
+                2.1, 
+                i + 0.5, 
+                f'{row_sums[i]} ({(row_sums[i]/total)*100:.1f}%)', 
+                ha='left', 
+                va='center',
+                fontweight='bold'
+            )
+        
+        # Add column sums
+        for j in range(2):
+            plt.text(
+                j + 0.5, 
+                2.1, 
+                f'{col_sums[j]}\n({(col_sums[j]/total)*100:.1f}%)', 
+                ha='center', 
+                va='top',
+                fontweight='bold'
+            )
+        
+        # Add total
+        plt.text(
+            2.1, 
+            2.1, 
+            f'Total:\n{total}', 
+            ha='left', 
+            va='top',
+            fontweight='bold'
+        )
+        
+        plt.title('Contingency Table - ML vs LLM Errors', fontsize=14)
+        plt.tight_layout()
+        plt.savefig(Directory.OUTPUT_DIR / 'contingency_table.pdf')
+        plt.close()
+    
     def _plot_statistical_tests(self, test_results: Dict[str, float], title: str) -> None:
         """
         Plot the results of statistical tests.
@@ -381,7 +458,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         bars = plt.bar(
             test_results.keys(),
             test_results.values(),
-            color=['skyblue', 'lightgreen', 'salmon', 'plum']
+            color=['skyblue', 'lightgreen', 'salmon']
         )
         
         # Add value labels on top of bars
