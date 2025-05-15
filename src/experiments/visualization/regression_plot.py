@@ -92,10 +92,10 @@ class RegressionPlot(BaseModel):
         # Add a main title
         fig.suptitle(self.title, fontsize=16, y=1.05)
         
-        # Create a common legend above the plots in a single row
+        # Create a common legend above the plots in a single row (without title)
         handles, labels = axes[-1].get_legend_handles_labels()
         fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.0), 
-                  ncol=len(labels), title=self.hue_column, fontsize=10, title_fontsize=12)
+                  ncol=len(labels), fontsize=10)
         
         # Adjust layout
         plt.tight_layout(rect=[0, 0, 1, 0.95])  # Make room for the legend at the top
