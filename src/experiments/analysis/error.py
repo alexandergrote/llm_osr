@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -32,11 +33,19 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         data_copy = data_copy.dropna(subset=[exp_col_name])
 
-        predictions, _, _, data_test_list = get_artifacts(data_copy=data_copy)
+        predictions, data_train_list, _, data_test_list = get_artifacts(data_copy=data_copy)
 
         assert len(predictions) == len(data_copy), 'The number of predictions does not match the number of rows in the dataset.'
         assert any(isinstance(prediction, MLPrediction) for prediction in predictions), 'All predictions must be of type MLPrediction.'
 
+        known_classes_list = []
+
+        for train_df, test_df in zip(data_train_list, data_test_list):
+            train_classes = np.unique(train_df.target())
+            known_classes_list.append(
+                np.isin(test_df.target(), train_classes)
+            )
+            
         # calculate errors
         errors_list = [prediction.error().values for prediction in predictions]
         raw_text = [mldf.raw_text() for mldf in data_test_list]
@@ -50,6 +59,16 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         for col in all_columns:
             assert col in data_copy.columns, f"'{col}' must be present in the analysis DataFrame."
+
+        # check for all id columns
+        data_grouped = data_copy.groupby([exp_name_col, random_seed_col]).size()
+        
+        # identify if there are any duplicate rows based on exp_name_col and random_seed_col
+        # and print them
+        mask = data_grouped > 1
+        if any(mask):
+            print(data_grouped[mask].index.to_list()) 
+            raise ValueError("Duplicate rows found based on experiment name and random seed. Please remove duplicates before proceeding with the analysis.")
 
         model_col = 'Model'
 
@@ -69,26 +88,38 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         data_copy.replace(column_mapping, inplace=True)
 
         model_names = data_copy[model_col].to_list()
+        exp_names = data_copy[exp_name_col].to_list()
         unknown_scores = data_copy[perc_unknown_col].to_list()
         random_seeds = data_copy[random_seed_col].to_list()
         dataset_names = data_copy[dataset_col].to_list()
 
         error_dict = defaultdict(lambda: defaultdict(list))  # type: ignore
+        known_dict = defaultdict(lambda: defaultdict(list))  # type: ignore
 
         # provides overview over all datasets and degrees of openness and random seeds
         # hence, multiple predictions for the same datapoint can occur
-        for dataset, model, seed, openness, errors, texts in zip(dataset_names, model_names, random_seeds, unknown_scores, errors_list, raw_text):
+        for dataset, model, seed, openness, errors, texts, known_classes, exp_name in zip(dataset_names, model_names, random_seeds, unknown_scores, errors_list, raw_text, known_classes_list, exp_names):
 
             assert len(errors) == len(texts), f"Error and text lists must have the same length for model {model}."
 
-            for error, text in zip(errors, texts):  # handle length mismatches safely
+            for error, text, known_class in zip(errors, texts, known_classes):  # handle length mismatches safely
 
                 idx = f"{openness}_{seed}_{text}"
                         
                 error_dict[idx][model].append(error)
+                known_dict[idx][model].append(known_class)
 
                 if len(error_dict[idx][model]) > 1:
                     #print(f"Multiple predictions: {dataset.split('.')[1]}\t{openness}\t{seed}\t{model}\t{text}")
+                    #print(error_dict[idx][model])
+                    #print(known_dict[idx][model])
+                    pass
+                
+                observations = known_dict[idx][model]
+                if 1 < len(set(observations)):
+                    print(exp_name)
+                    print(f"Non-unique known classes: {text}\t{model}")
+                    print(observations)
                     pass
 
         for text in error_dict.keys():
@@ -108,7 +139,11 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         named_errors = df.dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
 
-        self.plot_matrices(named_errors)
+        folder = "all"
+
+        (Directory.OUTPUT_DIR / folder).mkdir(parents=True, exist_ok=True)
+
+        self._plot_matrices(named_errors, folder)
 
         data_copy.reset_index(drop=True, inplace=True)
     
@@ -155,7 +190,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.close()
 
 
-    def plot_matrices(self, named_errors):
+    def _plot_matrices(self, named_errors, folder: str):
 
         # Define model groups
         traditional_ml_models = ['SimpleShot', 'FastFit', 'ContrastNet']
@@ -171,7 +206,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         pearson = PearsonHeatmap(
             data=named_errors,
             title="Pearson Correlation Matrix - All Models",
-            filename="pearson_correlation_all.pdf"
+            filename=os.path.join(folder, "pearson_correlation_all.pdf")
         )
         pearson.plot()
 
@@ -179,7 +214,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         jaccard = JaccardHeatmap(
             data=named_errors,
             title="Jaccard Similarity Matrix - All Models",
-            filename="jaccard_similarity_all.pdf"
+            filename=os.path.join(folder, "jaccard_similarity_all.pdf")
         )
         jaccard.plot()
 
@@ -187,7 +222,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         mcnemar_heatmap = McNemarHeatmap(
             data=named_errors,
             title="McNemar's Test Matrix - All Models",
-            filename="mcnemar_test_all.pdf"
+            filename=os.path.join(folder, "mcnemar_test_all.pdf")
         )
         mcnemar_heatmap.plot()
         
@@ -196,21 +231,21 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             pearson_trad = PearsonHeatmap(
                 data=traditional_ml_errors,
                 title="Pearson Correlation Matrix - Traditional ML",
-                filename="pearson_correlation_traditional.pdf"
+                filename=os.path.join(folder, "pearson_correlation_traditional.pdf")
             )
             pearson_trad.plot()
 
             jaccard_trad = JaccardHeatmap(
                 data=traditional_ml_errors,
                 title="Jaccard Similarity Matrix - Traditional ML",
-                filename="jaccard_similarity_traditional.pdf"
+                filename=os.path.join(folder, "jaccard_similarity_traditional.pdf")
             )
             jaccard_trad.plot()
 
             mcnemar_trad = McNemarHeatmap(
                 data=traditional_ml_errors,
                 title="McNemar's Test Matrix - Traditional ML",
-                filename="mcnemar_test_traditional.pdf"
+                filename=os.path.join(folder, "mcnemar_test_traditional.pdf")
             )
             mcnemar_trad.plot()
         
@@ -219,21 +254,21 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             pearson_llm = PearsonHeatmap(
                 data=llm_errors,
                 title="Pearson Correlation Matrix - LLMs",
-                filename="pearson_correlation_llm.pdf"
+                filename=os.path.join(folder, "pearson_correlation_llm.pdf")
             )
             pearson_llm.plot()
 
             jaccard_llm = JaccardHeatmap(
                 data=llm_errors,
                 title="Jaccard Similarity Matrix - LLMs",
-                filename="jaccard_similarity_llm.pdf"
+                filename=os.path.join(folder, "jaccard_similarity_llm.pdf")
             )
             jaccard_llm.plot()
 
             mcnemar_llm = McNemarHeatmap(
                 data=llm_errors,
                 title="McNemar's Test Matrix - LLMs",
-                filename="mcnemar_test_llm.pdf"
+                filename=os.path.join(folder, "mcnemar_test_llm.pdf")
             )
             mcnemar_llm.plot()
         
@@ -277,7 +312,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             pearson_cross = PearsonHeatmap(
                 data=cross_group_errors,
                 title="Pearson Correlation - ML vs LLM (Combined)",
-                filename="pearson_correlation_cross.pdf"
+                filename=os.path.join(folder, "pearson_correlation_cross.pdf")
             )
             
             pearson_cross.plot()
@@ -285,14 +320,14 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             jaccard_cross = JaccardHeatmap(
                 data=cross_group_errors,
                 title="Jaccard Similarity - ML vs LLM (Combined)",
-                filename="jaccard_similarity_cross.pdf"
+                filename=os.path.join(folder, "jaccard_similarity_cross.pdf")
             )
             jaccard_cross.plot()
 
             mcnemar_cross = McNemarHeatmap(
                 data=cross_group_errors,
                 title="McNemar's Test - ML vs LLM (Combined)",
-                filename="mcnemar_test_cross.pdf"
+                filename=os.path.join(folder, "mcnemar_test_cross.pdf")
             )
 
             mcnemar_cross.plot()
@@ -307,9 +342,8 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             phi_coef = self._calculate_phi_coefficient(contingency_table)
             
             # Visualize the contingency table
-            self._plot_contingency_table(contingency_table)
+            self._plot_contingency_table(contingency_table, folder)
 
-    
     def _create_contingency_table(self, ml_errors: List[bool], llm_errors: List[bool]) -> np.ndarray:
         """
         Create a contingency table for chi-square test from two lists of boolean error indicators.
@@ -357,7 +391,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             
         return numerator / denominator
     
-    def _plot_contingency_table(self, contingency_table: np.ndarray) -> None:
+    def _plot_contingency_table(self, contingency_table: np.ndarray, folder: str) -> None:
         """
         Visualize the contingency table as a heatmap.
         
@@ -401,5 +435,5 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.ylabel("ML Error Vector")
         
         plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'contingency_table.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / os.path.join(folder, 'contingency_table.pdf'))
         plt.close()

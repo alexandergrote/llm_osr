@@ -72,15 +72,13 @@ if __name__ == '__main__':
     import numpy as np
 
     from src.util.constants import Directory
-    from src.io.data_import.Clinc150 import Clinc150Dataset
+    from src.io.data_import.hwu import HWUDataset
 
-    config_name = Directory.CONFIG / os.path.join("io__import", "banking.yaml")
-
-    filepath = Directory.CONFIG / os.path.join('io__import', 'clinc.yaml')
+    filepath = Directory.CONFIG / os.path.join('io__import', 'hwu.yaml')
     with open(filepath, 'r') as file:
         config = yaml.safe_load(file)['params']
 
-    dataset = Clinc150Dataset(**config)
+    dataset = HWUDataset(**config)
 
     filepath = Directory.CONFIG / os.path.join('ml__datasplit', 'fewshot_osr.yaml')
     with open(filepath, 'r') as file:
@@ -100,4 +98,9 @@ if __name__ == '__main__':
 
     # get unknown classes
     unknown_classes = set(classes_test) - set(classes_train)
-    print(f"Unknown classes: {unknown_classes}")
+    #print(f"Unknown classes: {unknown_classes}")
+
+    text_of_interest = 'turn up your volume'
+    
+    df_text = df_test.data[df_test.raw_text() == text_of_interest]
+    print(df_text)

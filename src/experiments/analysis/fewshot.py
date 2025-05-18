@@ -99,7 +99,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             x_column='Openness',
             y_column='mean',
             hue_column=model_col,
-            title='Known F1 Score vs. Openness Degree',
+            title='Unknown F1 Score vs. Openness Degree',
             output_path=str(Directory.OUTPUT_DIR / 'regression_plot_unknown_all_datasets.pdf')
         )
         regression_plot.plot()
