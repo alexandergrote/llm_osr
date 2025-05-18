@@ -35,8 +35,8 @@ class RegressionPlot(BaseModel):
             datasets = self.data
             titles = self.dataset_titles or list(datasets.keys())
         
-        # Create a figure with subplots in one row
-        fig, axes = plt.subplots(1, len(datasets), figsize=self.figsize)
+        # Create a figure with subplots in one row, sharing the y-axis
+        fig, axes = plt.subplots(1, len(datasets), figsize=self.figsize, sharey=True)
         if len(datasets) == 1:
             axes = [axes]  # Make axes iterable if only one subplot
         
@@ -106,10 +106,9 @@ class RegressionPlot(BaseModel):
             # Customize the subplot
             axes[i].set_title(titles[i], fontsize=14)
             axes[i].set_xlabel(self.x_label, fontsize=12)
-            if i == 0:  # Only add y-label to the first subplot
+            # Add y-label only to the first subplot since we're sharing y-axis
+            if i == 0:
                 axes[i].set_ylabel(self.y_label, fontsize=12)
-            else:
-                axes[i].set_ylabel("")
             
             # Remove all legends from subplots
             if axes[i].get_legend() is not None:
