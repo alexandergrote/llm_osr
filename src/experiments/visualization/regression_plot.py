@@ -69,6 +69,7 @@ class RegressionPlot(BaseModel):
             
             # Get original data points for scatter plot
             for idx, (name, group) in enumerate(data_copy.groupby(self.hue_column)):
+                
                 color = colors[idx % len(colors)]
                 marker = markers[idx % len(markers)]
                 
@@ -85,6 +86,7 @@ class RegressionPlot(BaseModel):
             
             # Plot for each model (summary statistics)
             for idx, (name, group) in enumerate(summary_data.groupby(self.hue_column)):
+
                 color = colors[idx % len(colors)]
                 
                 # Sort by x_column for proper line plotting
@@ -129,4 +131,4 @@ class RegressionPlot(BaseModel):
         if self.output_path:
             plt.savefig(self.output_path, dpi=300, bbox_inches='tight')
             
-        plt.show()
+        plt.close()
