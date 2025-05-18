@@ -126,6 +126,156 @@ class StrategyBoxPlot(BaseModel):
         # Calculate Cliff's delta
         return (greater - less) / (len(x) * len(y))
 
+    def _create_plot_for_metric(self, metric, plot_data, stat_results, dataset=None, save=True):
+        """
+        Create a boxplot for a single metric.
+        
+        Args:
+            metric: The metric to plot
+            plot_data: DataFrame containing the data to plot
+            stat_results: Statistical test results
+            dataset: Optional dataset name for title
+            save: Whether to save the plot to a file
+            
+        Returns:
+            The figure and axes objects
+        """
+        # Set the seaborn style for academic publication
+        sns.set_style("white")
+        plt.rcParams.update({
+            'font.size': 10,
+            'axes.titlesize': 12,
+            'axes.labelsize': 11,
+            'xtick.labelsize': 10,
+            'ytick.labelsize': 10,
+            'legend.fontsize': 10,
+            'figure.dpi': 300
+        })
+        
+        # Create a figure for this metric
+        fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
+        
+        # Use a single color for all boxes
+        prompt_versions = sorted(self.get_prompts())
+        single_color = 'gray'  # Dark gray color
+        palette = [single_color] * len(prompt_versions)
+        
+        # Create boxplot for this metric with same color for all boxes
+        sns.boxplot(
+            x='prompt_version',
+            y=metric,
+            hue='prompt_version',  # Keep hue parameter to avoid FutureWarning
+            data=plot_data,
+            ax=ax,
+            palette=palette,
+            width=0.6,
+            order=prompt_versions,
+            linewidth=1.0,
+            legend=False,  # Hide legend
+            fliersize=3,
+            flierprops={'marker': 'o', 'markerfacecolor': 'white', 'markeredgecolor': 'black', 'markeredgewidth': 0.8}
+        )
+        
+        # Add grid lines for better readability
+        ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
+    
+        # Set titles and labels with academic styling
+        ax.set_title(f"{metric.capitalize()}", fontweight='bold')
+        ax.set_ylabel(f"{metric.capitalize()}", fontweight='bold')
+        ax.set_xlabel("Prompt Strategy", fontweight='bold')
+        
+        # Remove top and right spines for cleaner look
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        
+        # Set y-axis limits for consistency
+        ax.set_ylim(0, 1)
+    
+        # Add statistical significance annotations
+        # Get x-coordinates for each prompt version
+        x_coords = {prompt: idx for idx, prompt in enumerate(prompt_versions)}
+        
+        # Add significance bars and annotations
+        bar_height = 0.02  # Height of significance bars
+        text_height = 0.01  # Height of p-value text
+        text_buffer = 0.04  # Buffer between bars and text to avoid overlap
+        max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
+        
+        # Calculate y positions for significance bars
+        y_max = ax.get_ylim()[1]
+        bar_positions = np.linspace(
+            y_max, 
+            y_max + (bar_height + text_height + text_buffer) * max_bars, 
+            max_bars
+        )
+        
+        bar_idx = 0
+        for p_i, prompt1 in enumerate(prompt_versions):
+            for _, prompt2 in enumerate(prompt_versions[p_i+1:], p_i+1):
+                comparison_key = f"{prompt1}_vs_{prompt2}"
+                if comparison_key in stat_results[metric]:
+                    result = stat_results[metric][comparison_key]
+                    p_value = result.p_value
+                    effect_size = result.effect_size
+                
+                    # Determine significance level
+                    if p_value < 0.001:
+                        sig_symbol = '***'
+                    elif p_value < 0.01:
+                        sig_symbol = '**'
+                    elif p_value < 0.05:
+                        sig_symbol = '*'
+                    else:
+                        sig_symbol = ''
+                
+                    # Get x positions
+                    x1, x2 = x_coords[prompt1], x_coords[prompt2]
+                    y = bar_positions[bar_idx]
+                
+                    # Draw the bar with academic styling
+                    ax.plot([x1, x2], [y, y], 'k-', linewidth=0.8)
+                    ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=0.8)
+                    ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=0.8)
+                
+                    # Add p-value and effect size text with academic styling
+                    sig_value = r"$^{" + sig_symbol + r"}$"
+                    ax.text(
+                        (x1+x2)/2, 
+                        y + text_height*2,
+                        f"p={p_value:.3f}{sig_value}, d={effect_size:.2f}",
+                        ha='center', 
+                        va='bottom', 
+                        color="black",
+                        fontsize=8, 
+                        fontstyle='italic'
+                    )
+                
+                    bar_idx += 1
+        
+        # Adjust y-axis limits to accommodate significance bars
+        if bar_idx > 0:
+            ax.set_ylim(0.0, bar_positions[bar_idx-1] + text_height * 3)
+            
+        # Determine title and filename
+        if dataset is None:
+            title = f"{metric.capitalize()} by Prompting Strategy"
+            filename_base = f"strategy_boxplot_{metric.lower()}_combined"
+        else:
+            title = f"{metric.capitalize()} for Dataset {dataset} by Prompting Strategy"
+            filename_base = f"strategy_boxplot_{metric.lower()}_dataset_{dataset}"
+        
+        # Add title to the figure
+        fig.suptitle(title, fontsize=16, fontweight='bold', y=1.05)
+        
+        # Adjust layout and save if requested
+        plt.tight_layout()
+        
+        if save:
+            fig.savefig(Directory.OUTPUT_DIR / f"{filename_base}.pdf", bbox_inches='tight')
+            fig.savefig(Directory.OUTPUT_DIR / f"{filename_base}.png", bbox_inches='tight', dpi=300)
+        
+        return fig, ax
+        
     def plot(self, dataset=None):
         """
         Create boxplots for the specified dataset or for all datasets if None.
@@ -301,6 +451,31 @@ class StrategyBoxPlot(BaseModel):
         # Show the plot
         plt.close()
         
+        # Now create individual plots for each metric
+        for metric in metrics:
+            self.plot_metric(metric, dataset)
+        
+    def plot_metric(self, metric, dataset=None):
+        """
+        Create a boxplot for a single metric.
+        
+        Args:
+            metric: The metric to plot (precision, recall, or F1)
+            dataset: Optional dataset to filter by. If None, plots all datasets combined.
+        """
+        # Filter data if a specific dataset is requested
+        plot_data = self.data
+        if dataset is not None:
+            plot_data = self.data[self.data['dataset'] == dataset]
+        
+        # Perform statistical tests
+        stat_results = self.perform_statistical_tests()
+        
+        # Create the plot
+        self._create_plot_for_metric(metric, plot_data, stat_results, dataset)
+        
+        plt.close()
+    
     def plot_all_datasets(self):
         """Plot all datasets combined in one figure"""
         # Plot all datasets in one figure
@@ -310,6 +485,10 @@ class StrategyBoxPlot(BaseModel):
 
         for dataset in datasets:
             self.plot(dataset=dataset)
+            
+            # Also plot individual metrics for each dataset
+            for metric in self.get_metrics():
+                self.plot_metric(metric, dataset)
 
 
 if __name__ == '__main__':
@@ -317,6 +496,9 @@ if __name__ == '__main__':
     import pandas as pd
     from itertools import product
     import numpy as np
+    from src.experiments.visualization.precision_boxplot import PrecisionBoxPlot
+    from src.experiments.visualization.recall_boxplot import RecallBoxPlot
+    from src.experiments.visualization.f1_boxplot import F1BoxPlot
 
     datasets = ["A", "B", "C"]
     models = ["GPT-3.5", "GPT-4", "Llama 2", "Claude 2", "Mistral"]
@@ -356,5 +538,20 @@ if __name__ == '__main__':
     # Creating the DataFrame
     df = pd.DataFrame(data, columns=["dataset", "model", "prompt_version", "precision", "recall", "F1"])
     
+    # Create and use the combined plot
+    print("Creating combined plots...")
     strategy_boxplot = StrategyBoxPlot(data=df)
     strategy_boxplot.plot_all_datasets()
+    
+    # Create and use individual metric plots
+    print("Creating precision plots...")
+    precision_boxplot = PrecisionBoxPlot(data=df)
+    precision_boxplot.plot_all_datasets()
+    
+    print("Creating recall plots...")
+    recall_boxplot = RecallBoxPlot(data=df)
+    recall_boxplot.plot_all_datasets()
+    
+    print("Creating F1 plots...")
+    f1_boxplot = F1BoxPlot(data=df)
+    f1_boxplot.plot_all_datasets()
