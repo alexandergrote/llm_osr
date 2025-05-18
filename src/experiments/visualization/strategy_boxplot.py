@@ -206,6 +206,7 @@ class StrategyBoxPlot(BaseModel):
                 ax.set_ylabel("Score", fontweight='bold')
             else:
                 ax.set_ylabel("")
+                ax.set_ylabel("Score", fontweight='bold')
                 
             ax.set_xlabel("Prompt Strategy", fontweight='bold')
             
@@ -223,13 +224,14 @@ class StrategyBoxPlot(BaseModel):
             # Add significance bars and annotations
             bar_height = 0.02  # Height of significance bars
             text_height = 0.01  # Height of p-value text
+            text_buffer = 0.04  # Buffer between bars and text to avoid overlap
             max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
             
             # Calculate y positions for significance bars
             y_max = ax.get_ylim()[1]
             bar_positions = np.linspace(
                 y_max, 
-                y_max + (bar_height + text_height) * max_bars, 
+                y_max + (bar_height + text_height + text_buffer) * max_bars, 
                 max_bars
             )
             
@@ -241,7 +243,6 @@ class StrategyBoxPlot(BaseModel):
                         result = stat_results[metric][comparison_key]
                         p_value = result.p_value
                         effect_size = result.effect_size
-                        effect_interp = result.effect_size_interpretation
                     
                     # Determine significance level
                     if p_value < 0.001:
@@ -262,23 +263,12 @@ class StrategyBoxPlot(BaseModel):
                     ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=0.8)
                     ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=0.8)
                     
-                    # Add significance symbol
-                    ax.text(
-                        (x1+x2)/2, 
-                        y + text_height/2, 
-                        sig_symbol,
-                        ha='center', 
-                        va='bottom', 
-                        color='black', 
-                        fontsize=9,
-                        fontweight='bold'
-                    )
-                    
                     # Add p-value and effect size text with academic styling
+                    sig_value = r"$^{" + sig_symbol + r"}$"
                     ax.text(
                         (x1+x2)/2, 
                         y + text_height*2,
-                        f"p={p_value:.3f}, d={effect_size:.2f}",
+                        f"p={p_value:.3f}{sig_value}, d={effect_size:.2f}",
                         ha='center', 
                         va='bottom', 
                         color="black",
@@ -306,6 +296,10 @@ class StrategyBoxPlot(BaseModel):
         # Adjust layout and save
         plt.tight_layout()
         fig.savefig(Directory.OUTPUT_DIR / filename, bbox_inches='tight')
+
+        # save as png as well
+        filename_png = filename.split('.')[0] + ".png"
+        fig.savefig(Directory.OUTPUT_DIR / filename_png, bbox_inches='tight', dpi=300)
         
         # Show the plot
         plt.close()
@@ -314,6 +308,11 @@ class StrategyBoxPlot(BaseModel):
         """Plot all datasets combined in one figure"""
         # Plot all datasets in one figure
         self.plot()
+
+        datasets = self.get_datasets()
+
+        for dataset in datasets:
+            self.plot(dataset=dataset)
 
 
 if __name__ == '__main__':

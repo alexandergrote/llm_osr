@@ -42,6 +42,7 @@ class OODAnalyser(BaseModel, BaseAnalyser):
         data2plot = data_copy[all_columns].rename(columns=column_mapping)
         data2plot[SpiderDatasetSchema.dataset] = data2plot[SpiderDatasetSchema.dataset].str.replace("src.", "")
         data2plot[SpiderDatasetSchema.dataset] = data2plot[SpiderDatasetSchema.dataset].str.replace("Dataset", "")
+        data2plot[SpiderDatasetSchema.prompt_version] = data2plot[SpiderDatasetSchema.prompt_version].apply(lambda x: x.split("_")[0].capitalize() + " " + x.split("_")[1].capitalize())
 
         # analyse unknown predictions
         data2plot_grouped = data2plot.groupby([SpiderDatasetSchema.dataset, SpiderDatasetSchema.model, SpiderDatasetSchema.prompt_version])[[SpiderDatasetSchema.F1, SpiderDatasetSchema.recall, SpiderDatasetSchema.precision]].agg(["mean"]).reset_index()
@@ -64,4 +65,4 @@ class OODAnalyser(BaseModel, BaseAnalyser):
             data=data2plot,
         )
 
-        boxplot.plot()
+        boxplot.plot_all_datasets()
