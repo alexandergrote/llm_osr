@@ -146,8 +146,6 @@ class StrategyBoxPlot(BaseModel):
         # Set the seaborn style for academic publication
         sns.set_style("white")
         plt.rcParams.update({
-            'font.family': 'serif',
-            'font.serif': ['Times New Roman', 'Times', 'DejaVu Serif'],
             'font.size': 10,
             'axes.titlesize': 12,
             'axes.labelsize': 11,
@@ -174,7 +172,7 @@ class StrategyBoxPlot(BaseModel):
         # Use a single color for all boxes
         prompt_versions = sorted(self.get_prompts())
         # Create a list with the same color repeated for each prompt version
-        single_color = '#333333'  # Dark gray color
+        single_color = 'gray'  # Dark gray color
         palette = [single_color] * len(prompt_versions)
         
         # Iterate through metrics to create the plots
@@ -196,21 +194,6 @@ class StrategyBoxPlot(BaseModel):
                 legend=False,  # Hide legend
                 fliersize=3,
                 flierprops={'marker': 'o', 'markerfacecolor': 'white', 'markeredgecolor': 'black', 'markeredgewidth': 0.8}
-            )
-            
-            # Add individual data points with more academic styling
-            sns.stripplot(
-                x='prompt_version',
-                y=metric,
-                data=plot_data,
-                ax=ax,
-                color='black',  # Use solid black instead of 'gray'
-                alpha=0.4,
-                size=3,
-                jitter=True,
-                order=prompt_versions,
-                edgecolor='gray',
-                linewidth=0.5
             )
             
             # Add grid lines for better readability
@@ -268,17 +251,7 @@ class StrategyBoxPlot(BaseModel):
                     elif p_value < 0.05:
                         sig_symbol = '*'
                     else:
-                        sig_symbol = 'ns'
-                    
-                    # Use grayscale for effect size
-                    if effect_interp == "large":
-                        effect_color = "black"
-                    elif effect_interp == "medium":
-                        effect_color = "dimgray"
-                    elif effect_interp == "small":
-                        effect_color = "darkgray"
-                    else:  # negligible
-                        effect_color = "lightgray"
+                        sig_symbol = ''
                     
                     # Get x positions
                     x1, x2 = x_coords[prompt1], x_coords[prompt2]
@@ -308,7 +281,7 @@ class StrategyBoxPlot(BaseModel):
                         f"p={p_value:.3f}, d={effect_size:.2f}",
                         ha='center', 
                         va='bottom', 
-                        color=effect_color,
+                        color="black",
                         fontsize=8, 
                         fontstyle='italic'
                     )
@@ -321,7 +294,7 @@ class StrategyBoxPlot(BaseModel):
         
         # Add overall title with academic styling
         if dataset is None:
-            title = "Performance Metrics by Prompting Strategy"
+            title = ""#"Performance Metrics by Prompting Strategy"
             filename = "strategy_boxplot_combined.pdf"
         else:
             title = f"Performance Metrics for Dataset {dataset} by Prompting Strategy"
@@ -335,7 +308,6 @@ class StrategyBoxPlot(BaseModel):
         fig.savefig(Directory.OUTPUT_DIR / filename, bbox_inches='tight')
         
         # Show the plot
-        plt.show()
         plt.close()
         
     def plot_all_datasets(self):
