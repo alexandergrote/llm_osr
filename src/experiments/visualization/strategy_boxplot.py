@@ -161,7 +161,7 @@ class StrategyBoxPlot(BaseModel):
             1,
             len(metrics),
             figsize=(8 * len(metrics), 6),  # Increased height from 5 to 6
-            sharey=True,  # Share y-axis across all subplots
+            sharey=False,  # Don't share y-axis to allow each plot to have its own y-axis label
             constrained_layout=True
         )
         
