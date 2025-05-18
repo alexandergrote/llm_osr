@@ -202,11 +202,8 @@ class StrategyBoxPlot(BaseModel):
             # Set titles and labels with academic styling
             ax.set_title(f"{metric.capitalize()}", fontweight='bold')
             
-            if i == 0:  # Only set y-labels for the first column
-                ax.set_ylabel("Score", fontweight='bold')
-            else:
-                ax.set_ylabel("")
-                ax.set_ylabel("Score", fontweight='bold')
+            # Set y-label for each plot
+            ax.set_ylabel("Score", fontweight='bold')
                 
             ax.set_xlabel("Prompt Strategy", fontweight='bold')
             
