@@ -412,10 +412,10 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         # Calculate percentages
         percentages = contingency_table / total * 100
         
-        # Create annotation text with counts and percentages
+        # Create annotation text with only percentages
         annot_text = np.array([
-            [f"{val}\n({perc:.1f}%)" for val, perc in zip(row, perc_row)]
-            for row, perc_row in zip(contingency_table, percentages)
+            [f"{perc:.1f}%" for perc in perc_row]
+            for perc_row in percentages
         ])
         
         # Create the heatmap
