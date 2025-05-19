@@ -431,11 +431,11 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         )
         
         # Add title with statistics
-        plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, p = {p:.3g}, Chi² = {chi2:.2f}", fontsize=16)
-        plt.xlabel("LLM Error Vector", fontsize=14)
-        plt.ylabel("ML Error Vector", fontsize=14)
-        plt.xticks(fontsize=12)
-        plt.yticks(fontsize=12)
+        plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, p = {p:.3f}, Chi² = {chi2:.2f}", fontsize=20)
+        plt.xlabel("LLMs", fontsize=18)
+        plt.ylabel("Traditional Fewshot Models", fontsize=14)
+        plt.xticks(fontsize=16)
+        plt.yticks(fontsize=16)
         
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / os.path.join(folder, 'contingency_table.pdf'))
