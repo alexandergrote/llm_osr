@@ -54,7 +54,7 @@ class ExperimentFactory(BaseModel):
             unknown_classes = UNKNOWN_CLASSES
 
         if random_seeds is None:
-            random_seeds = [0, 1] #RANDOM_SEEDS
+            random_seeds = [0, 1, 2, 3] #RANDOM_SEEDS
 
         for dataset in datasets:
 
