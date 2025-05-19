@@ -418,7 +418,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             for perc_row in percentages
         ])
         
-        # Create the heatmap
+        # Create the heatmap with larger font size
         sns.heatmap(
             contingency_table, 
             annot=annot_text, 
@@ -426,13 +426,16 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             cmap='Blues',
             xticklabels=['LLM Correct', 'LLM Error'],
             yticklabels=['ML Correct', 'ML Error'],
-            cbar=False
+            cbar=False,
+            annot_kws={"size": 16}  # Größere Schriftgröße für die Annotationen
         )
         
         # Add title with statistics
-        plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, p = {p:.3g}, Chi² = {chi2:.2f}", fontsize=14)
-        plt.xlabel("LLM Error Vector")
-        plt.ylabel("ML Error Vector")
+        plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, p = {p:.3g}, Chi² = {chi2:.2f}", fontsize=16)
+        plt.xlabel("LLM Error Vector", fontsize=14)
+        plt.ylabel("ML Error Vector", fontsize=14)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
         
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / os.path.join(folder, 'contingency_table.pdf'))
