@@ -131,13 +131,50 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         df.index.name = 'raw_text'
         df.reset_index(inplace=True)
 
+        # Create a DataFrame for known/unknown status
+        known_df = pd.DataFrame.from_dict(known_dict, orient='index')
+        
+        # Create named_errors for all data points
         named_errors = df.dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
-
-        folder = "all"
-
-        (Directory.OUTPUT_DIR / folder).mkdir(parents=True, exist_ok=True)
-
-        self._plot_matrices(named_errors, folder)
+        
+        # Process different scenarios
+        scenarios = ["all", "known", "unknown"]
+        
+        for folder in scenarios:
+            (Directory.OUTPUT_DIR / folder).mkdir(parents=True, exist_ok=True)
+            
+            if folder == "all":
+                # Use all data points
+                scenario_named_errors = named_errors
+            else:
+                # Filter based on known/unknown classes
+                scenario_named_errors = {}
+                
+                for model in named_errors.keys():
+                    scenario_named_errors[model] = []
+                    
+                    # For each text index
+                    for idx, text_id in enumerate(df.index):
+                        if text_id in known_dict:
+                            # Get the known status for this text and model
+                            model_known_status = known_dict[text_id].get(model, [])
+                            
+                            # If we have status information
+                            if model_known_status:
+                                # Most common known status (majority vote)
+                                is_known = Counter(model_known_status).most_common(1)[0][0]
+                                
+                                # Include based on scenario
+                                if (folder == "known" and is_known) or (folder == "unknown" and not is_known):
+                                    if idx < len(named_errors[model]):
+                                        scenario_named_errors[model].append(named_errors[model][idx])
+                
+                # Remove models with no data
+                scenario_named_errors = {k: v for k, v in scenario_named_errors.items() if v}
+            
+            # Plot matrices for this scenario
+            if scenario_named_errors:
+                self._plot_matrices(scenario_named_errors, folder)
 
         data_copy.reset_index(drop=True, inplace=True)
     
@@ -148,7 +185,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         )
         plt.xticks(rotation=45)
         plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'f1_scores.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / 'all/f1_scores.pdf')
         plt.close()
 
         # analyse f1 scores with boxplot
@@ -158,7 +195,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         )
         plt.xticks(rotation=45)
         plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'f1_scores_unknown.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / 'all/f1_scores_unknown.pdf')
         plt.close()
         
         _, recall_col, precision_col = unknown_auc_analysis_columns.f1.column_name, unknown_auc_analysis_columns.recall.column_name, unknown_auc_analysis_columns.precision.column_name
@@ -170,7 +207,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         )
         plt.xticks(rotation=45)
         plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'precision_scores_unknown.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / 'all/precision_scores_unknown.pdf')
         plt.close()
 
         # recall
@@ -180,7 +217,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         )
         plt.xticks(rotation=45)
         plt.tight_layout()
-        plt.savefig(Directory.OUTPUT_DIR / 'recall_scores_unknown.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / 'all/recall_scores_unknown.pdf')
         plt.close()
 
     def _plot_matrices(self, named_errors, folder: str):
