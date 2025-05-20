@@ -271,7 +271,7 @@ class StrategyBoxPlot(BaseModel):
         plt.tight_layout()
         
         if save:
-            full_dir = Directory.OUTPUT_DIR / 'strategy_boxplots'
+            full_dir = Directory.OUTPUT_DIR / 'regression_plots'
             full_dir.mkdir(exist_ok=True)
             fig.savefig(full_dir / f"{filename_base}.pdf", bbox_inches='tight')
             fig.savefig(full_dir / f"{filename_base}.png", bbox_inches='tight', dpi=300)
