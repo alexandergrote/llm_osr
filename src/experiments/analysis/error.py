@@ -165,6 +165,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / 'all/f1_scores.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / 'all/f1_scores.png', dpi=300)
         plt.close()
 
         # analyse f1 scores with boxplot
@@ -175,6 +176,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / 'all/f1_scores_unknown.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / 'all/f1_scores_unknown.png', dpi=300)
         plt.close()
         
         _, recall_col, precision_col = unknown_auc_analysis_columns.f1.column_name, unknown_auc_analysis_columns.recall.column_name, unknown_auc_analysis_columns.precision.column_name
@@ -187,6 +189,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / 'all/precision_scores_unknown.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / 'all/precision_scores_unknown.png', dpi=300)
         plt.close()
 
         # recall
@@ -197,6 +200,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / 'all/recall_scores_unknown.pdf')
+        plt.savefig(Directory.OUTPUT_DIR / 'all/recall_scores_unknown.png', dpi=300)
         plt.close()
 
     @staticmethod
@@ -254,6 +258,13 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             filename=os.path.join(folder, "pearson_correlation_all.pdf")
         )
         pearson.plot()
+        # Save as PNG with high DPI
+        pearson = PearsonHeatmap(
+            data=named_errors,
+            title="Pearson Correlation Matrix - All Models",
+            filename=os.path.join(folder, "pearson_correlation_all.png")
+        )
+        pearson.plot()
 
         ## jaccard
         jaccard = JaccardHeatmap(
@@ -262,12 +273,26 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             filename=os.path.join(folder, "jaccard_similarity_all.pdf")
         )
         jaccard.plot()
+        # Save as PNG with high DPI
+        jaccard = JaccardHeatmap(
+            data=named_errors,
+            title="Jaccard Similarity Matrix - All Models",
+            filename=os.path.join(folder, "jaccard_similarity_all.png")
+        )
+        jaccard.plot()
 
         ## mcnemar
         mcnemar_heatmap = McNemarHeatmap(
             data=named_errors,
             title="McNemar's Test Matrix - All Models",
             filename=os.path.join(folder, "mcnemar_test_all.pdf")
+        )
+        mcnemar_heatmap.plot()
+        # Save as PNG with high DPI
+        mcnemar_heatmap = McNemarHeatmap(
+            data=named_errors,
+            title="McNemar's Test Matrix - All Models",
+            filename=os.path.join(folder, "mcnemar_test_all.png")
         )
         mcnemar_heatmap.plot()
         
@@ -279,6 +304,13 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 filename=os.path.join(folder, "pearson_correlation_traditional.pdf")
             )
             pearson_trad.plot()
+            # Save as PNG with high DPI
+            pearson_trad = PearsonHeatmap(
+                data=traditional_ml_errors,
+                title="Pearson Correlation Matrix - Traditional ML",
+                filename=os.path.join(folder, "pearson_correlation_traditional.png")
+            )
+            pearson_trad.plot()
 
             jaccard_trad = JaccardHeatmap(
                 data=traditional_ml_errors,
@@ -286,11 +318,25 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 filename=os.path.join(folder, "jaccard_similarity_traditional.pdf")
             )
             jaccard_trad.plot()
+            # Save as PNG with high DPI
+            jaccard_trad = JaccardHeatmap(
+                data=traditional_ml_errors,
+                title="Jaccard Similarity Matrix - Traditional ML",
+                filename=os.path.join(folder, "jaccard_similarity_traditional.png")
+            )
+            jaccard_trad.plot()
 
             mcnemar_trad = McNemarHeatmap(
                 data=traditional_ml_errors,
                 title="McNemar's Test Matrix - Traditional ML",
                 filename=os.path.join(folder, "mcnemar_test_traditional.pdf")
+            )
+            mcnemar_trad.plot()
+            # Save as PNG with high DPI
+            mcnemar_trad = McNemarHeatmap(
+                data=traditional_ml_errors,
+                title="McNemar's Test Matrix - Traditional ML",
+                filename=os.path.join(folder, "mcnemar_test_traditional.png")
             )
             mcnemar_trad.plot()
         
@@ -302,6 +348,13 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 filename=os.path.join(folder, "pearson_correlation_llm.pdf")
             )
             pearson_llm.plot()
+            # Save as PNG with high DPI
+            pearson_llm = PearsonHeatmap(
+                data=llm_errors,
+                title="Pearson Correlation Matrix - LLMs",
+                filename=os.path.join(folder, "pearson_correlation_llm.png")
+            )
+            pearson_llm.plot()
 
             jaccard_llm = JaccardHeatmap(
                 data=llm_errors,
@@ -309,11 +362,25 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 filename=os.path.join(folder, "jaccard_similarity_llm.pdf")
             )
             jaccard_llm.plot()
+            # Save as PNG with high DPI
+            jaccard_llm = JaccardHeatmap(
+                data=llm_errors,
+                title="Jaccard Similarity Matrix - LLMs",
+                filename=os.path.join(folder, "jaccard_similarity_llm.png")
+            )
+            jaccard_llm.plot()
 
             mcnemar_llm = McNemarHeatmap(
                 data=llm_errors,
                 title="McNemar's Test Matrix - LLMs",
                 filename=os.path.join(folder, "mcnemar_test_llm.pdf")
+            )
+            mcnemar_llm.plot()
+            # Save as PNG with high DPI
+            mcnemar_llm = McNemarHeatmap(
+                data=llm_errors,
+                title="McNemar's Test Matrix - LLMs",
+                filename=os.path.join(folder, "mcnemar_test_llm.png")
             )
             mcnemar_llm.plot()
         
@@ -359,7 +426,13 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 title="Pearson Correlation - ML vs LLM (Combined)",
                 filename=os.path.join(folder, "pearson_correlation_cross.pdf")
             )
-            
+            pearson_cross.plot()
+            # Save as PNG with high DPI
+            pearson_cross = PearsonHeatmap(
+                data=cross_group_errors,
+                title="Pearson Correlation - ML vs LLM (Combined)",
+                filename=os.path.join(folder, "pearson_correlation_cross.png")
+            )
             pearson_cross.plot()
 
             jaccard_cross = JaccardHeatmap(
@@ -368,13 +441,26 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 filename=os.path.join(folder, "jaccard_similarity_cross.pdf")
             )
             jaccard_cross.plot()
+            # Save as PNG with high DPI
+            jaccard_cross = JaccardHeatmap(
+                data=cross_group_errors,
+                title="Jaccard Similarity - ML vs LLM (Combined)",
+                filename=os.path.join(folder, "jaccard_similarity_cross.png")
+            )
+            jaccard_cross.plot()
 
             mcnemar_cross = McNemarHeatmap(
                 data=cross_group_errors,
                 title="McNemar's Test - ML vs LLM (Combined)",
                 filename=os.path.join(folder, "mcnemar_test_cross.pdf")
             )
-
+            mcnemar_cross.plot()
+            # Save as PNG with high DPI
+            mcnemar_cross = McNemarHeatmap(
+                data=cross_group_errors,
+                title="McNemar's Test - ML vs LLM (Combined)",
+                filename=os.path.join(folder, "mcnemar_test_cross.png")
+            )
             mcnemar_cross.plot()
             
             # Perform additional statistical tests on the correlation
@@ -500,4 +586,6 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / os.path.join(folder, 'contingency_table.pdf'))
+        # Save as PNG with high DPI
+        plt.savefig(Directory.OUTPUT_DIR / os.path.join(folder, 'contingency_table.png'), dpi=300)
         plt.close()
