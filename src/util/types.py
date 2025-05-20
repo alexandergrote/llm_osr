@@ -9,7 +9,7 @@ from pydantic.config import ConfigDict
 from typing import Optional, Set
 from pathlib import Path
 
-from src.util.constants import DatasetColumn
+from src.util.constants import DatasetColumn, UnknownClassLabel
 from src.util.hashing import Hash
 
 # pydantic model fields
@@ -179,7 +179,13 @@ class MLPrediction(BaseModel):
         return self
 
     def error(self) -> pd.Series:
-        return self.y_pred != self.y_test
+
+        # minor incosistency in outlier score check
+        # updating y_test it has the correct value
+        y_test = self.y_test.copy()
+        y_test[~y_test.isin(self.classes_in_training)] = UnknownClassLabel.UNKNOWN_STR.value
+
+        return self.y_pred != y_test
 
     def save(self, directory: Path):
 

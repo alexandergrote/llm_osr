@@ -51,6 +51,20 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         errors_list = [prediction.error().values for prediction in predictions]
         raw_text = [mldf.raw_text() for mldf in data_test_list]
 
+        # test how many errors are due to unknown classes
+        known_errors_list = []
+        unknown_errors_list = []
+        for i, errors in enumerate(errors_list):
+            known_errors_list.append(
+                np.logical_and(known_classes_list[i], errors)
+            )
+            unknown_errors_list.append(
+                np.logical_not(known_classes_list[i]) & errors
+            )
+            # calculate the number of errors due to unknown classes
+            num_unknown_errors = np.sum(unknown_errors_list[i])
+            num_known_errors = np.sum(known_errors_list[i])
+
         metric_col, dataset_col, perc_unknown_col = f1_analysis_columns.f1_avg.column_name, id_columns.dataset.column_name, id_columns.perc_unknown_classes.column_name
         unknown_f1_col = unknown_auc_analysis_columns.f1.column_name
         exp_name_col = id_columns.experiment_name.column_name
@@ -100,7 +114,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         # provides overview over all datasets and degrees of openness and random seeds
         # hence, multiple predictions for the same datapoint can occur
-        for dataset, model, seed, openness, errors, texts, known_classes, exp_name, artifact_uri in zip(dataset_names, model_names, random_seeds, unknown_scores, errors_list, raw_text, known_classes_list, exp_names, artifact_uris):
+        for dataset, model, seed, openness, errors, texts, known_classes, exp_name, artifact_uri, num_known_errors, num_unknown_errors in zip(dataset_names, model_names, random_seeds, unknown_scores, errors_list, raw_text, known_classes_list, exp_names, artifact_uris, known_errors_list, unknown_errors_list):
 
             assert len(errors) == len(texts), f"Error and text lists must have the same length for model {model}."
 
@@ -116,17 +130,19 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                     console.log('conflicting labels for text:', exp_name, seed, text)
                     pass
 
+        # needed for "natural" duplicates in data
         for text in error_dict.keys():
             for model in error_dict[text].keys():
                 
                 # get majority vote on model predictions for each text
                 counter = Counter(error_dict[text][model])
                 most_common_response = counter.most_common(1)[0][0]
-                
                 error_dict[text][model] = most_common_response
 
-
-        
+                # counter for known class
+                counter = Counter(known_dict[text][model])
+                most_common_response = counter.most_common(1)[0][0]
+                known_dict[text][model] = most_common_response
         
         # Process different scenarios
         scenarios = ["all", "known", "unknown"]
@@ -135,14 +151,8 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
             (Directory.OUTPUT_DIR / folder).mkdir(parents=True, exist_ok=True)
             
-            if folder == "all":
-                # Use all data points
-
-                scenario_named_errors = self._get_named_errors(error_dict, known_dict, folder)
+            scenario_named_errors = self._get_named_errors(error_dict, known_dict, folder)
             
-            else:
-                continue
-                
             self._plot_matrices(scenario_named_errors, folder)
 
         data_copy.reset_index(drop=True, inplace=True)
@@ -191,18 +201,38 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
     @staticmethod
     def _get_named_errors(error_dict: Dict, known_dict: Dict, scenario: Literal['all', 'known', 'unknown']) -> Dict:
+        
 
         # Now create the DataFrame
         df = pd.DataFrame.from_dict(error_dict, orient='index')
+        df = df.astype(bool)
         df.index.name = 'raw_text'
         df.reset_index(inplace=True)
 
-        # Create a DataFrame for known/unknown status
-        known_df = pd.DataFrame.from_dict(known_dict, orient='index')
-        
-        # Create named_errors for all data points
-        named_errors = df.dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
+        if scenario == "all":
 
+            idx = df.index
+        
+        else:
+
+            # Create a DataFrame for known/unknown status
+            known_df = pd.DataFrame.from_dict(known_dict, orient='index')
+            known_df = known_df.astype(bool)
+            known_df.index.name = 'raw_text'
+            known_df.reset_index(inplace=True)
+
+            assert all(known_df["raw_text"] == df["raw_text"])
+
+            known_flags_df = known_df.drop(columns=["raw_text"]).dropna(axis=0)
+
+            if scenario == "known":
+                idx = known_flags_df[known_flags_df.all(axis=1)].index
+            else:
+                idx = known_flags_df[~known_flags_df.all(axis=1)].index
+
+        # Create named_errors for all data points
+        named_errors = df.iloc[idx, :].dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
+        
         return named_errors
 
     def _plot_matrices(self, named_errors, folder: str):
@@ -350,14 +380,9 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             # Perform additional statistical tests on the correlation
             # Chi-square test of independence
             contingency_table = self._create_contingency_table(ml_combined_errors, llm_combined_errors)
-            chi2_result = stats.chi2_contingency(contingency_table)
-            chi2, p_value, dof, expected = chi2_result
             
-            # Calculate phi coefficient (for 2x2 tables)
-            phi_coef = self._calculate_phi_coefficient(contingency_table)
-            
-            # Visualize the contingency table
             self._plot_contingency_table(contingency_table, folder)
+            
 
     def _create_contingency_table(self, ml_errors: List[bool], llm_errors: List[bool]) -> np.ndarray:
         """
@@ -416,7 +441,12 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.figure(figsize=(8, 6))
         
         # Calculate chi-square and p-value
-        chi2, p, _, _ = stats.chi2_contingency(contingency_table)
+        chi2, p = None, None
+
+        try:
+            chi2, p, _, _ = stats.chi2_contingency(contingency_table)
+        except ValueError as e:
+            print(f"Error calculating chi-square in folder {folder}: {e}")
         
         # Calculate phi coefficient
         phi = self._calculate_phi_coefficient(contingency_table)
@@ -445,18 +475,24 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             annot_kws={"size": 16}  # Größere Schriftgröße für die Annotationen
         )
         
-        # Add title with statistics (p-value with significance symbols)
-        p_formatted = ""
-        if p < 0.001:
-            p_formatted = "p < 0.001"
-        elif p < 0.01:
-            p_formatted = "p < 0.01"
-        elif p < 0.05:
-            p_formatted = "p < 0.05"
-        else:
-            p_formatted = f"p = {p:.3f}"
+        if p is not None:
+            # Add title with statistics (p-value with significance symbols)
+            p_formatted = ""
+            if p < 0.001:
+                p_formatted = "p < 0.001"
+            elif p < 0.01:
+                p_formatted = "p < 0.01"
+            elif p < 0.05:
+                p_formatted = "p < 0.05"
+            else:
+                p_formatted = f"p = {p:.3f}"
+
+        title = f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}"
+
+        if (chi2 is not None) and (p is not None):
+            title += f", {p_formatted}, Chi² = {chi2:.2f}"
             
-        plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, {p_formatted}, Chi² = {chi2:.2f}", fontsize=20)
+        plt.title(title, fontsize=20)
         plt.xlabel("LLMs", fontsize=18)
         plt.ylabel("Traditional Fewshot Models", fontsize=18)
         plt.xticks(fontsize=16)
