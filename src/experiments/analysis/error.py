@@ -141,6 +141,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         scenarios = ["all", "known", "unknown"]
         
         for folder in scenarios:
+
             (Directory.OUTPUT_DIR / folder).mkdir(parents=True, exist_ok=True)
             
             if folder == "all":
@@ -155,19 +156,20 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                     
                     # For each text index
                     for idx, text_id in enumerate(df.index):
+
                         if text_id in known_dict:
                             # Get the known status for this text and model
-                            model_known_status = known_dict[text_id].get(model, [])
+                            model_known_status = known_dict[text_id][model]
+
+                            # Most common known status (majority vote)
+                            # to handle duplicates in dataset
+                            # neglecting number of duplicates
+                            is_known = Counter(model_known_status).most_common(1)[0][0]
                             
-                            # If we have status information
-                            if model_known_status:
-                                # Most common known status (majority vote)
-                                is_known = Counter(model_known_status).most_common(1)[0][0]
-                                
-                                # Include based on scenario
-                                if (folder == "known" and is_known) or (folder == "unknown" and not is_known):
-                                    if idx < len(named_errors[model]):
-                                        scenario_named_errors[model].append(named_errors[model][idx])
+                            # Include based on scenario
+                            if (folder == "known" and is_known) or (folder == "unknown" and not is_known):
+                                if idx < len(named_errors[model]):
+                                    scenario_named_errors[model].append(named_errors[model][idx])
                 
                 # Remove models with no data
                 scenario_named_errors = {k: v for k, v in scenario_named_errors.items() if v}
