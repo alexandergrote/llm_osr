@@ -558,7 +558,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             for perc_row in percentages
         ])
         
-        # Create the heatmap with larger font size
+        # Create the heatmap with larger font size and black lines between cells
         sns.heatmap(
             contingency_table, 
             annot=annot_text, 
@@ -567,7 +567,9 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             xticklabels=['LLM Correct', 'LLM Error'],
             yticklabels=['ML Correct', 'ML Error'],
             cbar=False,
-            annot_kws={"size": 16}  # Größere Schriftgröße für die Annotationen
+            annot_kws={"size": 16},  # Größere Schriftgröße für die Annotationen
+            linewidths=1,  # Add lines between cells
+            linecolor='black'  # Make the lines black
         )
         
         if p is not None:
