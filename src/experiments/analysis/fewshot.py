@@ -84,7 +84,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             x_column='Openness',
             y_column='mean',
             hue_column=model_col,
-            title='Known F1 Score vs. Openness Degree',
+            title='Known Classes',
             output_path=str(full_dir / 'regression_plot_known_all_datasets.pdf')
         )
         regression_plot.plot()
@@ -95,7 +95,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             x_column='Openness',
             y_column='mean',
             hue_column=model_col,
-            title='Known F1 Score vs. Openness Degree',
+            title='Known Classes',
             output_path=str(full_dir / 'regression_plot_known_all_datasets.png')
         )
         regression_plot.plot()
@@ -113,7 +113,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             x_column='Openness',
             y_column='mean',
             hue_column=model_col,
-            title='Unknown F1 Score vs. Openness Degree',
+            title='Unknown Classes',
             output_path=str(full_dir / 'regression_plot_unknown_all_datasets.pdf')
         )
         regression_plot.plot()
@@ -124,7 +124,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             x_column='Openness',
             y_column='mean',
             hue_column=model_col,
-            title='Unknown F1 Score vs. Openness Degree',
+            title='Unknown Classes',
             output_path=str(full_dir / 'regression_plot_unknown_all_datasets.png')
         )
         regression_plot.plot()
