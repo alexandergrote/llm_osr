@@ -271,8 +271,10 @@ class StrategyBoxPlot(BaseModel):
         plt.tight_layout()
         
         if save:
-            fig.savefig(Directory.OUTPUT_DIR / f"{filename_base}.pdf", bbox_inches='tight')
-            fig.savefig(Directory.OUTPUT_DIR / f"{filename_base}.png", bbox_inches='tight', dpi=300)
+            full_dir = Directory.OUTPUT_DIR / 'strategy_boxplots'
+            full_dir.mkdir(exist_ok=True)
+            fig.savefig(full_dir / f"{filename_base}.pdf", bbox_inches='tight')
+            fig.savefig(full_dir / f"{filename_base}.png", bbox_inches='tight', dpi=300)
         
         return fig, ax
         
@@ -442,11 +444,13 @@ class StrategyBoxPlot(BaseModel):
         
         # Adjust layout and save
         plt.tight_layout()
-        fig.savefig(Directory.OUTPUT_DIR / filename, bbox_inches='tight')
+        full_dir = Directory.OUTPUT_DIR / 'strategy_boxplots'
+        full_dir.mkdir(exist_ok=True)
+        fig.savefig(full_dir / filename, bbox_inches='tight')
 
         # save as png as well
         filename_png = filename.split('.')[0] + ".png"
-        fig.savefig(Directory.OUTPUT_DIR / filename_png, bbox_inches='tight', dpi=300)
+        fig.savefig(full_dir / filename_png, bbox_inches='tight', dpi=300)
         
         # Show the plot
         plt.close()
