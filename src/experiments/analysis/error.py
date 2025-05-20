@@ -17,6 +17,7 @@ from src.experiments.util.artifacts import get_artifacts
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.visualization.heatmap import PearsonHeatmap, JaccardHeatmap, McNemarHeatmap
 from src.experiments.visualization.f1_table import F1ScoreTable
+from src.util.logger import console
 
 
 class ErrorAnalyser(BaseModel, BaseAnalyser):
@@ -92,34 +93,27 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         unknown_scores = data_copy[perc_unknown_col].to_list()
         random_seeds = data_copy[random_seed_col].to_list()
         dataset_names = data_copy[dataset_col].to_list()
+        artifact_uris = data_copy['meta.artifact_uri'].to_list()
 
         error_dict = defaultdict(lambda: defaultdict(list))  # type: ignore
         known_dict = defaultdict(lambda: defaultdict(list))  # type: ignore
 
         # provides overview over all datasets and degrees of openness and random seeds
         # hence, multiple predictions for the same datapoint can occur
-        for dataset, model, seed, openness, errors, texts, known_classes, exp_name in zip(dataset_names, model_names, random_seeds, unknown_scores, errors_list, raw_text, known_classes_list, exp_names):
+        for dataset, model, seed, openness, errors, texts, known_classes, exp_name, artifact_uri in zip(dataset_names, model_names, random_seeds, unknown_scores, errors_list, raw_text, known_classes_list, exp_names, artifact_uris):
 
             assert len(errors) == len(texts), f"Error and text lists must have the same length for model {model}."
 
             for error, text, known_class in zip(errors, texts, known_classes):  # handle length mismatches safely
 
-                idx = f"{openness}_{seed}_{text}"
+                idx = f"{dataset}_{openness}_{seed}_{text}"
                         
                 error_dict[idx][model].append(error)
                 known_dict[idx][model].append(known_class)
 
-                if len(error_dict[idx][model]) > 1:
-                    #print(f"Multiple predictions: {dataset.split('.')[1]}\t{openness}\t{seed}\t{model}\t{text}")
-                    #print(error_dict[idx][model])
-                    #print(known_dict[idx][model])
-                    pass
-                
                 observations = known_dict[idx][model]
                 if 1 < len(set(observations)):
-                    print(exp_name)
-                    print(f"Non-unique known classes: {text}\t{model}")
-                    print(observations)
+                    console.log('conflicting labels for text:', exp_name, seed, text)
                     pass
 
         for text in error_dict.keys():
