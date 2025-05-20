@@ -433,7 +433,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         # Add title with statistics (p-value in scientific notation)
         plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, p = {p:.2e}, Chi² = {chi2:.2f}", fontsize=20)
         plt.xlabel("LLMs", fontsize=18)
-        plt.ylabel("Traditional Fewshot Models", fontsize=14)
+        plt.ylabel("Traditional Fewshot Models", fontsize=18)
         plt.xticks(fontsize=16)
         plt.yticks(fontsize=16)
         
