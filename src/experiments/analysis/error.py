@@ -430,8 +430,18 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             annot_kws={"size": 16}  # Größere Schriftgröße für die Annotationen
         )
         
-        # Add title with statistics (p-value in scientific notation)
-        plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, p = {p:.2e}, Chi² = {chi2:.2f}", fontsize=20)
+        # Add title with statistics (p-value with significance symbols)
+        p_formatted = ""
+        if p < 0.001:
+            p_formatted = "p < 0.001"
+        elif p < 0.01:
+            p_formatted = "p < 0.01"
+        elif p < 0.05:
+            p_formatted = "p < 0.05"
+        else:
+            p_formatted = f"p = {p:.3f}"
+            
+        plt.title(f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}, {p_formatted}, Chi² = {chi2:.2f}", fontsize=20)
         plt.xlabel("LLMs", fontsize=18)
         plt.ylabel("Traditional Fewshot Models", fontsize=18)
         plt.xticks(fontsize=16)
