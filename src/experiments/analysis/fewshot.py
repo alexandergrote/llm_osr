@@ -88,6 +88,17 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             output_path=str(full_dir / 'regression_plot_known_all_datasets.pdf')
         )
         regression_plot.plot()
+        
+        # Save as PNG with high DPI
+        regression_plot = RegressionPlot(
+            data=datasets_dict,
+            x_column='Openness',
+            y_column='mean',
+            hue_column=model_col,
+            title='Known F1 Score vs. Openness Degree',
+            output_path=str(full_dir / 'regression_plot_known_all_datasets.png')
+        )
+        regression_plot.plot()
 
         # Create a dictionary of datasets for the regression plot
         datasets_dict = {}
@@ -104,6 +115,17 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             hue_column=model_col,
             title='Unknown F1 Score vs. Openness Degree',
             output_path=str(full_dir / 'regression_plot_unknown_all_datasets.pdf')
+        )
+        regression_plot.plot()
+        
+        # Save as PNG with high DPI
+        regression_plot = RegressionPlot(
+            data=datasets_dict,
+            x_column='Openness',
+            y_column='mean',
+            hue_column=model_col,
+            title='Unknown F1 Score vs. Openness Degree',
+            output_path=str(full_dir / 'regression_plot_unknown_all_datasets.png')
         )
         regression_plot.plot()
 
