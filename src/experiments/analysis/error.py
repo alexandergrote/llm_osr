@@ -4,7 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Literal
 
 from pydantic import BaseModel
 from collections import defaultdict, Counter
@@ -126,16 +126,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 error_dict[text][model] = most_common_response
 
 
-        # Now create the DataFrame
-        df = pd.DataFrame.from_dict(error_dict, orient='index')
-        df.index.name = 'raw_text'
-        df.reset_index(inplace=True)
-
-        # Create a DataFrame for known/unknown status
-        known_df = pd.DataFrame.from_dict(known_dict, orient='index')
         
-        # Create named_errors for all data points
-        named_errors = df.dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
         
         # Process different scenarios
         scenarios = ["all", "known", "unknown"]
@@ -146,37 +137,13 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             
             if folder == "all":
                 # Use all data points
-                scenario_named_errors = named_errors
-            else:
-                # Filter based on known/unknown classes
-                scenario_named_errors = {}
-                
-                for model in named_errors.keys():
-                    scenario_named_errors[model] = []
-                    
-                    # For each text index
-                    for idx, text_id in enumerate(df.index):
 
-                        if text_id in known_dict:
-                            # Get the known status for this text and model
-                            model_known_status = known_dict[text_id][model]
-
-                            # Most common known status (majority vote)
-                            # to handle duplicates in dataset
-                            # neglecting number of duplicates
-                            is_known = Counter(model_known_status).most_common(1)[0][0]
-                            
-                            # Include based on scenario
-                            if (folder == "known" and is_known) or (folder == "unknown" and not is_known):
-                                if idx < len(named_errors[model]):
-                                    scenario_named_errors[model].append(named_errors[model][idx])
-                
-                # Remove models with no data
-                scenario_named_errors = {k: v for k, v in scenario_named_errors.items() if v}
+                scenario_named_errors = self._get_named_errors(error_dict, known_dict, folder)
             
-            # Plot matrices for this scenario
-            if scenario_named_errors:
-                self._plot_matrices(scenario_named_errors, folder)
+            else:
+                continue
+                
+            self._plot_matrices(scenario_named_errors, folder)
 
         data_copy.reset_index(drop=True, inplace=True)
     
@@ -221,6 +188,22 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / 'all/recall_scores_unknown.pdf')
         plt.close()
+
+    @staticmethod
+    def _get_named_errors(error_dict: Dict, known_dict: Dict, scenario: Literal['all', 'known', 'unknown']) -> Dict:
+
+        # Now create the DataFrame
+        df = pd.DataFrame.from_dict(error_dict, orient='index')
+        df.index.name = 'raw_text'
+        df.reset_index(inplace=True)
+
+        # Create a DataFrame for known/unknown status
+        known_df = pd.DataFrame.from_dict(known_dict, orient='index')
+        
+        # Create named_errors for all data points
+        named_errors = df.dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
+
+        return named_errors
 
     def _plot_matrices(self, named_errors, folder: str):
 
