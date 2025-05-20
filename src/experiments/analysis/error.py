@@ -209,7 +209,6 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
         # Now create the DataFrame
         df = pd.DataFrame.from_dict(error_dict, orient='index')
-        df = df.astype(bool)
         df.index.name = 'raw_text'
         df.reset_index(inplace=True)
 
@@ -221,21 +220,25 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
 
             # Create a DataFrame for known/unknown status
             known_df = pd.DataFrame.from_dict(known_dict, orient='index')
-            known_df = known_df.astype(bool)
             known_df.index.name = 'raw_text'
             known_df.reset_index(inplace=True)
 
             assert all(known_df["raw_text"] == df["raw_text"])
 
-            known_flags_df = known_df.drop(columns=["raw_text"]).dropna(axis=0)
+            # as type bool needs to occure after dropna, otherwise na will be encoded as false
+            known_flags_df = known_df.drop(columns=["raw_text"]).dropna(axis=0).astype(bool)
 
             if scenario == "known":
                 idx = known_flags_df[known_flags_df.all(axis=1)].index
-            else:
+            elif scenario == "unknown":
                 idx = known_flags_df[~known_flags_df.all(axis=1)].index
+            else:
+                raise ValueError("Invalid scenario. Must be one of 'all', 'known', or 'unknown'.")
 
         # Create named_errors for all data points
-        named_errors = df.iloc[idx, :].dropna(axis=0).drop(columns=["raw_text"]).T.apply(list, axis=1).to_dict()
+        named_errors = df.iloc[idx, :].dropna(axis=0).drop(columns=["raw_text"]).astype(bool).T.apply(list, axis=1).to_dict()
+
+        # debugging named errors based on supplied texts
         
         return named_errors
 
@@ -408,7 +411,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                         common_texts = set(range(len(errors)))
                     else:
                         common_texts &= set(range(len(errors)))
-            
+
             common_texts = sorted(common_texts)
             
             # Create combined error lists using majority vote
@@ -423,6 +426,33 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 llm_error = sum(llm_votes) > len(llm_votes) / 2  # True if majority made errors
                 llm_combined_errors.append(llm_error)
             
+            # average accuracy for debugging purposes
+            def flatten(nested_list):
+                flattened = []
+                
+                for element in nested_list:
+                    if isinstance(element, list):  # Check if the element is a list
+                        flattened.extend(flatten(element))  # Recursively flatten it
+                    else:
+                        flattened.append(element)  # Add non-list elements directly
+                return flattened
+
+            def debug_accuracy(my_dict: Dict[str, List[int]]) -> None:
+                
+                print('-'*10)
+                accuracy_error_list = flatten([v for _, v in my_dict.items()])
+
+                for model, errors in my_dict.items():
+                    print(len(errors))
+                    print(f"{model}: {1- sum(errors)/len(errors)}")
+                
+                print('overall acc', 1 - sum(accuracy_error_list) / len(accuracy_error_list))
+                print('-'*10)
+
+            debug_accuracy(traditional_ml_errors)
+            
+            debug_accuracy(llm_errors)
+
             # Create a dictionary with combined errors
             cross_group_errors = {
                 "Traditional ML (combined)": ml_combined_errors,
@@ -435,7 +465,9 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
                 title=title,
                 filename=os.path.join(folder, "pearson_correlation_cross.pdf")
             )
+
             pearson_cross.plot()
+
             # Save as PNG with high DPI
             pearson_cross = PearsonHeatmap(
                 data=cross_group_errors,
