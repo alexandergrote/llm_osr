@@ -183,7 +183,6 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         plt.savefig(Directory.OUTPUT_DIR / 'recall_scores_unknown.pdf')
         plt.close()
 
-
     def _plot_matrices(self, named_errors, folder: str):
 
         # Define model groups
