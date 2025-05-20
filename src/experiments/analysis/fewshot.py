@@ -75,6 +75,9 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             plot_data = dataset_data.groupby(['Openness', model_col])[metric_col].agg(['mean', 'std']).reset_index()
             datasets_dict[dataset] = plot_data
 
+        full_dir = Directory.OUTPUT_DIR / 'regression_plots'
+        full_dir.mkdir(exist_ok=True)
+
         # Create and display a single regression plot with all datasets
         regression_plot = RegressionPlot(
             data=datasets_dict,
@@ -82,7 +85,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             y_column='mean',
             hue_column=model_col,
             title='Known F1 Score vs. Openness Degree',
-            output_path=str(Directory.OUTPUT_DIR / 'regression_plot_known_all_datasets.pdf')
+            output_path=str(full_dir / 'regression_plot_known_all_datasets.pdf')
         )
         regression_plot.plot()
 
@@ -100,7 +103,7 @@ class FewShotAnalyser(BaseModel, BaseAnalyser):
             y_column='mean',
             hue_column=model_col,
             title='Unknown F1 Score vs. Openness Degree',
-            output_path=str(Directory.OUTPUT_DIR / 'regression_plot_unknown_all_datasets.pdf')
+            output_path=str(full_dir / 'regression_plot_unknown_all_datasets.pdf')
         )
         regression_plot.plot()
 
