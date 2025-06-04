@@ -1,11 +1,26 @@
 #!/bin/bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
-CLI_FILE="$SCRIPT_DIR/src/experiments/cli.py"
-PYTHON_PATH="/Users/alex/Code/llm_osr/venv/bin/python"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "Running LLMs..."
-echo $CLI_FILE
-echo $PYTHON_PATH
+osascript <<EOF
+tell application "Terminal"
+    activate
+    do script "bash $SCRIPT_DIR/run_llm_phi4_onestage_clinc.sh"
+end tell
+EOF
 
-$PYTHON_PATH "$CLI_FILE" llm --filter-name ".*one_stage_phi4.*" --skip-confirmation
+osascript <<EOF
+tell application "Terminal"
+    activate
+    do script "bash $SCRIPT_DIR/run_llm_phi4_onestage_hwu.sh"
+end tell
+EOF
+
+osascript <<EOF
+tell application "Terminal"
+    activate
+    do script "bash $SCRIPT_DIR/run_llm_phi4_onestage_banking.sh"
+end tell
+EOF
+
+exit 0
