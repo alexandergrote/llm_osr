@@ -111,7 +111,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         result_score_list = [None] * len(x)
         
         # Mutex für den Zugriff auf Prediction.valid_labels
-        prediction_lock = threading.Lock()
+        #prediction_lock = threading.Lock()
         
         # Funktion für die Thread-Ausführung
         def process_single_prediction(idx, el_str):
@@ -128,8 +128,8 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
             
             try:
                 # Kritischer Abschnitt mit Lock
-                with prediction_lock:
-                    result = self._single_predict(text=el_str, use_cache=self.use_cache)
+                #with prediction_lock:
+                result = self._single_predict(text=el_str, use_cache=False)#self.use_cache)
                 
                 if result is not None:
                     result_text, result_score = result
@@ -156,7 +156,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         
         # Anzahl der Worker-Threads (anpassen nach Bedarf)
         max_workers = min(10, len(x))  # Begrenzen Sie die Anzahl der Threads
-        
+        # max_workers = 1
         # Fortschrittsanzeige
         pbar = tqdm(total=len(x), desc="LLM Prediction")
         
