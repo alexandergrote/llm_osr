@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from numpy import ndarray
 from typing import Optional, Union, Tuple, List
-from pathlib import Path
 from datetime import datetime
 
 from src.ml.classifier.llm.util.prediction import Prediction
@@ -125,7 +124,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
             exp_name = kwargs.get('experiment_name', 'None')
             config = kwargs.get('config', 'None')
             seed = 'None'
-            if config is not None:
+            if isinstance(config, dict):
                 seed = config.get('random_seed', 'None')
 
             base_str = f"{exp_name} - {seed} - {el_str}"
