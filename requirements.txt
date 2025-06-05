@@ -29,3 +29,4 @@ statsmodels
 nltk
 pandera
 tabulate
+retry

@@ -10,6 +10,7 @@ from abc import abstractmethod
 from pydantic import BaseModel, ConfigDict, model_validator, field_validator
 from typing import Dict, Any, List, Union, Optional
 from pathlib import Path
+from retry import retry
 
 from src.util.logger import get_logging_fun, console
 from src.util.constants import Directory
@@ -108,152 +109,154 @@ class DatabaseManager:
         self.db_path = path or get_rate_limit_db_path()
         self._init_db()
 
+    @retry(sqlite3.OperationalError, delay=1, tries=3)
     def _init_db(self):
         """Initialize database tables if they don't exist."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Create rate limit configurations table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS rate_limit_configs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            manager_name TEXT NOT NULL,
-            limit_name TEXT NOT NULL,
-            limit_value INTEGER NOT NULL,
-            increment_level TEXT NOT NULL,
-            agg_level TEXT NOT NULL,
-            action TEXT NOT NULL,
-            waiting_time INTEGER DEFAULT 0,
-            UNIQUE(manager_name, limit_name)
-        )
-        ''')
-        
-        # Create usage records table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS rate_limit_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            manager_name TEXT NOT NULL,
-            limit_name TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            usage INTEGER DEFAULT 0,
-            UNIQUE(manager_name, limit_name, timestamp)
-        )
-        ''')
-        
-        conn.commit()
-        conn.close()
 
+        with sqlite3.connect(self.db_path, timeout=10) as conn:
+            cursor = conn.cursor()
+            
+            # Create rate limit configurations table
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS rate_limit_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                manager_name TEXT NOT NULL,
+                limit_name TEXT NOT NULL,
+                limit_value INTEGER NOT NULL,
+                increment_level TEXT NOT NULL,
+                agg_level TEXT NOT NULL,
+                action TEXT NOT NULL,
+                waiting_time INTEGER DEFAULT 0,
+                UNIQUE(manager_name, limit_name)
+            )
+            ''')
+            
+            # Create usage records table
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS rate_limit_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                manager_name TEXT NOT NULL,
+                limit_name TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                usage INTEGER DEFAULT 0,
+                UNIQUE(manager_name, limit_name, timestamp)
+            )
+            ''')
+            
+            conn.commit()
+
+    @retry(sqlite3.OperationalError, delay=1, tries=3)
     def save_rate_limit_config(self, manager_name: str, limit_name: str, rate_limit: RateLimit):
         """Save rate limit configuration to database."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        INSERT OR REPLACE INTO rate_limit_configs 
-        (manager_name, limit_name, limit_value, increment_level, agg_level, action, waiting_time)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            manager_name,
-            limit_name,
-            rate_limit.limit,
-            rate_limit.increment_level,
-            rate_limit.agg_level,
-            rate_limit.action,
-            rate_limit.waiting_time
-        ))
-        
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(self.db_path, timeout=10) as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+            INSERT OR REPLACE INTO rate_limit_configs 
+            (manager_name, limit_name, limit_value, increment_level, agg_level, action, waiting_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                manager_name,
+                limit_name,
+                rate_limit.limit,
+                rate_limit.increment_level,
+                rate_limit.agg_level,
+                rate_limit.action,
+                rate_limit.waiting_time
+            ))
+            
+            conn.commit()
 
+
+    @retry(sqlite3.OperationalError, delay=1, tries=3)
     def save_rate_limit_records(self, manager_name: str, limit_name: str, records: List[Dict[str, Any]]):
         """Save rate limit usage records to database."""
         if not records:
             return
             
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        for record in records:
-            cursor.execute('''
-            INSERT OR REPLACE INTO rate_limit_records
-            (manager_name, limit_name, timestamp, usage)
-            VALUES (?, ?, ?, ?)
-            ''', (
-                manager_name,
-                limit_name,
-                record["timestamp"],
-                record["usage"]
-            ))
-        
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(self.db_path, timeout=10) as conn:
+            cursor = conn.cursor()
+            
+            for record in records:
+                cursor.execute('''
+                INSERT OR REPLACE INTO rate_limit_records
+                (manager_name, limit_name, timestamp, usage)
+                VALUES (?, ?, ?, ?)
+                ''', (
+                    manager_name,
+                    limit_name,
+                    record["timestamp"],
+                    record["usage"]
+                ))
+            
+            conn.commit()
 
+    @retry(sqlite3.OperationalError, delay=1, tries=3)
     def load_rate_limit_config(self, manager_name: str, limit_name: str) -> Optional[Dict[str, Any]]:
         """Load rate limit configuration from database."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT * FROM rate_limit_configs
-        WHERE manager_name = ? AND limit_name = ?
-        ''', (manager_name, limit_name))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return dict(row)
+        with sqlite3.connect(self.db_path, timeout=10) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+            SELECT * FROM rate_limit_configs
+            WHERE manager_name = ? AND limit_name = ?
+            ''', (manager_name, limit_name))
+            
+            row = cursor.fetchone()
+            
+            if row:
+                return dict(row)
         return None
 
+    @retry(sqlite3.OperationalError, delay=1, tries=3)
     def load_rate_limit_records(self, manager_name: str, limit_name: str) -> Dict[str, int]:
         """Load rate limit usage records from database."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT timestamp, usage FROM rate_limit_records
-        WHERE manager_name = ? AND limit_name = ?
-        ''', (manager_name, limit_name))
-        
-        records = defaultdict(int)
-        for row in cursor.fetchall():
-            records[row[0]] = row[1]
-        
-        conn.close()
+        with sqlite3.connect(self.db_path, timeout=10) as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+            SELECT timestamp, usage FROM rate_limit_records
+            WHERE manager_name = ? AND limit_name = ?
+            ''', (manager_name, limit_name))
+            
+            records = defaultdict(int)
+            for row in cursor.fetchall():
+                records[row[0]] = row[1]
+            
         return records
 
+    @retry(sqlite3.OperationalError, delay=1, tries=3)
     def get_all_rate_limit_names(self, manager_name: str) -> List[str]:
         """Get all rate limit names for a manager."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT DISTINCT limit_name FROM rate_limit_configs
-        WHERE manager_name = ?
-        ''', (manager_name,))
-        
-        names = [row[0] for row in cursor.fetchall()]
-        conn.close()
+        with sqlite3.connect(self.db_path, timeout=10) as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+            SELECT DISTINCT limit_name FROM rate_limit_configs
+            WHERE manager_name = ?
+            ''', (manager_name,))
+            
+            names = [row[0] for row in cursor.fetchall()]
         return names
 
+    @retry(sqlite3.OperationalError, delay=1, tries=3)
     def delete_rate_limit(self, manager_name: str, limit_name: str):
         """Delete a rate limit configuration and its records."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        DELETE FROM rate_limit_configs
-        WHERE manager_name = ? AND limit_name = ?
-        ''', (manager_name, limit_name))
-        
-        cursor.execute('''
-        DELETE FROM rate_limit_records
-        WHERE manager_name = ? AND limit_name = ?
-        ''', (manager_name, limit_name))
-        
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(self.db_path, timeout=10) as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+            DELETE FROM rate_limit_configs
+            WHERE manager_name = ? AND limit_name = ?
+            ''', (manager_name, limit_name))
+            
+            cursor.execute('''
+            DELETE FROM rate_limit_records
+            WHERE manager_name = ? AND limit_name = ?
+            ''', (manager_name, limit_name))
+            
+            conn.commit()
 
 
 
