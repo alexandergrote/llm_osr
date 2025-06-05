@@ -10,7 +10,7 @@ from abc import abstractmethod
 from pydantic import BaseModel, ConfigDict, model_validator, field_validator
 from typing import Dict, Any, List, Union, Optional
 from pathlib import Path
-from retry import retry
+from retry import retry  # type: ignore
 
 from src.util.logger import get_logging_fun, console
 from src.util.constants import Directory

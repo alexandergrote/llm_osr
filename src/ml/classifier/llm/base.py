@@ -1,6 +1,4 @@
 import numpy as np
-import threading
-import time
 import os
 import json
 
@@ -10,7 +8,7 @@ from copy import copy
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from numpy import ndarray
-from typing import Optional, Union, Tuple, List, Callable, Iterable, Dict, Any
+from typing import Optional, Union, Tuple, List, Callable, Dict, Any, Sized
 from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -53,7 +51,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         raise NotImplementedError("Method must be implemented in subclass")
 
     @abstractmethod
-    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
+    def _single_predict(self, text: str, use_cache: bool = False, is_prompt: bool = False, **kwargs) -> Tuple[str, float]:
         raise NotImplementedError("Method must be implemented in subclass")
 
 
@@ -106,9 +104,9 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         return examples
 
-    def _get_number_of_workers(self, x: Optional[Iterable] = None) -> int:
+    def _get_number_of_workers(self, x: Optional[Sized] = None) -> int:
 
-        n = 20
+        n = 10
         if x is None:
             return n
 
@@ -117,7 +115,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         return min(n, len(x))
 
-    def parallel_predict(self, x: np.ndarray, **kwargs):
+    def parallel_predict(self, x: np.ndarray, is_prompt: bool = False, **kwargs):
 
         result_text_list = [None] * len(x)
         result_score_list = [None] * len(x)
@@ -133,15 +131,14 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
             if isinstance(config, dict):
                 seed = config.get('random_seed', 'None')
 
-            base_str = f"{exp_name} - {seed} - {el_str}"
+            base_str = f"{exp_name} - {seed}"
             
             result_text = ErrorValues.PARSING_STR.value
             result_score = float(ErrorValues.PARSING_NUM.value)
             
             try:
-                # Kritischer Abschnitt mit Lock
-                #with prediction_lock:
-                result = self._single_predict(text=el_str, use_cache=self.use_cache)
+                
+                result = self._single_predict(text=el_str, use_cache=self.use_cache, is_prompt=is_prompt, **kwargs)
                 
                 if result is not None:
                     result_text, result_score = result
@@ -241,30 +238,29 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         return cache
 
-    def get_active_and_hash_list(self, x: np.ndarray, cache: Dict[str, Any], prompt_function: Callable) -> List[str]:
+    def get_active_and_hash_list(self, x: np.ndarray, cache: Dict[str, Any], prompt_function: Callable) -> Tuple[List[str], List[str]]:
 
         active_list = []
         hash_list = []
-        active_idx_list = []
-
-        def get_hash_value(text: str):
+        
+        def get_hash_value(text: str) -> Tuple[str, np.ndarray]:
 
             prompt = prompt_function(text)  # Generate
             hash_value = PromptCreator.hash_prompt(prompt)
             
-            return hash_value
+            return hash_value, np.array([prompt])
 
         # Anzahl der Worker-Threads (anpassen nach Bedarf)
         n_workers =  self._get_number_of_workers(x) # Begrenzen Sie die Anzahl der Threads
 
         # Fortschrittsanzeige
-        pbar = tqdm(enumerate(x), desc="Evaluation prompt hash", total=len(x))
+        pbar = tqdm(enumerate(x), desc="Create active list and prompt hash", total=len(x))
         
         # Thread-Pool erstellen und Aufgaben einreichen
         with ThreadPoolExecutor(max_workers=n_workers) as executor:
             # Einreichen der Aufgaben
             futures = []
-            for i, el in enumerate(x):
+            for el in x:
                 future = executor.submit(get_hash_value, el[0])
                 futures.append(future)
             
@@ -273,11 +269,11 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
                 try:
 
-                    hash_value = future.result()
+                    hash_value, text = future.result()
                     hash_list.append(hash_value)
 
                     if hash_value not in cache:
-                        active_list.append(el)
+                        active_list.append(text)
 
                 except Exception as e:
                     pbar.write(f"Error in thread: {e}")
@@ -304,10 +300,9 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         key = "get_prompt"
 
-
         if not hasattr(self, key):
 
-            text_list, score_list = self.parallel_predict(x, **kwargs)
+            text_list, score_list = self.parallel_predict(x, is_prompt=False,  **kwargs)
 
             if include_outlierscore:
                 return np.array(text_list), np.array(score_list)
@@ -316,12 +311,12 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         prompt_function = getattr(self, key)
 
-        if not isinstance(prompt_function, Callable):
+        if not isinstance(prompt_function, Callable):  # type: ignore
             raise ValueError(f"{key} must be callable")
 
         # use prompt function to generate hashes, which are needed for cache lookup
         cache = {}  # Store index -> value pairs
-        active_list = []  # list with texts to be predicted
+        active_list: List[str] = []  # list with texts to be predicted
         text_list = [None] * len(x)  # holds text results
         score_list = [None] * len(x)  # holds score results
 
@@ -333,11 +328,12 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
             
         # Process only the active items that have not been cached
         # This speeds up the overall process since only a fraction of the datapoints need to be passed to the api provider
-        sub_text_list, sub_score_list  = self.parallel_predict(active_list, **kwargs)
+        sub_text_list, sub_score_list  = self.parallel_predict(active_list, is_prompt=True, **kwargs)
 
         # Restore cached items at their original positions
         active_index = 0
 
+        # merge them all together and maintain order of original list
         for i in range(len(x)):
 
             cache_result = cache.get(hash_list[i], None)

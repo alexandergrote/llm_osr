@@ -4,7 +4,7 @@ params:
   skip_unknown_detection: false
   shuffle_free_llms: false
   unknown_detection_scenario: 'explicit_fewshot'
-  unknown_detection_model_name: gemma-3-27b
+  unknown_detection_model_name: gemma3-27b
   selector:
     class: src.ml.classifier.llm.util.cosine_selector.CosineSelector
     params:

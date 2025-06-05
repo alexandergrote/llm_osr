@@ -166,7 +166,7 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
         
         return logprob_score
 
-    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
+    def _single_predict(self, text: str, use_cache: bool = False, is_prompt: bool = False, **kwargs) -> Tuple[str, float]:
 
         # checks for first model
         if self.y_train is None:

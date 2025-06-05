@@ -92,13 +92,17 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
        self.classes = np.unique(self.y_train)
 
     def get_valid_labels(self) -> List[str]:
+
+        if self.classes is None:
+            raise ValueError("Classes not set")
         
         valid_labels = list(self.classes)
-        return valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
+        result = valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
+        assert all(isinstance(label, str) for label in result)
+        return result
 
     def get_parser(self) -> PydanticOutputParser:
         
-        valid_labels = list(self.classes)
         Prediction.valid_labels = self.get_valid_labels()
 
         parser = PydanticOutputParser(pydantic_object=Prediction)
@@ -132,26 +136,30 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         return prompt
 
-    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
-
-        if self.y_train is None:
-            raise ValueError("Not fitted")
-        
-        if self.x_train is None:
-            raise ValueError("Not fitted")
-        
-        if self.classes is None:
-            raise ValueError("Not fitted")
-        
-        # parser has more classes than necessary in the prediction.valid_class
-        parser = self.get_parser()
-
-        prompt = self.get_prompt(text=text)
+    def _single_predict(self, text: str, use_cache: bool = False, is_prompt: bool = False, **kwargs) -> Tuple[str, float]:
 
         if not isinstance(self.osr_model, AbstractLLM):
             raise ValueError("Classifier model must be an AbstractLLM")
-
+        
         valid_labels = self.get_valid_labels()
+
+        if is_prompt:
+
+            prompt = text
+
+        else:
+
+            if self.y_train is None:
+                raise ValueError("Not fitted")
+            
+            if self.x_train is None:
+                raise ValueError("Not fitted")
+            
+            if self.classes is None:
+                raise ValueError("Not fitted")
+            
+            prompt = self.get_prompt(text=text)
+
         prediction = self._get_parsed_output(model=self.osr_model, valid_labels=valid_labels, use_cache=use_cache,  text=prompt, retries=5, **kwargs)
 
         if prediction is None:
