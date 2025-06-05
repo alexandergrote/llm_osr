@@ -8,6 +8,7 @@ from langchain.output_parsers import PydanticOutputParser
 from src.ml.classifier.llm.util.outlier import OutlierValue
 from src.util.constants import Directory, UnknownClassLabel
 from src.ml.classifier.llm.util.prediction import Prediction
+from src.util.hashing import Hash
 
 
 CHAIN_OF_THOUGHT = "Let's think step by step"
@@ -59,6 +60,10 @@ class PromptCreator(BaseModel):
     name: PromptScenarioName
     template: PromptTemplate
     use_outlier_in_examples: bool
+
+    @staticmethod
+    def hash_prompt(prompt: str) -> str:
+        return Hash.hash(prompt)
 
     @staticmethod
     def create_prompt(

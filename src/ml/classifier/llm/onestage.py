@@ -91,28 +91,30 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
        self.classes = np.unique(self.y_train)
 
-    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
-
-        if self.y_train is None:
-            raise ValueError("Not fitted")
-        
-        if self.x_train is None:
-            raise ValueError("Not fitted")
-        
-        if self.classes is None:
-            raise ValueError("Not fitted")
+    def get_valid_labels(self) -> List[str]:
         
         valid_labels = list(self.classes)
-        Prediction.valid_labels = valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
+        return valid_labels + [UnknownClassLabel.UNKNOWN_STR.value]
+
+    def get_parser(self) -> PydanticOutputParser:
+        
+        valid_labels = list(self.classes)
+        Prediction.valid_labels = self.get_valid_labels()
 
         parser = PydanticOutputParser(pydantic_object=Prediction)
 
+        return parser
+
+    def get_prompt(self, text: str) -> str:
+
         examples = self._get_examples(text_to_classify=text)
+        parser = self.get_parser()
 
         try:
             outlier_examples = self._get_outlier_examples(
                 outlier_value=UnknownClassLabel.UNKNOWN_STR.value
             )
+
         except ValueError:
             outlier_examples = None
 
@@ -128,17 +130,34 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
             outlier_examples=outlier_examples,
         )
 
+        return prompt
+
+    def _single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
+
+        if self.y_train is None:
+            raise ValueError("Not fitted")
+        
+        if self.x_train is None:
+            raise ValueError("Not fitted")
+        
+        if self.classes is None:
+            raise ValueError("Not fitted")
+        
+        # parser has more classes than necessary in the prediction.valid_class
+        parser = self.get_parser()
+
+        prompt = self.get_prompt(text=text)
+
         if not isinstance(self.osr_model, AbstractLLM):
             raise ValueError("Classifier model must be an AbstractLLM")
 
-        prediction = self._get_parsed_output(model=self.osr_model, valid_labels=Prediction.valid_labels, use_cache=use_cache,  text=prompt, retries=5, **kwargs)
+        valid_labels = self.get_valid_labels()
+        prediction = self._get_parsed_output(model=self.osr_model, valid_labels=valid_labels, use_cache=use_cache,  text=prompt, retries=5, **kwargs)
 
         if prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
 
-        prediction_label = prediction.answer.label
-
-        unknown_score = 0.0 if prediction_label != UnknownClassLabel.UNKNOWN_STR.value else 1.0
+        prediction_label, unknown_score = self.get_result_from_logprobscore(prediction)
 
         return prediction_label, unknown_score
 
