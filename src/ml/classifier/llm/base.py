@@ -1,4 +1,5 @@
 import numpy as np
+import threading
 
 from abc import abstractmethod
 from tqdm import tqdm
@@ -8,6 +9,7 @@ from pydantic.config import ConfigDict
 from numpy import ndarray
 from typing import Optional, Union, Tuple, List
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.rest import AbstractLLM
@@ -101,26 +103,18 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
 
     def predict(self, x: np.ndarray, include_outlierscore: bool = False, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
-
         # assert if array is 2D
         if len(x.shape) != 2:
             raise ValueError("Input should be 2D array")
 
-        result_text_list= []
-        result_score_list = []    
-
-        pbar = tqdm(x, desc="LLM Prediction")
-
-        for el in pbar:
-
-            el_str = el[0]
-            pbar.write("-"*20)
-
-            result_text = ErrorValues.PARSING_STR.value
-            result_score = float(ErrorValues.PARSING_NUM.value)
-
-            result = None
-
+        result_text_list = [None] * len(x)
+        result_score_list = [None] * len(x)
+        
+        # Mutex für den Zugriff auf Prediction.valid_labels
+        prediction_lock = threading.Lock()
+        
+        # Funktion für die Thread-Ausführung
+        def process_single_prediction(idx, el_str):
             exp_name = kwargs.get('experiment_name', 'None')
             config = kwargs.get('config', 'None')
             seed = 'None'
@@ -128,34 +122,64 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
                 seed = config.get('random_seed', 'None')
 
             base_str = f"{exp_name} - {seed} - {el_str}"
-
+            
+            result_text = ErrorValues.PARSING_STR.value
+            result_score = float(ErrorValues.PARSING_NUM.value)
+            
             try:
-
-                result = self._single_predict(text=el_str, use_cache=self.use_cache, pbar=pbar)
-                print_str = f"{base_str} - {result[0]}"
-
-
+                # Kritischer Abschnitt mit Lock
+                with prediction_lock:
+                    result = self._single_predict(text=el_str, use_cache=self.use_cache)
+                
+                if result is not None:
+                    result_text, result_score = result
+                    print_str = f"{base_str} - {result_text}"
+                else:
+                    print_str = f"{base_str} - None"
+                    
             except Exception as e:
                 print_str = f"{base_str} - Error: {e}"
-                pass
-
             
+            # Speichern der Ergebnisse
+            result_text_list[idx] = result_text
+            result_score_list[idx] = result_score
+            
+            # Logging
             output_file = Directory.ROOT / 'tmp/logs'
             output_file.mkdir(parents=True, exist_ok=True)
             output_file = output_file / f'{exp_name}.log'
             datetime_now = str(datetime.now())
             with open(output_file, 'a') as f:
                 f.write(datetime_now + ' - ' + print_str + '\n')
-
-            pbar.write(print_str)
-
-            if result is not None:
-                result_text, result_score = result
-
-            result_text_list.append(result_text)
-            result_score_list.append(result_score)
-
             
+            return idx, print_str
+        
+        # Anzahl der Worker-Threads (anpassen nach Bedarf)
+        max_workers = min(10, len(x))  # Begrenzen Sie die Anzahl der Threads
+        
+        # Fortschrittsanzeige
+        pbar = tqdm(total=len(x), desc="LLM Prediction")
+        
+        # Thread-Pool erstellen und Aufgaben einreichen
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Einreichen der Aufgaben
+            futures = []
+            for i, el in enumerate(x):
+                future = executor.submit(process_single_prediction, i, el[0])
+                futures.append(future)
+            
+            # Verarbeiten der Ergebnisse
+            for future in as_completed(futures):
+                try:
+                    idx, print_str = future.result()
+                    pbar.write(print_str)
+                except Exception as e:
+                    pbar.write(f"Error in thread: {e}")
+                finally:
+                    pbar.update(1)
+        
+        pbar.close()
+        
         if include_outlierscore:
             return np.array(result_text_list), np.array(result_score_list)
         
