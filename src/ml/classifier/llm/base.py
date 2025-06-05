@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from numpy import ndarray
 from typing import Optional, Union, Tuple, List
+from pathlib import Path
+from datetime import datetime
 
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.rest import AbstractLLM
@@ -15,6 +17,7 @@ from src.util.constants import ErrorValues
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
 from src.ml.classifier.llm.util.prompt import PromptExample, PromptScenarioName
+from src.util.constants import Directory
 
 
 class AbstractClassifierLLM(BaseModel, BaseClassifier):
@@ -107,30 +110,47 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         result_text_list= []
         result_score_list = []    
 
+        x = x[1000:]
+
         pbar = tqdm(x, desc="LLM Prediction")
 
         for el in pbar:
 
             el_str = el[0]
-
             pbar.write("-"*20)
-            pbar.write(f"processing text: {el_str}")
 
             result_text = ErrorValues.PARSING_STR.value
             result_score = float(ErrorValues.PARSING_NUM.value)
 
             result = None
 
+            exp_name = kwargs.get('experiment_name', 'None')
+            config = kwargs.get('config', 'None')
+            seed = 'None'
+            if config is not None:
+                seed = config.get('random_seed', 'None')
+
+            base_str = f"{exp_name} - {seed} - {el_str}"
+
             try:
 
                 result = self._single_predict(text=el_str, use_cache=self.use_cache, pbar=pbar)
-
-                pbar.write(f"Success: {result[0]}")
+                print_str = f"{base_str} - {result[0]}"
 
 
             except Exception as e:
-                pbar.write(f"Error: {e}")
+                print_str = f"{base_str} - Error: {e}"
                 pass
+
+            
+            output_file = Directory.ROOT / 'tmp/logs'
+            output_file.mkdir(parents=True, exist_ok=True)
+            output_file = output_file / f'{exp_name}.log'
+            datetime_now = str(datetime.now())
+            with open(output_file, 'a') as f:
+                f.write(datetime_now + ' - ' + print_str + '\n')
+
+            pbar.write(print_str)
 
             if result is not None:
                 result_text, result_score = result
