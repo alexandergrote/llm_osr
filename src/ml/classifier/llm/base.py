@@ -110,8 +110,6 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         result_text_list= []
         result_score_list = []    
 
-        x = x[1000:]
-
         pbar = tqdm(x, desc="LLM Prediction")
 
         for el in pbar:
