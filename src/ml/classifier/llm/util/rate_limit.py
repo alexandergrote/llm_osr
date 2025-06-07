@@ -265,7 +265,7 @@ class RateLimitManager(BaseModel):
     name: str
 
     rate_limits: Dict[str, RateLimit] = {}
-    db_manager: DatabaseManager = DatabaseManager()
+    db_manager: DatabaseManager
     
     model_config: ConfigDict = ConfigDict(
         arbitrary_types_allowed=True
@@ -277,6 +277,20 @@ class RateLimitManager(BaseModel):
 
         if not isinstance(values, dict):
             raise ValueError("Values must be a dictionary")
+        
+        key = 'name'
+        name = values.get(key, None)
+
+        if name is None:
+            raise ValueError(f"Missing required key '{key}'")
+        
+        key = "db_manager"
+        db_dir = get_rate_limit_dir()
+        db_dir.mkdir(parents=True, exist_ok=True)
+
+        values[key] = DatabaseManager(
+            path=db_dir / f"{name}.db"
+        )
         
         key = "rate_limits"
         rate_limits = values.get(key, {})

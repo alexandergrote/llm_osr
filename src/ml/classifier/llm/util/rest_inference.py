@@ -1,4 +1,3 @@
-import sys
 import random
 
 from pydantic import BaseModel, field_validator, model_validator
@@ -110,9 +109,15 @@ class InferenceHandler(BaseModel, AbstractLLM):
 
                 if idx != len(llms) - 1:
                     continue
+
+                import time
+                waiting_time = 65
+                console.log(f"Rate limit exceeded for all models. Retrying in {waiting_time} seconds...")
+                time.sleep(waiting_time)
+                continue
                     
-                console.log("All rate limit restrictions have been used. Exiting...")
-                sys.exit(1)
+                #console.log("All rate limit restrictions have been used. Exiting...")
+                #sys.exit(1)
 
             except Exception as e:
                 raise e

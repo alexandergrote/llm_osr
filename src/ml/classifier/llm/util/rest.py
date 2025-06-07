@@ -1,4 +1,5 @@
 import json
+import re
 import mlflow
 import requests  # type: ignore
 from abc import ABC, abstractmethod
@@ -25,6 +26,38 @@ mlflow.tracing.disable()
 
 def traced_request(*args, **kwargs):
     return requests.post(*args, **kwargs)
+
+
+def fix_json_response(response_str):
+    try:
+        # Try loading the JSON string first
+        json.loads(response_str)
+        return response_str  # It's already valid
+
+    except json.JSONDecodeError:
+        # Try fixing improperly escaped quotes inside values
+
+        matches = re.findall(r'\{\s*"reasoning":\s*".*?",\s*"label":\s*".*?"\s*\}', response_str, re.DOTALL)
+    
+        if not matches:
+            raise ValueError("No valid JSON object found in the response.")
+        
+        assert len(matches) == 1, "Found multiple JSON blocks, expected one. Please check" 
+
+        # Unescape inner double quotes if necessary
+        last_match = matches[0]
+        last_match_sub_old = last_match[last_match.find('"reasoning"') + len('"reasoning"') + 5 :last_match.find('"label"') - 5]  # pragma - t
+        last_match_sub_new = last_match_sub_old.replace('"', '\\\"')
+
+        fixed_str = response_str.replace(last_match_sub_old, last_match_sub_new)
+        
+        # Now embed this inside a valid JSON structure (optional depending on context)
+        try:
+            # Validate again
+            json.loads(fixed_str)
+            return fixed_str
+        except json.JSONDecodeError as e:
+            raise Exception("Still invalid JSON after escaping:", e)
 
 
 class AbstractLLM(ABC):
@@ -359,7 +392,21 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
 
             parser = PydanticOutputParser(pydantic_object=pydantic_model)
 
-            parsed_response: Prediction = parser.parse(text=request_output.text)
+            # extract json from request output text by searching for { and }
+            # sometimes the llm talk after giving the response, which would lead to a false parsing error
+            text = request_output.text
+            json_str = re.search(r'\{.*\}', text, re.DOTALL)
+            
+            if json_str is None:
+                raise ValueError("No JSON found in response text")
+            
+            json_str = json_str.group(0)
+
+            # sometimes the llm produces invalid jsons, we aim to correct them here
+            json_str = json_str.replace("\\'", "'")
+            json_str = fix_json_response(json_str)
+
+            parsed_response: Prediction = parser.parse(text=json_str)
 
             if not hasattr(parsed_response, "valid_labels"):
                 raise Exception("Response does not have a valid_labels attribute")
@@ -412,7 +459,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
                 pbar = kwargs['pbar']
 
                 if hasattr(pbar, 'write'):
-                    pbar.write(f"Using cache")
+                    pbar.write("Using cache")
 
             return result
 

@@ -16,12 +16,22 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.ml.classifier.llm.util.prediction import Prediction
 from src.ml.classifier.llm.util.rest import AbstractLLM
 from src.ml.classifier.llm.util.logprob import LogProbScore
-from src.util.constants import ErrorValues
+from src.util.constants import ErrorValues, Directory, UnknownClassLabel
 from src.ml.classifier.base import BaseClassifier
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
 from src.ml.classifier.llm.util.prompt import PromptExample, PromptScenarioName, PromptCreator
-from src.util.constants import Directory
-from src.util.constants import UnknownClassLabel
+from src.util.caching import PickleCacheHandler
+from src.util.hashing import Hash
+
+
+def strip_exp_name(exp_name: str) -> str:
+    # for improved caching of prompts, which are independent from model
+    # remove explicit model name after one_stage from experiment name
+    start_idx = exp_name.find("one_stage") + len("one_stage")
+    end_idx = exp_name.find("__scenario__")
+    new_exp_name = exp_name[:start_idx] + exp_name[end_idx:]
+    
+    return new_exp_name
 
 
 class AbstractClassifierLLM(BaseModel, BaseClassifier):
@@ -168,7 +178,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         # Fortschrittsanzeige
         pbar = tqdm(total=len(x), desc="LLM Prediction")
-        
+
         # Thread-Pool erstellen und Aufgaben einreichen
         with ThreadPoolExecutor(max_workers=n_workers) as executor:
             # Einreichen der Aufgaben
@@ -216,6 +226,7 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         
         # Thread-Pool erstellen und Aufgaben einreichen
         with ThreadPoolExecutor(max_workers=n_worker) as executor:
+
             # Einreichen der Aufgaben
             futures = []
             for el in x:
@@ -238,17 +249,42 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         return cache
 
-    def get_active_and_hash_list(self, x: np.ndarray, cache: Dict[str, Any], prompt_function: Callable) -> Tuple[List[str], List[str]]:
+    def get_active_and_hash_list(self, x: np.ndarray, cache: Dict[str, Any], prompt_function: Callable, **kwargs) -> Tuple[List[str], List[str]]:
 
         active_list = []
         hash_list = []
+
+        exp_name = kwargs.get('experiment_name', 'None')
+        config = kwargs.get('config', 'None')
+        seed = 'None'
+
+        if isinstance(config, dict):
+            seed = config.get('random_seed', 'None')
+
+        if exp_name != 'None':
+            exp_name = strip_exp_name(exp_name)
+
+        base_filepath = Path(os.path.join(exp_name, str(seed)))
         
         def get_hash_value(text: str) -> Tuple[str, np.ndarray]:
+            
+            cache = PickleCacheHandler(
+                filepath=base_filepath / Hash.hash(text)
+            )
+
+            result = cache.read()
+
+            if result is not None:
+                return result[0], result[1]
 
             prompt = prompt_function(text)  # Generate
             hash_value = PromptCreator.hash_prompt(prompt)
-            
-            return hash_value, np.array([prompt])
+
+            result = (hash_value, np.array([prompt]))
+
+            cache.write(result)
+
+            return result
 
         # Anzahl der Worker-Threads (anpassen nach Bedarf)
         n_workers =  self._get_number_of_workers(x) # Begrenzen Sie die Anzahl der Threads
@@ -324,11 +360,13 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         cache = self.get_cache()
 
         # get active and hash list
-        active_list, hash_list = self.get_active_and_hash_list(x, cache, prompt_function)
-            
+        active_list, hash_list = self.get_active_and_hash_list(x, cache, prompt_function, **kwargs)
+
+        assert len(hash_list) == len(x), "Hash list must be the same length as input"
+    
         # Process only the active items that have not been cached
         # This speeds up the overall process since only a fraction of the datapoints need to be passed to the api provider
-        sub_text_list, sub_score_list  = self.parallel_predict(active_list, is_prompt=True, **kwargs)
+        sub_text_list, sub_score_list = self.parallel_predict(active_list, is_prompt=True, **kwargs)
 
         # Restore cached items at their original positions
         active_index = 0
@@ -336,16 +374,41 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         # merge them all together and maintain order of original list
         for i in range(len(x)):
 
-            cache_result = cache.get(hash_list[i], None)
+            hash_list_lookup = hash_list[i]
 
-            if cache_result is not None:
-                logprob_score = LogProbScore(**cache_result)
-                text_list[i], score_list[i] = self.get_result_from_logprobscore(logprob_score)
+            cache_result = cache.get(hash_list_lookup, None)
 
-            else:
-                text_list[i] = sub_text_list[active_index]  # Place processed item
-                score_list[i] = sub_score_list[active_index]  # Place processed item
-                active_index += 1
+            try:
+
+                if cache_result is not None:
+
+                    Prediction.valid_labels = list(self.classes) + [UnknownClassLabel.UNKNOWN_STR.value]
+
+                    try:
+                        #prediction = Prediction(**cache_result['answer'])
+                        logprob_score = LogProbScore(**cache_result)
+                        label = logprob_score.answer.label
+                        
+                    except Exception:
+
+                        # account here for late corrections to label space
+                        cache_result['answer']['label'] = cache_result['answer']['label'].replace('reverted_card_payment?', 'reverted_card_payment')
+                        logprob_score = LogProbScore(**cache_result)
+
+                    text_list[i], score_list[i] = self.get_result_from_logprobscore(logprob_score)
+
+                else:
+                    text_list[i] = sub_text_list[active_index]  # Place processed item
+                    score_list[i] = sub_score_list[active_index]  # Place processed item
+                    active_index += 1
+
+            except Exception:
+                
+                print('-'*10)
+                print('cache:')
+                print(cache_result)
+                
+                pass
         
         if include_outlierscore:
             return np.array(text_list), np.array(score_list)
