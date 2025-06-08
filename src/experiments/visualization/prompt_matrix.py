@@ -30,7 +30,7 @@ class PromptMatrixPlot(BaseModel):
         assert len(matrix[0]) == 2, "Matrix must be 2x2"
         assert len(matrix[1]) == 2, "Matrix must be 2x2"
 
-        fig, ax = plt.subplots(figsize=(14, 8))
+        fig, ax = plt.subplots(figsize=(16, 4))
 
         # Hide axes
         ax.axis('off')
@@ -44,16 +44,16 @@ class PromptMatrixPlot(BaseModel):
             for j in range(2):
                 text_box = ax.text(
                     j + 0.5, 1.5 - i, 
-                    matrix[i][j], 
+                    matrix[i][j].strip(), 
                     ha='center', 
                     va='center', 
-                    fontsize=16, 
+                    fontsize=14, 
                     #bbox=dict(boxstyle="round", facecolor="wheat", edgecolor="gray"),
                     wrap=True
                 )
                 # Set the width for text wrapping (adjust as needed)
                 text_box.set_linespacing(1.)  # Increase line spacing for wrapped text
-                text_box._get_wrap_line_width = lambda: 380  # Adjust this value to control wrap width
+                text_box._get_wrap_line_width = lambda: 460  # Adjust this value to control wrap width
 
         # Draw grid
         for x in range(3):
@@ -65,8 +65,8 @@ class PromptMatrixPlot(BaseModel):
         ax.text(1.5, -0.1, "Few-shot", ha='center', va='center', fontsize=14, fontweight='bold')
 
         # Add y-axis labels
-        ax.text(-0.1, 1.5, "Implicit", ha='center', va='center', fontsize=14, fontweight='bold', rotation=90)
-        ax.text(-0.1, 0.5, "Explicit", ha='center', va='center', fontsize=14, fontweight='bold', rotation=90)
+        ax.text(-0.025, 1.5, "Implicit", ha='center', va='center', fontsize=14, fontweight='bold', rotation=90)
+        ax.text(-0.025, 0.5, "Explicit", ha='center', va='center', fontsize=14, fontweight='bold', rotation=90)
 
         # Save the plot
         plt.tight_layout()
