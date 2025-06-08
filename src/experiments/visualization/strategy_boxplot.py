@@ -375,7 +375,7 @@ class StrategyBoxPlot(BaseModel):
             # Add significance bars and annotations
             bar_height = 0.02  # Height of significance bars
             text_height = 0.01  # Height of p-value text
-            text_buffer = 0.08  # Buffer between bars and text to avoid overlap
+            text_buffer = 0.15  # Buffer between bars and text to avoid overlap
             max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
             
             # Calculate y positions for significance bars
@@ -410,9 +410,9 @@ class StrategyBoxPlot(BaseModel):
                     y = bar_positions[bar_idx]
                     
                     # Draw the bar with academic styling
-                    ax.plot([x1, x2], [y, y], 'k-', linewidth=0.8)
-                    ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=0.8)
-                    ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=0.8)
+                    ax.plot([x1, x2], [y, y], 'k-', linewidth=1)
+                    ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1)
+                    ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1)
                     
                     # Add p-value and effect size text with academic styling
                     sig_value = r"$^{" + sig_symbol + r"}$"
@@ -423,7 +423,7 @@ class StrategyBoxPlot(BaseModel):
                         ha='center', 
                         va='bottom', 
                         color="black",
-                        fontsize=14, 
+                        fontsize=16, 
                         fontstyle='italic'
                     )
                     

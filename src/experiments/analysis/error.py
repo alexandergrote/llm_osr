@@ -206,6 +206,15 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
     @staticmethod
     def _get_named_errors(error_dict: Dict, known_dict: Dict, scenario: Literal['all', 'known', 'unknown']) -> Dict:
         
+        # named errors is a dataframe that only contains binary errors
+        # given that each model has seen the same set of examples, we can compare the binary errors between models
+        # the matching is done by the raw text, which is appended with the dataset name, the degree of openness, 
+        # the random seed and the text itself.
+
+        # here is an example of the math behind it: 
+        # assuming we have 1000 observations for each of the three datasets, four degrees of openness
+        # and just one random seed, we can expect: 1000 * 3 * 4 = 12000 unique raw texts with non-null entries.
+        # however, given that sometimes the LLMs have issues, it it typically less.
 
         # Now create the DataFrame
         df = pd.DataFrame.from_dict(error_dict, orient='index')
@@ -242,7 +251,8 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         
         return named_errors
 
-    def _plot_matrices(self, named_errors, folder: str):
+    def _plot_matrices(self, named_errors: pd.DataFrame, folder: str):
+    
 
         # Define model groups
         traditional_ml_models = ['SimpleShot', 'FastFit', 'ContrastNet']
@@ -404,6 +414,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             llm_combined_errors = []
             
             # Get all texts that have predictions from both groups
+            # given that they both stem from the same dataframe. this should be unnecessary
             common_texts = set()
             for model, errors in named_errors.items():
                 if model in traditional_ml_models or model in llm_models:
@@ -596,10 +607,10 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             annot=annot_text, 
             fmt='',
             cmap='Blues',
-            xticklabels=['LLM Correct', 'LLM Error'],
-            yticklabels=['ML Correct', 'ML Error'],
+            xticklabels=['Correct', 'Error'],
+            yticklabels=['Correct', 'Error'],
             cbar=False,
-            annot_kws={"size": 16},  # Größere Schriftgröße für die Annotationen
+            annot_kws={"size": 30},  # Größere Schriftgröße für die Annotationen
             linewidths=1,  # Add lines between cells
             linecolor='black'  # Make the lines black
         )
@@ -616,16 +627,16 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
             else:
                 p_formatted = f"p = {p:.3f}"
 
-        title = f"Contingency Table - ML vs LLM Errors\nPhi = {phi:.2f}"
+        title = f"Phi = {phi:.2f}"
 
         if (chi2 is not None) and (p is not None):
-            title += f", {p_formatted}, Chi² = {chi2:.2f}"
+            title += f", Chi² = {chi2:.2f}, {p_formatted}"
             
-        plt.title(title, fontsize=20)
-        plt.xlabel("LLMs", fontsize=18)
-        plt.ylabel("Traditional Fewshot Models", fontsize=18)
-        plt.xticks(fontsize=16)
-        plt.yticks(fontsize=16)
+        plt.title(title, fontsize=30)
+        plt.xlabel("LLMs", fontsize=32)
+        plt.ylabel("TML", fontsize=32)
+        plt.xticks(fontsize=30)
+        plt.yticks(fontsize=30)
         
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / os.path.join(folder, 'contingency_table.pdf'))
