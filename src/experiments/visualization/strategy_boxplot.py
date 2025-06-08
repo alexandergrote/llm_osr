@@ -349,6 +349,10 @@ class StrategyBoxPlot(BaseModel):
                 flierprops={'marker': 'o', 'markerfacecolor': 'white', 'markeredgecolor': 'black', 'markeredgewidth': 0.8}
             )
             
+            # Replace spaces with newlines in x-tick labels
+            x_labels = [label.get_text().replace(' ', '\n') for label in ax.get_xticklabels()]
+            ax.set_xticklabels(x_labels)
+            
             # Add grid lines for better readability
             ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
         
