@@ -17,7 +17,6 @@ LLM_RANDOM_MODELS = ['random_llm']
 DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
 RANDOM_SEEDS = [0, 1, 2, 3, 4]
-RANDOM_SEEDS = [0]
 
 N_SUBSET_TEST = 3000
 N_SUBSET_TEST = 1000
