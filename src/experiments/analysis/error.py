@@ -630,7 +630,7 @@ class ErrorAnalyser(BaseModel, BaseAnalyser):
         title = f"Phi = {phi:.2f}"
 
         if (chi2 is not None) and (p is not None):
-            title += f", Chi² = {chi2:.2f}, {p_formatted}"
+            title += f", Chi² = {chi2:.2f}\n{p_formatted}"
             
         plt.title(title, fontsize=30)
         plt.xlabel("LLMs", fontsize=32)

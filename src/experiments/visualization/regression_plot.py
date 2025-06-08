@@ -15,7 +15,7 @@ class RegressionPlot(BaseModel):
     y_column: str = "mean"
     hue_column: str = "Model"
     title: str = "F1 Score vs. Openness Degree"
-    x_label: str = "Openness Degree"
+    x_label: str = "Openness"
     y_label: str = "F1 Score"
     figsize: tuple = (16, 6)
     output_path: Optional[str] = None
@@ -27,6 +27,9 @@ class RegressionPlot(BaseModel):
         """
         Generate and display the regression plot.
         """
+        sns.set(font_scale=1.5)
+        sns.set_style("white")
+
         # Handle both single dataframe and dictionary of dataframes
         if isinstance(self.data, pd.DataFrame):
             datasets = {"Dataset": self.data}
@@ -40,7 +43,6 @@ class RegressionPlot(BaseModel):
         if len(datasets) == 1:
             axes = [axes]  # Make axes iterable if only one subplot
         
-        sns.set_style("whitegrid")
         
         # Create a common legend for all subplots
         # First, get all unique model names across all datasets
@@ -104,23 +106,26 @@ class RegressionPlot(BaseModel):
                 )
             
             # Customize the subplot
-            axes[i].set_title(titles[i], fontsize=14)
-            axes[i].set_xlabel(self.x_label, fontsize=12)
+            axes[i].set_title(titles[i], fontsize=32)
+            axes[i].set_xlabel(self.x_label, fontsize=30)
             # Add y-label only to the first subplot since we're sharing y-axis
             if i == 0:
-                axes[i].set_ylabel(self.y_label, fontsize=12)
+                axes[i].set_ylabel(self.y_label, fontsize=30)
+
+            # set tick sizes
+            axes[i].tick_params(axis='both', which='major', labelsize=30)
             
             # Remove all legends from subplots
             if axes[i].get_legend() is not None:
                 axes[i].get_legend().remove()
         
         # Add a main title
-        fig.suptitle(self.title, fontsize=16, y=1.05)
+        #fig.suptitle(self.title, fontsize=16, y=1.05)
         
         # Create a common legend above the plots in a single row (without title)
         handles, labels = axes[-1].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.0), 
-                  ncol=len(labels), fontsize=10)
+        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.05), 
+                  ncol=len(labels), fontsize=16)
         
         # Adjust layout
         plt.tight_layout(rect=[0, 0, 1, 0.95])  # Make room for the legend at the top
