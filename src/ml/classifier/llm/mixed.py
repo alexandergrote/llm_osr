@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
+import os
 
 from typing import Optional, Union, Tuple, List, Dict
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
 from omegaconf.dictconfig import DictConfig
+from pathlib import Path
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.prediction import Prediction
@@ -17,6 +19,8 @@ from src.ml.classifier.llm.naive import RandomLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.util.constants import ErrorValues
 from src.ml.classifier.llm.base import LLMClassifierMixin
+from src.util.caching import PickleCacheHandler
+from src.util.hashing import Hash
 from src.ml.classifier.llm.util.prompt import PromptCreator, PromptScenarioName, PROMPT_SCENARIOS
 
 random_llm = RandomLLM(
@@ -168,6 +172,25 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
     def _single_predict(self, text: str, use_cache: bool = False, is_prompt: bool = False, **kwargs) -> Tuple[str, float]:
 
+        exp_name = kwargs.get('experiment_name', 'None')
+        config = kwargs.get('config', 'None')
+        seed = 'None'
+
+        if isinstance(config, dict):
+            seed = config.get('random_seed', 'None')
+
+        base_filepath = Path(os.path.join(exp_name, str(seed)))
+        full_filepath = base_filepath / Hash.hash(text)
+
+        cache_handler = PickleCacheHandler(
+            filepath=full_filepath
+        )
+
+        if self.use_cache:
+            result = cache_handler.read()
+            if result is not None:
+                return result[0], result[1]
+        
         # checks for first model
         if self.y_train is None:
             raise ValueError("Not fitted")
@@ -193,10 +216,23 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
         if unknown_prediction is None:
             return ErrorValues.PARSING_STR.value, float(ErrorValues.PARSING_NUM.value)
 
-        if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:            
-            return UnknownClassLabel.UNKNOWN_STR.value, 1
+        if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:
 
-        return self.classifier_model.single_predict(text=text, use_cache=use_cache, **kwargs)
+            result = [UnknownClassLabel.UNKNOWN_STR.value, 1]
+
+            cache_handler.write(
+                result
+            )
+
+            return result
+
+        result = self.classifier_model.single_predict(text=text, use_cache=use_cache, **kwargs)
+
+        cache_handler.write(
+            result
+        )
+
+        return result
         
 
 if __name__ == '__main__':

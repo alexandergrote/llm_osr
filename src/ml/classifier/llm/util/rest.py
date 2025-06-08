@@ -42,7 +42,8 @@ def fix_json_response(response_str):
         if not matches:
             raise ValueError("No valid JSON object found in the response.")
         
-        assert len(matches) == 1, "Found multiple JSON blocks, expected one. Please check" 
+        if len(matches) > 1:
+            print("Found multiple JSON blocks, expected one. Please check. Choosing first one for now") 
 
         # Unescape inner double quotes if necessary
         last_match = matches[0]

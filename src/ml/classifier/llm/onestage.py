@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
+import os
 
 from typing import Union, Tuple, List, Dict
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import model_validator, ConfigDict
 from omegaconf.dictconfig import DictConfig
+from pathlib import Path
 
 from src.util.dynamic_import import DynamicImport
 from src.ml.classifier.llm.util.cosine_selector import CosineSelector
@@ -15,6 +17,8 @@ from src.ml.classifier.llm.util.rest import AbstractLLM, StructuredRequestLLM
 from src.ml.classifier.llm.util.rest_inference import InferenceHandler
 from src.ml.classifier.llm.util.prompt import PromptCreator, PROMPT_SCENARIOS
 from src.util.constants import ErrorValues, DatasetColumn
+from src.util.caching import PickleCacheHandler
+from src.util.hashing import Hash
 
 
 class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
@@ -140,6 +144,30 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         if not isinstance(self.osr_model, AbstractLLM):
             raise ValueError("Classifier model must be an AbstractLLM")
+
+        exp_name = kwargs.get('experiment_name', 'None')
+        config = kwargs.get('config', 'None')
+        seed = 'None'
+
+        if isinstance(config, dict):
+            seed = config.get('random_seed', 'None')
+
+        base_filepath = Path(os.path.join(exp_name, str(seed)))
+        full_filepath = base_filepath / Hash.hash(text)
+
+        cache_handler = PickleCacheHandler(
+            filepath=full_filepath
+        )
+
+        if self.use_cache:
+            result = cache_handler.read()
+            if result is not None:
+
+                # minor adjustment due to late corrections to label space
+                result[0] = result[0].replace('reverted_card_payment?', 'reverted_card_payment')
+
+                return result[0], result[1]
+
         
         valid_labels = self.get_valid_labels()
 
@@ -167,7 +195,13 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
 
         prediction_label, unknown_score = self.get_result_from_logprobscore(prediction)
 
-        return prediction_label, unknown_score
+        result = (prediction_label, unknown_score)
+
+        cache_handler.write(
+            result
+        )
+
+        return result
 
         
 if __name__ == '__main__':

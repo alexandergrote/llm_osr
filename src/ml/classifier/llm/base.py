@@ -110,6 +110,15 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
             raise ValueError("No unknown classes found in validation set")
 
         if len(examples) > self.n_unknown_examples:
+
+            import random
+
+            # Create a local random generator with a fixed seed
+            local_rng = random.Random(42)
+
+            # Make a copy of the list if you want to preserve the original
+            local_rng.shuffle(examples)
+
             examples = examples[:self.n_unknown_examples]
 
         return examples
@@ -201,125 +210,6 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
 
         return result_text_list, result_score_list
 
-    def get_cache(self) -> Dict[str, Any]:
-
-        cache: dict = {}
-
-        cache_dir = Directory.CACHING_DIR / os.path.join(
-            "src", "ml", "classifier", "llm", "util", "rest.py", "rest", self.unknown_detection_model_name
-        ) 
-
-        # load jsons into dict
-        n_worker = self._get_number_of_workers()
-
-        def load_json(filename: Path):
-
-            with open(filename, 'r') as file:
-                data = json.load(file)
-
-            return filename.stem, data
-
-        x = list(cache_dir.glob("*.json"))
-
-        # Fortschrittsanzeige
-        pbar = tqdm(total=len(x), desc="Loading Cache")
-        
-        # Thread-Pool erstellen und Aufgaben einreichen
-        with ThreadPoolExecutor(max_workers=n_worker) as executor:
-
-            # Einreichen der Aufgaben
-            futures = []
-            for el in x:
-                future = executor.submit(load_json, el)
-                futures.append(future)
-            
-            # Verarbeiten der Ergebnisse
-            for future in as_completed(futures):
-                try:
-
-                    json_name, json_data = future.result()
-                    cache[json_name] = json_data
-
-                except Exception as e:
-                    pbar.write(f"Error in thread: {e}")
-                finally:
-                    pbar.update(1)
-        
-        pbar.close()
-
-        return cache
-
-    def get_active_and_hash_list(self, x: np.ndarray, cache: Dict[str, Any], prompt_function: Callable, **kwargs) -> Tuple[List[str], List[str]]:
-
-        active_list = []
-        hash_list = []
-
-        exp_name = kwargs.get('experiment_name', 'None')
-        config = kwargs.get('config', 'None')
-        seed = 'None'
-
-        if isinstance(config, dict):
-            seed = config.get('random_seed', 'None')
-
-        if exp_name != 'None':
-            exp_name = strip_exp_name(exp_name)
-
-        base_filepath = Path(os.path.join(exp_name, str(seed)))
-        
-        def get_hash_value(text: str) -> Tuple[str, np.ndarray]:
-            
-            cache = PickleCacheHandler(
-                filepath=base_filepath / Hash.hash(text)
-            )
-
-            result = cache.read()
-
-            if result is not None:
-                return result[0], result[1]
-
-            prompt = prompt_function(text)  # Generate
-            hash_value = PromptCreator.hash_prompt(prompt)
-
-            result = (hash_value, np.array([prompt]))
-
-            cache.write(result)
-
-            return result
-
-        # Anzahl der Worker-Threads (anpassen nach Bedarf)
-        n_workers =  self._get_number_of_workers(x) # Begrenzen Sie die Anzahl der Threads
-
-        # Fortschrittsanzeige
-        pbar = tqdm(enumerate(x), desc="Create active list and prompt hash", total=len(x))
-        
-        # Thread-Pool erstellen und Aufgaben einreichen
-        with ThreadPoolExecutor(max_workers=n_workers) as executor:
-            # Einreichen der Aufgaben
-            futures = []
-            for el in x:
-                future = executor.submit(get_hash_value, el[0])
-                futures.append(future)
-            
-            # Verarbeiten der Ergebnisse
-            for future in futures:
-
-                try:
-
-                    hash_value, text = future.result()
-                    hash_list.append(hash_value)
-
-                    if hash_value not in cache:
-                        active_list.append(text)
-
-                except Exception as e:
-                    pbar.write(f"Error in thread: {e}")
-
-                finally:
-                    pbar.update(1)
-        
-        pbar.close()
-
-        return active_list, hash_list
 
     def get_result_from_logprobscore(self, logprob: LogProbScore) -> Tuple[str, float]:
         prediction_label = logprob.answer.label
@@ -334,87 +224,14 @@ class AbstractClassifierLLM(BaseModel, BaseClassifier):
         if len(x.shape) != 2:
             raise ValueError("Input should be 2D array")
 
-        key = "get_prompt"
-
-        if not hasattr(self, key):
-
-            text_list, score_list = self.parallel_predict(x, is_prompt=False,  **kwargs)
-
-            if include_outlierscore:
-                return np.array(text_list), np.array(score_list)
         
-            return np.array(text_list)
+        text_list, score_list = self.parallel_predict(x, is_prompt=False,  **kwargs)
 
-        prompt_function = getattr(self, key)
-
-        if not isinstance(prompt_function, Callable):  # type: ignore
-            raise ValueError(f"{key} must be callable")
-
-        # use prompt function to generate hashes, which are needed for cache lookup
-        cache = {}  # Store index -> value pairs
-        active_list: List[str] = []  # list with texts to be predicted
-        text_list = [None] * len(x)  # holds text results
-        score_list = [None] * len(x)  # holds score results
-
-        # load cache
-        cache = self.get_cache()
-
-        # get active and hash list
-        active_list, hash_list = self.get_active_and_hash_list(x, cache, prompt_function, **kwargs)
-
-        assert len(hash_list) == len(x), "Hash list must be the same length as input"
-    
-        # Process only the active items that have not been cached
-        # This speeds up the overall process since only a fraction of the datapoints need to be passed to the api provider
-        sub_text_list, sub_score_list = self.parallel_predict(active_list, is_prompt=True, **kwargs)
-
-        # Restore cached items at their original positions
-        active_index = 0
-
-        # merge them all together and maintain order of original list
-        for i in range(len(x)):
-
-            hash_list_lookup = hash_list[i]
-
-            cache_result = cache.get(hash_list_lookup, None)
-
-            try:
-
-                if cache_result is not None:
-
-                    Prediction.valid_labels = list(self.classes) + [UnknownClassLabel.UNKNOWN_STR.value]
-
-                    try:
-                        #prediction = Prediction(**cache_result['answer'])
-                        logprob_score = LogProbScore(**cache_result)
-                        label = logprob_score.answer.label
-                        
-                    except Exception:
-
-                        # account here for late corrections to label space
-                        cache_result['answer']['label'] = cache_result['answer']['label'].replace('reverted_card_payment?', 'reverted_card_payment')
-                        logprob_score = LogProbScore(**cache_result)
-
-                    text_list[i], score_list[i] = self.get_result_from_logprobscore(logprob_score)
-
-                else:
-                    text_list[i] = sub_text_list[active_index]  # Place processed item
-                    score_list[i] = sub_score_list[active_index]  # Place processed item
-                    active_index += 1
-
-            except Exception:
-                
-                print('-'*10)
-                print('cache:')
-                print(cache_result)
-                
-                pass
-        
         if include_outlierscore:
             return np.array(text_list), np.array(score_list)
-        
-        return np.array(text_list)
     
+        return np.array(text_list)
+
     def predict_proba(self, x: ndarray, **kwargs) -> ndarray:
         pass
 

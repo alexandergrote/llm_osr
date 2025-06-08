@@ -17,8 +17,10 @@ LLM_RANDOM_MODELS = ['random_llm']
 DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
 RANDOM_SEEDS = [0, 1, 2, 3, 4]
+RANDOM_SEEDS = [0]
 
 N_SUBSET_TEST = 3000
+N_SUBSET_TEST = 1000
 
 
 def get_default_overrides(dataset: str, model: str, unknown_class: float, random_seeds: List[int], exp_name: str) -> List[str]:
@@ -175,7 +177,7 @@ class ExperimentFactory(BaseModel):
             unknown_classes = [0.2] 
 
         if random_seeds is None:
-            random_seeds = [0] 
+            random_seeds = RANDOM_SEEDS 
 
         experiments = cls.create_llm_fewshot_experiments(
             datasets=datasets,
