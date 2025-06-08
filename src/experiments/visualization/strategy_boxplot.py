@@ -294,15 +294,15 @@ class StrategyBoxPlot(BaseModel):
         
         # Perform statistical tests
         stat_results = self.perform_statistical_tests()
-        
+
         # Set the seaborn style for academic publication
         sns.set_style("white")
         plt.rcParams.update({
-            'font.size': 10,
-            'axes.titlesize': 12,
-            'axes.labelsize': 11,
-            'xtick.labelsize': 10,
-            'ytick.labelsize': 10,
+            'font.size': 24,
+            'axes.titlesize': 24,
+            'axes.labelsize': 20,
+            'xtick.labelsize': 16,
+            'ytick.labelsize': 16,
             'legend.fontsize': 10,
             'figure.dpi': 300
         })
@@ -329,6 +329,7 @@ class StrategyBoxPlot(BaseModel):
         
         # Iterate through metrics to create the plots
         for i, metric in enumerate(metrics):
+
             # Get the current axis
             ax = axes[i]
             
@@ -363,9 +364,6 @@ class StrategyBoxPlot(BaseModel):
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             
-            # Set y-axis limits for consistency
-            ax.set_ylim(0, 1)
-        
             # Add statistical significance annotations
             # Get x-coordinates for each prompt version
             x_coords = {prompt: idx for idx, prompt in enumerate(prompt_versions)}
@@ -373,7 +371,7 @@ class StrategyBoxPlot(BaseModel):
             # Add significance bars and annotations
             bar_height = 0.02  # Height of significance bars
             text_height = 0.01  # Height of p-value text
-            text_buffer = 0.04  # Buffer between bars and text to avoid overlap
+            text_buffer = 0.08  # Buffer between bars and text to avoid overlap
             max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
             
             # Calculate y positions for significance bars
@@ -421,7 +419,7 @@ class StrategyBoxPlot(BaseModel):
                         ha='center', 
                         va='bottom', 
                         color="black",
-                        fontsize=8, 
+                        fontsize=14, 
                         fontstyle='italic'
                     )
                     
