@@ -160,13 +160,16 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
         )
 
         if self.use_cache:
+            
             result = cache_handler.read()
+
             if result is not None:
 
+                text, score = result
                 # minor adjustment due to late corrections to label space
-                result[0] = result[0].replace('reverted_card_payment?', 'reverted_card_payment')
+                text = text.replace('reverted_card_payment?', 'reverted_card_payment')
 
-                return result[0], result[1]
+                return text, score
 
         
         valid_labels = self.get_valid_labels()
