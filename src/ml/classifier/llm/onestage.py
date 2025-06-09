@@ -222,7 +222,8 @@ if __name__ == '__main__':
 
     config = get_hydra_config(
         overrides=[
-            f"{key}=one_stage_llama_8"
+            f"{key}=one_stage_llama_8",
+            f"{key}.params.osr_model.paid_llms=['nebius-llama-70b.yaml']"
         ]
     )
 

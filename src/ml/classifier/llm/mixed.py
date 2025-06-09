@@ -218,7 +218,7 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
         if unknown_prediction.answer.label == OutlierValue.OUTLIER.value:
 
-            result = [UnknownClassLabel.UNKNOWN_STR.value, 1]
+            result = (UnknownClassLabel.UNKNOWN_STR.value, 1)
 
             cache_handler.write(
                 result

@@ -401,7 +401,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             if json_str is None:
                 raise ValueError("No JSON found in response text")
             
-            json_str = json_str.group(0)
+            json_str = json_str.group(0)  # type: ignore
 
             # sometimes the llm produces invalid jsons, we aim to correct them here
             json_str = json_str.replace("\\'", "'")
