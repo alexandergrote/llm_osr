@@ -2,6 +2,9 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# delete experiments first
+python src/util/mlflow_delete.py ".*llm.*"
+
 osascript <<EOF
 tell application "Terminal"
     activate
