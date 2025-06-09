@@ -14,3 +14,4 @@ params:
   unknown_detection_model:
     paid_llms: 
       - groq-llama-8b.yaml
+      - nebius-llama-8b.yaml
