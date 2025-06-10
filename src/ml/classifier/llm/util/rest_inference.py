@@ -1,4 +1,5 @@
 import random
+import time
 
 from pydantic import BaseModel, field_validator, model_validator
 from typing import List, Type, Union
@@ -69,13 +70,19 @@ class InferenceHandler(BaseModel, AbstractLLM):
         # shuffle list
         llms = []
 
+        import time
+
+        seed = int(time.time() * 1000000)  # microseconds
+
+        local_rng = random.Random(seed)
+
         if self.free_llms is not None:
             llms = self.free_llms.copy()
 
             llms = [el for el in llms if isinstance(el, StructuredRequestLLM) and el.check_rate_limit()]
             
             if self.shuffle_free_llms:
-                random.shuffle(llms)
+                local_rng.shuffle(llms)
         
         if self.paid_llms is not None:
             paid_llms_copy = self.paid_llms.copy()
@@ -83,14 +90,13 @@ class InferenceHandler(BaseModel, AbstractLLM):
             paid_llms_copy = [el for el in paid_llms_copy if isinstance(el, StructuredRequestLLM) and el.check_rate_limit()]
 
             if self.shuffle_paid_llms:
-                random.shuffle(paid_llms_copy)
+                local_rng.shuffle(paid_llms_copy)
 
             llms += paid_llms_copy
 
          # check if both are None
         if (self.free_llms is None) and (self.paid_llms is None):
             raise ValueError("At least one llm must be provided")
-
 
         for idx, llm in enumerate(llms):
 

@@ -38,6 +38,7 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
     # shuffle free llm apis to equal use
     shuffle_free_llms: bool = False
+    shuffle_paid_llms: bool = False
     use_classes_in_examples: bool = True
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -67,13 +68,16 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
             
 
             shuffle_free_llms = data.get("shuffle_free_llms", False)
+            shufle_paid_llms = data.get("shuffle_paid_llms", False)
 
             assert isinstance(shuffle_free_llms, bool)
+            assert isinstance(shufle_paid_llms, bool)
 
             data[model] = InferenceHandler(
                 free_llms=free_llms,
                 paid_llms=paid_llms,
                 shuffle_free_llms=shuffle_free_llms,
+                shuffle_paid_llms=shufle_paid_llms
             )
             
         data_selector = data.get('selector')
@@ -158,7 +162,7 @@ class PromptFirstRandomSecond(LLMClassifierMixin, AbstractClassifierLLM):
 
         if not isinstance(self.unknown_detection_model, AbstractLLM):
             raise ValueError("Unknown detection model must be of type AbstractLLM")
-    
+
         logprob_score = self._get_parsed_output(
             model=self.unknown_detection_model,
             valid_labels=Prediction.valid_labels,
@@ -277,7 +281,7 @@ if __name__ == '__main__':
         y_valid=data_valid[DatasetColumn.LABEL].values,
     )
 
-    x_test = np.array([['Pfirsiche sind lecker'], ["Ich morgen in die Schule"], ["Ich möchte einen Tee bestellen"], ['Ich mag Züge'], ["I like trains"]], dtype=np.object_)
+    x_test = np.array([['Pfirsiche sind lecker und der Apfel auch'], ["Ich morgen in die Schule"], ["Ich möchte einen Tee bestellen"], ['Ich mag Züge'], ["I like trains"]], dtype=np.object_)
     y_test = np.array(["food", "unknown", "unknown", "unknown", "unknown"])
 
     for use_class in [True, False]:
