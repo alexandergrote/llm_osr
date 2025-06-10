@@ -212,6 +212,7 @@ class DatabaseManager:
     @retry(sqlite3.OperationalError, delay=1, tries=3)
     def load_rate_limit_records(self, manager_name: str, limit_name: str) -> Dict[str, int]:
         """Load rate limit usage records from database."""
+
         with sqlite3.connect(self.db_path, timeout=10) as conn:
             cursor = conn.cursor()
             
