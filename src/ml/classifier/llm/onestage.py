@@ -26,6 +26,7 @@ class OneStageLLM(LLMClassifierMixin, AbstractClassifierLLM):
     osr_model: Union[InferenceHandler, Dict[str, List[str]]]
     
     shuffle_free_llms: bool = False
+    shuffle_paid_llms: bool = False
 
     # fewshot selection of data points
     selector: Union[CosineSelector, dict]
@@ -222,7 +223,8 @@ if __name__ == '__main__':
 
     config = get_hydra_config(
         overrides=[
-            f"{key}=one_stage_llama_8"
+            f"{key}=one_stage_llama_8",
+            #f"{key}.params.osr_model.paid_llms=['nebius-llama-70b.yaml']"
         ]
     )
 

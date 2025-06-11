@@ -19,7 +19,6 @@ UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
 RANDOM_SEEDS = [0, 1, 2, 3, 4]
 
 N_SUBSET_TEST = 3000
-N_SUBSET_TEST = 2000
 
 
 def get_default_overrides(dataset: str, model: str, unknown_class: float, random_seeds: List[int], exp_name: str) -> List[str]:

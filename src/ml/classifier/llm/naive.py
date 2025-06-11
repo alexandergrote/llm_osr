@@ -41,20 +41,12 @@ class RandomLLM(AbstractClassifierLLM):
         # select random answer from y_train
         answer = rng.choice(self.y_train)
 
+        assert isinstance(answer, str), f"Answer must be a string, got {type(answer)}"
+
         # create random score between 0 and 1
         score = rng.random()
-
-        Prediction.valid_labels = self.classes
         
-        logprob_score = LogProbScore(
-            answer=Prediction(reasoning="naive", label=answer),
-            logprobs=[LogProb.from_prob(text=answer, prob=score)]
-        )
-
-        if logprob_score is None:
-            return None
-        
-        return logprob_score.answer.label, score
+        return answer, score
 
     def single_predict(self, text: str, use_cache: bool = False, **kwargs) -> Tuple[str, float]:
         return self._single_predict(text=text, use_cache=use_cache, **kwargs)

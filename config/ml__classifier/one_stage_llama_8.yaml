@@ -2,6 +2,7 @@ class: src.OneStageLLM
 params:
   use_cache: true
   shuffle_free_llms: false
+  shuffle_paid_llms: true
   unknown_detection_scenario: 'implicit_zeroshot'
   unknown_detection_model_name: llama-3.1-8b
   selector:
@@ -13,4 +14,5 @@ params:
   osr_model:
     paid_llms:
       - groq-llama-8b.yaml
+      - nebius-llama-8b.yaml
   

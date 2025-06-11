@@ -244,11 +244,11 @@ class LLMClassifierMixin:
         prompt_copy = copy(text)
         
         Prediction.valid_labels = valid_labels
-        
+
         for _ in range(retries):
 
             try:
-
+                
                 result: LogProbScore = model(
                     text=prompt_copy,
                     pydantic_model=Prediction, 

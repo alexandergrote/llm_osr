@@ -50,7 +50,7 @@ def fix_json_response(response_str):
         last_match_sub_old = last_match[last_match.find('"reasoning"') + len('"reasoning"') + 5 :last_match.find('"label"') - 5]  # pragma - t
         last_match_sub_new = last_match_sub_old.replace('"', '\\\"')
 
-        fixed_str = response_str.replace(last_match_sub_old, last_match_sub_new)
+        fixed_str = last_match.replace(last_match_sub_old, last_match_sub_new)
         
         # Now embed this inside a valid JSON structure (optional depending on context)
         try:
@@ -401,7 +401,7 @@ class StructuredRequestLLM(BaseModel, AbstractLLM):
             if json_str is None:
                 raise ValueError("No JSON found in response text")
             
-            json_str = json_str.group(0)
+            json_str = json_str.group(0)  # type: ignore
 
             # sometimes the llm produces invalid jsons, we aim to correct them here
             json_str = json_str.replace("\\'", "'")
