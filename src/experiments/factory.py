@@ -18,7 +18,7 @@ DATASETS = ['banking', 'clinc', 'hwu']
 UNKNOWN_CLASSES = [0, 0.2, 0.4, 0.6]
 RANDOM_SEEDS = [0, 1, 2, 3, 4]
 
-N_SUBSET_TEST = 3000
+N_SUBSET_TEST = 5000
 
 
 def get_default_overrides(dataset: str, model: str, unknown_class: float, random_seeds: List[int], exp_name: str) -> List[str]:
@@ -54,7 +54,7 @@ class ExperimentFactory(BaseModel):
             unknown_classes = UNKNOWN_CLASSES
 
         if random_seeds is None:
-            random_seeds = [0, 1, 2, 3] #RANDOM_SEEDS
+            random_seeds = RANDOM_SEEDS
 
         for dataset in datasets:
 

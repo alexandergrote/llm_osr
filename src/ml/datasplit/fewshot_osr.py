@@ -56,7 +56,8 @@ class FewShotDataSplitter(DataSplitter):
 
         # enable subset for development purposes
         if self.subset_test is not None:
-            test_df = test_df.sample(self.subset_test, random_state=random_seed)
+            if len(test_df) >= self.subset_test:
+                test_df = test_df.sample(self.subset_test, random_state=random_seed)
 
         train = MLDataFrame.from_raw_pandas_dataframe(train_df)
         valid = MLDataFrame.from_raw_pandas_dataframe(valid_df)
