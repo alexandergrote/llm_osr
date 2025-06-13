@@ -15,7 +15,7 @@ class RegressionPlot(BaseModel):
     y_column: str = "mean"
     hue_column: str = "Model"
     title: str = "F1 Score vs. Openness Degree"
-    x_label: str = "Openness"
+    x_label: str = "Unknown Classes [%]"
     y_label: str = "F1 Score"
     figsize: tuple = (16, 6)
     output_path: Optional[str] = None
@@ -113,7 +113,11 @@ class RegressionPlot(BaseModel):
                 axes[i].set_ylabel(self.y_label, fontsize=30)
 
             # set tick sizes
-            axes[i].tick_params(axis='both', which='major', labelsize=30)
+            tick_size = 30
+            tick_labels = [0, 0, 20, 40, 60]
+            axes[i].tick_params(axis='y', labelsize=tick_size)
+            #axes[i].tick_params(axis='x', which='major', labelsize=tick_size)
+            axes[i].set_xticklabels(tick_labels, fontsize=tick_size)
             
             # Remove all legends from subplots
             if axes[i].get_legend() is not None:
@@ -124,8 +128,20 @@ class RegressionPlot(BaseModel):
         
         # Create a common legend above the plots in a single row (without title)
         handles, labels = axes[-1].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.05), 
-                  ncol=len(labels), fontsize=16)
+
+        bottom_items = {'ContrastNet', 'FastFit', 'SimpleShot'}
+
+        # Sort both lists together
+        sorted_pairs = sorted(zip(labels, handles), key=lambda x: (x[0] in bottom_items, x[0]))
+
+        # Unpack back into separate lists
+        sorted_models, sorted_handles = zip(*sorted_pairs)
+
+        # Convert back to lists if needed
+        sorted_models = list(sorted_models)
+        sorted_handles = list(sorted_handles)
+
+        legend = fig.legend(sorted_handles, sorted_models, loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=len(sorted_models) // 2 + 1, fontsize=26, frameon=False)
         
         # Adjust layout
         plt.tight_layout(rect=[0, 0, 1, 0.95])  # Make room for the legend at the top
