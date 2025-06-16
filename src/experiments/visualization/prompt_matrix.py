@@ -30,7 +30,7 @@ class PromptMatrixPlot(BaseModel):
         assert len(matrix[0]) == 2, "Matrix must be 2x2"
         assert len(matrix[1]) == 2, "Matrix must be 2x2"
 
-        fig, ax = plt.subplots(figsize=(16, 4))
+        fig, ax = plt.subplots(figsize=(18, 4.5))
 
         # Hide axes
         ax.axis('off')
@@ -38,6 +38,9 @@ class PromptMatrixPlot(BaseModel):
         # Set limits
         ax.set_xlim(0, 2)
         ax.set_ylim(0, 2)
+
+        font_size_labels = 20
+        font_size_text = 18
 
         # Add text to each cell with wrapping
         for i in range(2):
@@ -47,31 +50,32 @@ class PromptMatrixPlot(BaseModel):
                     matrix[i][j].strip(), 
                     ha='center', 
                     va='center', 
-                    fontsize=14, 
+                    fontsize=font_size_text, 
                     #bbox=dict(boxstyle="round", facecolor="wheat", edgecolor="gray"),
                     wrap=True
                 )
                 # Set the width for text wrapping (adjust as needed)
                 text_box.set_linespacing(1.)  # Increase line spacing for wrapped text
-                text_box._get_wrap_line_width = lambda: 460  # Adjust this value to control wrap width
+                text_box._get_wrap_line_width = lambda: 600  # Adjust this value to control wrap width
 
         # Draw grid
         for x in range(3):
             ax.axvline(x, color='black', lw=1)
             ax.axhline(x, color='black', lw=1)
 
+
         # Add x-axis labels
-        ax.text(0.5, -0.1, "Zero-shot", ha='center', va='center', fontsize=14, fontweight='bold')
-        ax.text(1.5, -0.1, "Few-shot", ha='center', va='center', fontsize=14, fontweight='bold')
+        ax.text(0.5, -0.1, "Zeroshot", ha='center', va='center', fontsize=font_size_labels, fontweight='bold')
+        ax.text(1.5, -0.1, "Fewshot", ha='center', va='center', fontsize=font_size_labels, fontweight='bold')
 
         # Add y-axis labels
-        ax.text(-0.025, 1.5, "Implicit", ha='center', va='center', fontsize=14, fontweight='bold', rotation=90)
-        ax.text(-0.025, 0.5, "Explicit", ha='center', va='center', fontsize=14, fontweight='bold', rotation=90)
+        ax.text(-0.025, 1.5, "Implicit", ha='center', va='center', fontsize=font_size_labels, fontweight='bold', rotation=90)
+        ax.text(-0.025, 0.5, "Explicit", ha='center', va='center', fontsize=font_size_labels, fontweight='bold', rotation=90)
 
         # Save the plot
         plt.tight_layout()
         plt.savefig(Directory.OUTPUT_DIR / "text_matrix_plot.pdf", bbox_inches='tight', dpi=300)
-
+        
 if __name__ == "__main__":
 
     top_left = """Given these examples and their classes, which class does "{text}" belong to? If unsure, answer {unknown_label}. \n\n{examples} {chain_of_thought} {classes} {json_instructions}"""
@@ -83,31 +87,25 @@ if __name__ == "__main__":
     bottom_right = """Given these examples and their classes, is this data point "What is the capital of France?" an outlier that differs in its intent?
 
     The president signed a new law. -> inlier
-    The final score was 3-1. -> inlier
     The cake is delicious. -> outlier
     It's raining heavily. -> inlier 
     """
 
     bottom_left = """Given these examples and their classes, is this data point "What is the capital of France?" an outlier that differs in its intent?
 
-    The final score was 3-1. -> inlier
     It's raining heavily. -> inlier
     The president signed a new law. -> inlier 
     """
 
-    top_right = """Given these examples and their classes, which class does "What is the capital of France?" belong to?
-    If unsure, answer unknown. 
+    top_right = """Given these examples and their classes, which class does "What is the capital of France?" belong to? If unsure, answer unknown. 
 
     The president signed a new law. -> politics
-    The final score was 3-1. -> sports
     The cake is delicious. -> unknown
     It's raining heavily. -> weather
     """
 
-    top_left = """Given these examples and their classes, which class does "What is the capital of France?" belong to?
-    If unsure, answer unknown. 
+    top_left = """Given these examples and their classes, which class does "What is the capital of France?" belong to? If unsure, answer unknown. 
 
-    The final score was 3-1. -> sports
     It's raining heavily. -> weather
     The president signed a new law. -> politics
     """
