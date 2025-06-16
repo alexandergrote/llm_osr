@@ -142,24 +142,6 @@ class ExperimentFactory(BaseModel):
         llm_experiments = cls.create_llm_fewshot_experiments()
 
         return benchmark_experiments + llm_experiments
-        
-
-    @classmethod
-    def create_fewshot_error_experiments(cls, models: Optional[List[str]] = None, datasets: Optional[List[str]] = None, unknown_classes: Optional[List[float]] = None, random_seeds: Optional[List[int]] = None) -> List[Experiment]:
-
-        if unknown_classes is None:
-            unknown_classes = [0.2] #UNKNOWN_CLASSES
-
-        if random_seeds is None:
-            random_seeds = [0]
-
-        if datasets is None:
-            datasets = DATASETS
-
-        experiments = cls.create_benchmark_experiments(datasets=datasets, unknown_classes=unknown_classes, random_seeds=random_seeds)
-        experiments.extend(cls.create_llm_fewshot_experiments(datasets=datasets, unknown_classes=unknown_classes, random_seeds=random_seeds))
-
-        return experiments
 
 
     @classmethod

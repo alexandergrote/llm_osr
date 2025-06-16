@@ -3,8 +3,10 @@ import pandera as pa
 import seaborn as sns
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-from typing import List, Dict, NamedTuple, Any
+from pingouin import wilcoxon
 
+from tqdm import tqdm
+from typing import List, Dict, NamedTuple, Any
 from pandera.typing import DataFrame, Series
 from pydantic import BaseModel, ConfigDict
 
@@ -14,6 +16,7 @@ class StrategyBoxPlotDatasetSchema(pa.DataFrameModel):
     dataset: Series[str] = pa.Field(coerce=True)
     model: Series[str] = pa.Field(coerce=True)
     prompt_version: Series[str] = pa.Field(coerce=True)
+    random_seed: Series[int] = pa.Field(coerce=True)
     precision: Series[float]
     recall: Series[float]
     F1: Series[float]
@@ -64,21 +67,49 @@ class StrategyBoxPlot(BaseModel):
         prompt_versions = sorted(self.get_prompts())
         results: Dict[str, Any] = {}
         
-        for metric in metrics:
+        for metric in tqdm(metrics):
             results[metric] = {}
+
+            melted_df = self.data.pivot_table(
+                index=[StrategyBoxPlotDatasetSchema.dataset, StrategyBoxPlotDatasetSchema.model, StrategyBoxPlotDatasetSchema.random_seed], 
+                columns=StrategyBoxPlotDatasetSchema.prompt_version, 
+                values=metric
+            ).reset_index()
             
             # Compare each pair of prompt strategies
             for i, prompt1 in enumerate(prompt_versions):
                 for prompt2 in prompt_versions[i+1:]:
+
                     # Get data for each prompt strategy
-                    data1 = self.data[self.data['prompt_version'] == prompt1][metric].values
-                    data2 = self.data[self.data['prompt_version'] == prompt2][metric].values
+                    data1 = melted_df[prompt1].values
+                    data2 = melted_df[prompt2].values
                     
-                    # Perform Mann-Whitney U test
-                    statistic, p_value = stats.mannwhitneyu(data1, data2, alternative='two-sided')
+                    # not normally distributed
+                    stat_result, p_value = stats.shapiro(data1-data2)
+                    is_normal = p_value > 0.05
                     
+                    # assumption of wilcoxon test: symmetric around median
+                    # Symmetry Test (Mira Test)
+                    # Centered differences
+                    # Wilcoxon test on positive vs. negative centered values
+                    # If the distribution is symmetric, there should be no systematic sign
+                    differences = data1 - data2
+                    assert len(differences) == 60
+                    centered = differences - np.median(differences)
+                    stat, p_value = stats.wilcoxon(centered)
+                    is_symmetric_median = p_value > 0.05
+
+                    # Perform test
+                    #statistic, p_value = stats.mannwhitneyu(data1, data2, alternative='two-sided')
+                    #statistic, p_value = stats.wilcoxon(data1, data2, alternative='two-sided')
+                    result = wilcoxon(data1, data2, alternative='two-sided')
+                    p_value = result['p-val'][0]
+                    effect_size = result['RBC'][0]
+                    statistic = result['W-val'][0]
+
                     # Calculate Cliff's delta (effect size)
-                    effect_size = self._cliffs_delta(data1, data2)
+                    #effect_size = self._cliffs_delta(data1, data2)
+                    #effect_size = self._wilcoxon_effect_size(data1, data2)
                     
                     # Interpret effect size
                     if abs(effect_size) < 0.147:
@@ -125,6 +156,101 @@ class StrategyBoxPlot(BaseModel):
         
         # Calculate Cliff's delta
         return (greater - less) / (len(x) * len(y))
+
+    def _wilcoxon_effect_size(self, x, y=None, method='r_from_z'):
+        """
+        Calculate effect size for Wilcoxon signed-rank test.
+        
+        Parameters:
+        -----------
+        x : array-like
+            First sample or differences (if y=None)
+        y : array-like, optional
+            Second sample for paired comparison
+        method : str
+            'r_from_z': rank-biserial correlation from Z-score (default)
+            'r_from_ranks': rank-biserial correlation from ranks
+            'hodges_lehmann': Hodges-Lehmann estimator
+            'prob_superiority': Probability of superiority
+        
+        Returns:
+        --------
+        dict with effect size value and interpretation
+        """
+        
+        # Calculate differences if two samples provided
+        if y is not None:
+            differences = x - y
+        else:
+            differences = x 
+        
+        # Remove zeros (ties)
+        differences = differences[differences != 0]
+        n = len(differences)
+        
+        if n == 0:
+            return 0
+        
+        # Perform Wilcoxon signed-rank test
+        statistic, p_value = stats.wilcoxon(differences)
+        
+        if method == 'r_from_z':
+            # Method 1: r = Z / sqrt(N)
+            z_score = stats.norm.ppf(1 - p_value/2) if p_value < 1 else 0
+            if np.sum(differences > 0) < np.sum(differences < 0):
+                z_score = -z_score
+            r = z_score / np.sqrt(n)
+            effect_size = r
+            
+        elif method == 'r_from_ranks':
+            # Method 2: Matched-pairs rank-biserial correlation
+            ranks = stats.rankdata(np.abs(differences))
+            T_plus = np.sum(ranks[differences > 0])
+            T_minus = np.sum(ranks[differences < 0])
+            r = (T_plus - T_minus) / (T_plus + T_minus)
+            effect_size = r
+            
+        elif method == 'hodges_lehmann':
+            # Method 3: Hodges-Lehmann estimator
+            pairwise_diffs = []
+            for i in range(n):
+                for j in range(i, n):
+                    if i == j:
+                        pairwise_diffs.append(differences[i])
+                    else:
+                        pairwise_diffs.append((differences[i] + differences[j]) / 2)
+            effect_size = np.median(pairwise_diffs)
+            
+        elif method == 'prob_superiority':
+            # Method 4: Probability of superiority
+            n_positive = np.sum(differences > 0)
+            effect_size = n_positive / n
+        
+        # Interpret effect size (for r methods)
+        if method in ['r_from_z', 'r_from_ranks']:
+            abs_r = abs(effect_size)
+            if abs_r < 0.1:
+                interpretation = 'Negligible effect'
+            elif abs_r < 0.3:
+                interpretation = 'Small effect'
+            elif abs_r < 0.5:
+                interpretation = 'Medium effect'
+            else:
+                interpretation = 'Large effect'
+        elif method == 'prob_superiority':
+            if effect_size < 0.44 or effect_size > 0.56:
+                interpretation = 'Small effect'
+            elif effect_size < 0.36 or effect_size > 0.64:
+                interpretation = 'Medium effect'
+            elif effect_size < 0.29 or effect_size > 0.71:
+                interpretation = 'Large effect'
+            else:
+                interpretation = 'Negligible effect'
+        else:
+            interpretation = 'Magnitude in original units'
+        
+        return effect_size
+
 
     def _create_plot_for_metric(self, metric, plot_data, stat_results, dataset=None, save=True):
         """
@@ -242,7 +368,7 @@ class StrategyBoxPlot(BaseModel):
                     ax.text(
                         (x1+x2)/2, 
                         y + text_height*2,
-                        f"p={p_value:.3f}{sig_value}, d={effect_size:.2f}",
+                        f"rbc={effect_size:.2f}{sig_value}",
                         ha='center', 
                         va='bottom', 
                         color="black",
@@ -416,10 +542,11 @@ class StrategyBoxPlot(BaseModel):
                     
                     # Add p-value and effect size text with academic styling
                     sig_value = r"$^{" + sig_symbol + r"}$"
+                    effect_size_abbreviation = r"r$_{bc}$"
                     ax.text(
                         (x1+x2)/2, 
                         y + text_height*2,
-                        f"p={p_value:.3f}{sig_value}, d={effect_size:.2f}",
+                        f"{effect_size_abbreviation}={effect_size:.2f}{sig_value}",
                         ha='center', 
                         va='bottom', 
                         color="black",

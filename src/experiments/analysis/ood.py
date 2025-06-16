@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from src.util.mlflow_columns import id_columns, unknown_auc_analysis_columns, prompt_columns
 from src.experiments.analysis.base import BaseAnalyser
 from src.experiments.visualization.spider import SpiderPlot, SpiderDatasetSchema
-from src.experiments.visualization.strategy_boxplot import StrategyBoxPlot
+from src.experiments.visualization.strategy_boxplot import StrategyBoxPlot, StrategyBoxPlotDatasetSchema
 
 
 class OODAnalyser(BaseModel, BaseAnalyser):
@@ -19,13 +19,13 @@ class OODAnalyser(BaseModel, BaseAnalyser):
 
         # sanity checky
         #artifact_sanity_check(data_copy=data_copy, dataset_col=id_columns.dataset.column_name)
-
+        random_seed_col = 'params.random_seed'
         dataset_col, perc_unknown_col = id_columns.dataset.column_name, id_columns.perc_unknown_classes.column_name
         unknown_prompt_col, unknown_model_col = prompt_columns.unknown_prompt.column_name, prompt_columns.unknown_prompt_model_name.column_name
         f1_col, recall_col, precision_col = unknown_auc_analysis_columns.f1.column_name, unknown_auc_analysis_columns.recall.column_name, unknown_auc_analysis_columns.precision.column_name
         
         all_metrics = [f1_col, recall_col, precision_col]
-        all_columns = [perc_unknown_col, dataset_col, unknown_prompt_col, unknown_model_col] + all_metrics
+        all_columns = [perc_unknown_col, dataset_col, unknown_prompt_col, unknown_model_col, random_seed_col] + all_metrics
 
         for col in all_columns:
             assert col in data_copy.columns, f"'{col}' must be present in the analysis DataFrame."
@@ -37,12 +37,14 @@ class OODAnalyser(BaseModel, BaseAnalyser):
             f1_col: SpiderDatasetSchema.F1,
             recall_col: SpiderDatasetSchema.recall,
             precision_col: SpiderDatasetSchema.precision,
+            random_seed_col: StrategyBoxPlotDatasetSchema.random_seed,
         }
 
         data2plot = data_copy[all_columns].rename(columns=column_mapping)
         data2plot[SpiderDatasetSchema.dataset] = data2plot[SpiderDatasetSchema.dataset].str.replace("src.", "")
         data2plot[SpiderDatasetSchema.dataset] = data2plot[SpiderDatasetSchema.dataset].str.replace("Dataset", "")
         data2plot[SpiderDatasetSchema.prompt_version] = data2plot[SpiderDatasetSchema.prompt_version].apply(lambda x: x.split("_")[0].capitalize() + " " + x.split("_")[1].capitalize())
+        data2plot[SpiderDatasetSchema.prompt_version] = data2plot[SpiderDatasetSchema.prompt_version].str.replace("shot", "-Shot")
 
         # analyse unknown predictions
         data2plot_grouped = data2plot.groupby([SpiderDatasetSchema.dataset, SpiderDatasetSchema.model, SpiderDatasetSchema.prompt_version])[[SpiderDatasetSchema.F1, SpiderDatasetSchema.recall, SpiderDatasetSchema.precision]].agg(["mean"]).reset_index()
@@ -60,6 +62,7 @@ class OODAnalyser(BaseModel, BaseAnalyser):
 
         except Exception as e:
             print("Could not print Spider Plot. Error: {e}")
+
 
         boxplot = StrategyBoxPlot(
             data=data2plot,
