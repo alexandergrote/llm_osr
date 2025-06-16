@@ -78,6 +78,10 @@ class ExperimentFactory(BaseModel):
                     if model in ["hyper_simpleshot"]:
                         overrides.append('ml__preprocessing=rest_embedding')
 
+                    overrides += [
+                            f'ml__datasplit.params.subset_test={N_SUBSET_TEST}',
+                        ]
+
                     experiments.append(Experiment(name=exp_name, overrides=overrides))
 
         return experiments
