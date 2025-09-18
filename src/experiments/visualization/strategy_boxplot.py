@@ -501,16 +501,23 @@ class StrategyBoxPlot(BaseModel):
             # Add significance bars and annotations
             bar_height = 0.02  # Height of significance bars
             text_height = 0.01  # Height of p-value text
-            text_buffer = 0.15  # Buffer between bars and text to avoid overlap
+            text_buffer = 0.09  # Buffer between bars and text to avoid overlap
             max_bars = len(prompt_versions) * (len(prompt_versions) - 1) // 2
             
             # Calculate y positions for significance bars
             y_max = ax.get_ylim()[1]
+            y_max = 1
+            y_max_offset = 0.2
             bar_positions = np.linspace(
-                y_max, 
-                y_max + (bar_height + text_height + text_buffer) * max_bars, 
+                y_max + y_max_offset, 
+                y_max + y_max_offset + (bar_height + text_height + text_buffer) * max_bars, 
                 max_bars
             )
+
+            bar_positions = []
+            vertical_spacing = 0.125
+            for i in range(max_bars):
+                bar_positions.append(1.0 + 0.1 + (i * vertical_spacing))
             
             bar_idx = 0
             for p_i, prompt1 in enumerate(prompt_versions):
@@ -536,9 +543,9 @@ class StrategyBoxPlot(BaseModel):
                     y = bar_positions[bar_idx]
                     
                     # Draw the bar with academic styling
-                    ax.plot([x1, x2], [y, y], 'k-', linewidth=1)
-                    ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1)
-                    ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1)
+                    ax.plot([x1, x2], [y, y], 'k-', linewidth=1, clip_on=False)
+                    ax.plot([x1, x1], [y-bar_height/2, y], 'k-', linewidth=1, clip_on=False)
+                    ax.plot([x2, x2], [y-bar_height/2, y], 'k-', linewidth=1, clip_on=False)
                     
                     # Add p-value and effect size text with academic styling
                     sig_value = r"$^{" + sig_symbol + r"}$"
@@ -551,7 +558,8 @@ class StrategyBoxPlot(BaseModel):
                         va='bottom', 
                         color="black",
                         fontsize=16, 
-                        fontstyle='italic'
+                        fontstyle='italic',
+                        clip_on=False
                     )
                     
                     bar_idx += 1
@@ -559,6 +567,7 @@ class StrategyBoxPlot(BaseModel):
             # Adjust y-axis limits to accommodate significance bars
             if bar_idx > 0:
                 ax.set_ylim(0.0, bar_positions[bar_idx-1] + text_height * 3)
+                ax.set_ylim(0,1)
         
         # Add overall title with academic styling
         if dataset is None:
@@ -572,7 +581,7 @@ class StrategyBoxPlot(BaseModel):
         fig.suptitle(title, fontsize=16, fontweight='bold', y=1.05)
         
         # Adjust layout and save
-        plt.tight_layout()
+        #plt.tight_layout()
         full_dir = Directory.OUTPUT_DIR / 'strategy_boxplots'
         full_dir.mkdir(exist_ok=True)
         fig.savefig(full_dir / filename, bbox_inches='tight')
